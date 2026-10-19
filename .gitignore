@@ -1,0 +1,195 @@
+# ============================================================
+# Netafim — .gitignore
+# Django REST Framework + Python/uv + PostgreSQL
+# Android/Kotlin + Gradle + Room/SQLite
+# Docker Compose + IDEs + secrets + generated files
+# ============================================================
+
+# ----------------------------
+# Secrets and environment files
+# ----------------------------
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+secrets/
+secret/
+credentials.json
+service-account*.json
+
+# ----------------------------
+# Python
+# ----------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.python-version.local
+.python-version.bak
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.python-env/
+
+# Packaging / build artifacts
+build/
+dist/
+site/
+*.egg
+*.egg-info/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+
+# Test, coverage, type-checking, lint caches
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.dmypy.json
+.pytype/
+.ruff_cache/
+.hypothesis/
+.pyre/
+.pyright/
+coverage.xml
+junit.xml
+
+# Django runtime files
+staticfiles/
+media/
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+*.log
+
+# NOTE: Do NOT ignore migrations/; Django migrations must be committed.
+
+# ----------------------------
+# uv
+# ----------------------------
+# Keep uv.lock tracked for reproducible application installs.
+# (Do not ignore uv.lock.)
+
+# ----------------------------
+# PostgreSQL / database dumps
+# ----------------------------
+*.sql
+*.dump
+*.backup
+*.bak
+*.pgdump
+# Exception: explicitly tracked, sanitized SQL scripts may be force-added if needed.
+# Do not commit real customer data or production backups.
+
+# ----------------------------
+# Android / Kotlin / Gradle
+# ----------------------------
+.gradle/
+**/build/
+local.properties
+*.iml
+.idea/
+.kotlin/
+.cxx/
+.externalNativeBuild/
+captures/
+.externalNativeBuild/
+.navigation/
+*.hprof
+
+# APKs / Android App Bundles
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Generated Android files
+gen/
+out/
+bin/
+lint-results*.html
+lint-results*.xml
+lint-results*.txt
+mapping.txt
+seeds.txt
+
+# Signing credentials
+key.properties
+*.jks
+*.keystore
+
+# Room/SQLite local runtime databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+
+# ----------------------------
+# Java / JVM
+# ----------------------------
+hs_err_pid*
+replay_pid*
+*.class
+
+# ----------------------------
+# Docker / local runtime
+# ----------------------------
+# Keep Dockerfile and docker-compose.yml tracked.
+# Ignore local overrides only if they contain machine-specific settings.
+docker-compose.override.yml
+compose.override.yaml
+*.pid
+
+# ----------------------------
+# Uploaded/generated files and local storage
+# ----------------------------
+uploads/
+storage/
+tmp/
+temp/
+*.tmp
+*.temp
+*.part
+
+# ----------------------------
+# IDEs and editors
+# ----------------------------
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.example.json
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ----------------------------
+# Documentation / design exports
+# ----------------------------
+# Do not ignore source documentation, PDFs, diagrams, or design files by default.
+# Ignore only temporary exports and generated previews.
+*.drawio.bkp
+*.fig~
+*.autosave
+
+# ----------------------------
+# GitHub Actions / tooling
+# ----------------------------
+# Do not ignore .github/workflows/ or repository configuration.
