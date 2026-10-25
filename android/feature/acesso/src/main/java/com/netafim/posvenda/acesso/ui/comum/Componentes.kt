@@ -134,8 +134,10 @@ fun CampoSenha(
 
 /** Erro de campo com ícone + texto: a informação nunca depende só da cor (RNF27). */
 private fun textoDeApoio(erro: String?, dica: String?): (@Composable () -> Unit)? {
+    // A lambda vai numa variável tipada: "return @Composable { }" seria lido
+    // pelo Kotlin como o rótulo "return@Composable" e não compila.
     if (erro != null) {
-        return @Composable {
+        val conteudoErro: @Composable () -> Unit = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Outlined.ErrorOutline,
@@ -146,8 +148,12 @@ private fun textoDeApoio(erro: String?, dica: String?): (@Composable () -> Unit)
                 Text(erro)
             }
         }
+        return conteudoErro
     }
-    if (dica != null) return @Composable { Text(dica) }
+    if (dica != null) {
+        val conteudoDica: @Composable () -> Unit = { Text(dica) }
+        return conteudoDica
+    }
     return null
 }
 
