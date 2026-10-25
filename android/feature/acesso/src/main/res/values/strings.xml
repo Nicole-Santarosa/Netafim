@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="acesso_marca">NETAFIM</string>
+    <string name="acesso_slogan">Mais com cada gota</string>
+
+    <!-- Login -->
+    <string name="acesso_login_titulo">Entrar</string>
+    <string name="acesso_login_subtitulo">Use o e-mail e a senha cadastrados.</string>
+    <string name="acesso_email">E-mail</string>
+    <string name="acesso_senha">Senha</string>
+    <string name="acesso_entrar">Entrar</string>
+    <string name="acesso_esqueci_senha">Esqueci minha senha</string>
+    <string name="acesso_sem_conta">Ainda não tem acesso?</string>
+    <string name="acesso_solicitar_acesso">Solicitar acesso</string>
+    <string name="acesso_mostrar_senha">Mostrar senha</string>
+    <string name="acesso_ocultar_senha">Ocultar senha</string>
+
+    <!-- Cadastro -->
+    <string name="acesso_cadastro_titulo">Solicitar acesso</string>
+    <string name="acesso_cadastro_explicacao">Preencha seus dados. A Netafim vai validar o cadastro e definir o seu perfil de acesso. Você receberá um e-mail quando o acesso for liberado.</string>
+    <string name="acesso_nome">Nome completo</string>
+    <string name="acesso_telefone">Telefone com DDD (opcional)</string>
+    <string name="acesso_confirmar_senha">Confirmar senha</string>
+    <string name="acesso_dica_senha">Mínimo de 8 caracteres, sem ser só números.</string>
+    <string name="acesso_aceite_termo">Li e aceito o aviso de privacidade (versão %1$s).</string>
+    <string name="acesso_aceite_termo_carregando">Li e aceito o aviso de privacidade.</string>
+    <string name="acesso_enviar_solicitacao">Enviar solicitação</string>
+    <string name="acesso_cadastro_enviado_titulo">Solicitação enviada</string>
+    <string name="acesso_voltar_login">Voltar para o login</string>
+    <string name="acesso_tentar_novamente">Tentar novamente</string>
+
+    <!-- Esqueci a senha -->
+    <string name="acesso_esqueci_titulo">Redefinir senha</string>
+    <string name="acesso_esqueci_explicacao">Informe o e-mail cadastrado. Se ele estiver ativo, você receberá um link para criar uma nova senha.</string>
+    <string name="acesso_enviar_link">Enviar link</string>
+
+    <!-- Perfil -->
+    <string name="acesso_perfil_titulo">Meu perfil</string>
+    <string name="acesso_perfil_organizacao">Organização</string>
+    <string name="acesso_perfil_perfil">Perfil de acesso</string>
+    <string name="acesso_perfil_email">E-mail</string>
+    <string name="acesso_perfil_telefone">Telefone</string>
+    <string name="acesso_perfil_situacao">Situação</string>
+    <string name="acesso_perfil_permissoes">O que você pode fazer</string>
+    <string name="acesso_perfil_sem_telefone">Não informado</string>
+    <string name="acesso_atualizar">Atualizar</string>
+    <string name="acesso_sair">Sair</string>
+    <string name="acesso_sair_confirmar_titulo">Sair do aplicativo?</string>
+    <string name="acesso_sair_confirmar_texto">Atendimentos ainda não sincronizados continuam salvos neste aparelho.</string>
+    <string name="acesso_cancelar">Cancelar</string>
+    <string name="acesso_voltar">Voltar</string>
+    <string name="acesso_erro">Erro</string>
+</resources>
