@@ -2,16 +2,17 @@
 
 import pytest
 
-from apps.contas.constantes import SituacaoUsuario
-from apps.contas.models import Usuario
-
-from .conftest import perfil
-
 USUARIOS = "/api/v1/usuarios"
 
 
 def emails(resposta) -> set[str]:
     return {u["email"] for u in resposta.data["results"]}
+
+
+def estado(banco_sql, id_usuario):
+    return banco_sql.um(
+        "select situacao, deletado_em is not null from usuario where id_usuario = %s", id_usuario
+    )
 
 
 # --------------------------------------------------------------------------- visibilidade
@@ -57,6 +58,12 @@ def test_filtros_da_listagem(como, netafim_admin, distrib_usuario, cliente_usuar
     assert cliente_usuario.email in emails(r)
 
 
+def test_resposta_da_lista_nao_expoe_senha(como, netafim_admin):
+    r = como(netafim_admin).get(USUARIOS)
+    texto = str(r.data)
+    assert "password" not in texto and "argon2" not in texto and "md5$" not in texto
+
+
 # --------------------------------------------------------------------------- gestão no escopo
 
 
@@ -92,6 +99,34 @@ def test_desativar_e_reativar(como, distrib_admin, distrib_usuario):
     assert r.status_code == 200 and r.data["situacao"] == "ativo"
 
 
+def test_inativar_encerra_as_sessoes_pelo_banco(
+    api, como, distrib_admin, distrib_usuario, banco_sql
+):
+    import uuid
+
+    dados = api.post(
+        "/api/v1/auth/login",
+        {
+            "email": distrib_usuario.email,
+            "senha": "Irrigacao#Segura2026",
+            "dispositivo": {"id_dispositivo": str(uuid.uuid4())},
+        },
+        format="json",
+    ).data
+    como(distrib_admin).post(
+        f"{USUARIOS}/{distrib_usuario.pk}/situacao", {"situacao": "inativo"}, format="json"
+    )
+    assert (
+        banco_sql.um(
+            "select count(*) from token_acesso where id_usuario = %s and revogado_em is null",
+            distrib_usuario.pk,
+        )
+        == 0
+    )
+    r = api.post("/api/v1/auth/refresh", {"refresh": dados["refresh"]}, format="json")
+    assert r.status_code == 401
+
+
 def test_bloquear_e_exclusivo_do_netafim_admin(como, distrib_admin, distrib_usuario, netafim_admin):
     r = como(distrib_admin).post(
         f"{USUARIOS}/{distrib_usuario.pk}/situacao", {"situacao": "bloqueado"}, format="json"
@@ -101,6 +136,17 @@ def test_bloquear_e_exclusivo_do_netafim_admin(como, distrib_admin, distrib_usua
         f"{USUARIOS}/{distrib_usuario.pk}/situacao", {"situacao": "bloqueado"}, format="json"
     )
     assert r.status_code == 200 and r.data["situacao"] == "bloqueado"
+
+
+def test_netafim_admin_desbloqueia_e_zera_o_contador(como, netafim_admin, criar_usuario, banco_sql):
+    bloqueado = criar_usuario("netafim", "usuario", situacao="bloqueado", falhas_login=5)
+    r = como(netafim_admin).post(
+        f"{USUARIOS}/{bloqueado.pk}/situacao", {"situacao": "ativo"}, format="json"
+    )
+    assert r.status_code == 200
+    assert banco_sql.um(
+        "select falhas_login, bloqueado_ate from usuario where id_usuario = %s", bloqueado.pk
+    ) == (0, None)
 
 
 def test_transicao_invalida(como, netafim_admin, criar_usuario, cliente):
@@ -113,9 +159,9 @@ def test_transicao_invalida(como, netafim_admin, criar_usuario, cliente):
 
 
 def test_definir_perfil_e_exclusivo_do_netafim_admin(
-    como, netafim_admin, distrib_admin, distrib_usuario
+    como, netafim_admin, distrib_admin, distrib_usuario, perfil_id
 ):
-    admin_distrib = perfil("distribuidor", "admin").pk
+    admin_distrib = perfil_id("distribuidor", "admin")
     r = como(distrib_admin).post(
         f"{USUARIOS}/{distrib_usuario.pk}/perfil", {"id_perfil": admin_distrib}, format="json"
     )
@@ -127,24 +173,32 @@ def test_definir_perfil_e_exclusivo_do_netafim_admin(
     assert r.data["perfil"]["nome_perfil"] == "Distribuidor Admin"
 
 
-def test_exclusao_logica_esconde_e_libera_email(como, cliente_admin, cliente_usuario):
+def test_mudar_perfil_vale_na_proxima_requisicao(como, netafim_admin, cliente_usuario, perfil_id):
+    cli = como(cliente_usuario)
+    assert "dashboard_gerencial" not in cli.get("/api/v1/me").data["permissoes"]
+    como(netafim_admin).post(
+        f"{USUARIOS}/{cliente_usuario.pk}/perfil",
+        {"id_perfil": perfil_id("cliente", "admin")},
+        format="json",
+    )
+    assert "dashboard_gerencial" in cli.get("/api/v1/me").data["permissoes"]
+
+
+def test_exclusao_logica_esconde_e_libera_email(como, cliente_admin, cliente_usuario, banco_sql):
     r = como(cliente_admin).delete(f"{USUARIOS}/{cliente_usuario.pk}")
     assert r.status_code == 204
-    assert not Usuario.objects.filter(pk=cliente_usuario.pk).exists()
-    excluido = Usuario.todos.get(pk=cliente_usuario.pk)
-    assert excluido.deletado_em is not None
-    assert excluido.situacao == SituacaoUsuario.INATIVO
+    assert como(cliente_admin).get(f"{USUARIOS}/{cliente_usuario.pk}").status_code == 404
+    assert estado(banco_sql, cliente_usuario.pk) == ("inativo", True)
 
 
-def test_ultimo_netafim_admin_nao_pode_ser_removido(como, criar_usuario, netafim_admin):
+def test_ultimo_netafim_admin_nao_pode_ser_removido(como, criar_usuario, netafim_admin, perfil_id):
     segundo = criar_usuario("netafim", "admin")
     cli = como(segundo)
     assert cli.delete(f"{USUARIOS}/{netafim_admin.pk}").status_code == 204
-    # Agora `segundo` é o último; outro admin não existe para removê-lo, e ele não
-    # pode se rebaixar nem ser rebaixado.
+    # Agora `segundo` é o último e não pode ser rebaixado.
     r = como(segundo).post(
         f"{USUARIOS}/{segundo.pk}/perfil",
-        {"id_perfil": perfil("netafim", "usuario").pk},
+        {"id_perfil": perfil_id("netafim", "usuario")},
         format="json",
     )
     assert r.status_code == 400
@@ -215,18 +269,20 @@ def test_perfis_e_permissoes_visiveis(como, cliente_usuario):
     assert len(r.data) == 6
 
 
-def test_gerenciar_permissoes_do_perfil(como, netafim_admin, distrib_admin):
-    id_perfil = perfil("cliente", "usuario").pk
-    url = f"/api/v1/perfis/{id_perfil}/permissoes"
-    corpo = {"permissoes": ["abrir_atendimento", "consultar_proprios_atendimentos"]}
+def test_gerenciar_permissoes_do_perfil(como, netafim_admin, distrib_admin, perfil_id, banco_sql):
+    url = f"/api/v1/perfis/{perfil_id('cliente', 'usuario')}/permissoes"
+    corpo = {"permissoes": ["abrir_atendimento", "consultar_proprios"]}
     assert como(distrib_admin).put(url, corpo, format="json").status_code == 403
     r = como(netafim_admin).put(url, corpo, format="json")
     assert r.status_code == 200
-    assert r.data["permissoes"] == ["abrir_atendimento", "consultar_proprios_atendimentos"]
+    assert r.data["permissoes"] == ["abrir_atendimento", "consultar_proprios"]
+    # O banco audita a concessão e a revogação (gatilho em perfil_permissao).
+    acoes = {a for (a,) in banco_sql.todos("select acao from log_auditoria")}
+    assert "permissao_revogada" in acoes
 
 
-def test_netafim_admin_nao_perde_permissoes_essenciais(como, netafim_admin):
-    url = f"/api/v1/perfis/{perfil('netafim', 'admin').pk}/permissoes"
+def test_netafim_admin_nao_perde_permissoes_essenciais(como, netafim_admin, perfil_id):
+    url = f"/api/v1/perfis/{perfil_id('netafim', 'admin')}/permissoes"
     r = como(netafim_admin).put(url, {"permissoes": ["abrir_atendimento"]}, format="json")
     assert r.status_code == 400
     assert r.data["codigo"] == "permissao_essencial"

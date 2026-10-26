@@ -1,26 +1,27 @@
-"""Regras garantidas pelo PostgreSQL (MER/DER, seção 5.1) e carga da matriz (Anexo B)."""
+"""
+Contrato com o banco do grupo (RLS, gatilhos, funções e a matriz de permissões).
 
-import uuid
-from datetime import timedelta
+O banco é a fonte da verdade e as regras abaixo são dele. Estes testes existem para (1) avisar se o
+nosso código se afastar do esquema real e (2) garantir que a API, conectada como app_django, só
+enxerga e altera o que o RLS e os gatilhos permitem.
+"""
 
 import pytest
-from django.db import IntegrityError, transaction
-from django.db.utils import DatabaseError
-from django.utils import timezone
+from django.db import DatabaseError, connection, transaction
 
-from apps.contas.constantes import NivelPerfil, Permissao, SituacaoUsuario, TipoToken
-from apps.contas.models import Dispositivo, Perfil, TokenAcesso, Usuario
-from apps.contas.servicos import tokens
-
-from .conftest import perfil
-
-
-def violacao(funcao):
-    with pytest.raises((IntegrityError, DatabaseError)), transaction.atomic():
-        funcao()
-
-
-# --------------------------------------------------------------------------- matriz
+from apps.contas import contexto
+from apps.contas.constantes import Permissao
+from apps.contas.models import (
+    Cliente,
+    Dispositivo,
+    Distribuidor,
+    DominioEmailCorporativo,
+    Perfil,
+    Usuario,
+)
+from apps.contas.models import (
+    Permissao as PermissaoModelo,
+)
 
 NA, NU, DA, DU, CA, CU = (
     ("netafim", "admin"),
@@ -52,194 +53,190 @@ MATRIZ_ANEXO_B = {
 }
 
 
-def test_seis_perfis_carregados():
-    assert Perfil.objects.count() == 6
-    assert {(p.tipo_organizacao, p.nivel) for p in Perfil.objects.all()} == TODOS
+# --------------------------------------------------------------------------- esquema e matriz
+
+
+def test_seis_perfis_carregados(banco_sql):
+    perfis = {tuple(p) for p in banco_sql.todos("select tipo_organizacao, nivel from perfil")}
+    assert perfis == TODOS
+
+
+def test_constantes_de_permissao_existem_no_banco(banco_sql):
+    """Evita o descasamento de códigos (ex.: criar_usuarios x criar_usuario) entre código e
+    banco."""
+    no_banco = {c for (c,) in banco_sql.todos("select codigo from permissao")}
+    assert set(MATRIZ_ANEXO_B) == no_banco
 
 
 @pytest.mark.parametrize(("codigo", "perfis"), MATRIZ_ANEXO_B.items())
-def test_matriz_de_permissoes_igual_ao_anexo_b(codigo, perfis):
+def test_matriz_de_permissoes_igual_ao_anexo_b(banco_sql, codigo, perfis):
     reais = {
-        (p.tipo_organizacao, p.nivel) for p in Perfil.objects.filter(permissoes__codigo=codigo)
+        tuple(p)
+        for p in banco_sql.todos(
+            "select p.tipo_organizacao, p.nivel from perfil p "
+            "join perfil_permissao pp using (id_perfil) join permissao pe using (id_permissao) "
+            "where pe.codigo = %s",
+            codigo,
+        )
     }
     assert reais == perfis
 
 
-# --------------------------------------------------------------------------- usuário
-
-
-def test_usuario_ativo_exige_perfil_e_organizacao():
-    u = Usuario(nome="Sem perfil", email="x@gmail.com", situacao=SituacaoUsuario.ATIVO)
-    u.set_unusable_password()
-    violacao(u.save)
-
-
-def test_usuario_nao_pode_ter_duas_organizacoes(criar_usuario, cliente, distribuidor):
-    u = criar_usuario("cliente", "usuario", org=cliente)
-    u.distribuidor = distribuidor
-    violacao(u.save)
-
-
-def test_tipo_organizacao_coerente_com_chave(criar_usuario, cliente):
-    u = criar_usuario("cliente", "usuario", org=cliente)
-    u.tipo_organizacao = "netafim"
-    u.perfil = perfil("netafim", "usuario")
-    violacao(u.save)
-
-
-def test_perfil_precisa_ser_do_mesmo_tipo_de_organizacao(criar_usuario, cliente):
-    u = criar_usuario("cliente", "usuario", org=cliente)
-    u.perfil = perfil("netafim", "admin")  # escalada de privilégio barrada pelo banco
-    violacao(u.save)
-
-
-def test_email_unico_sem_diferenciar_maiusculas():
-    u = Usuario(nome="A", email="joao@gmail.com")
-    u.set_unusable_password()
-    u.save()
-    dup = Usuario(nome="B", email="JOAO@gmail.com")
-    dup.set_unusable_password()
-    violacao(dup.save)
-
-
-def test_email_liberado_apos_exclusao_logica():
-    u = Usuario(nome="A", email="maria@gmail.com")
-    u.set_unusable_password()
-    u.save()
-    u.deletado_em = timezone.now()
-    u.save()
-    novo = Usuario(nome="B", email="maria@gmail.com")
-    novo.set_unusable_password()
-    novo.save()
-
-
-def test_banco_so_aceita_hash_de_senha():
-    u = Usuario(nome="A", email="texto@gmail.com", password="senha-em-texto-puro")
-    violacao(u.save)
-
-
-def test_consentimento_exige_data_e_versao():
-    u = Usuario(nome="A", email="c@gmail.com", consentimento_lgpd=True)
-    u.set_unusable_password()
-    violacao(u.save)
-
-
-def test_aprovacao_netafim_exige_dominio_corporativo(dominios):
-    u = Usuario(
-        nome="A",
-        email="alguem@gmail.com",
-        situacao=SituacaoUsuario.ATIVO,
-        tipo_organizacao="netafim",
-        perfil=perfil("netafim", "usuario"),
-    )
-    u.set_unusable_password()
-    with pytest.raises(IntegrityError, match="não autorizado"), transaction.atomic():
-        u.save()
-
-
-def test_dominio_de_distribuidor_vale_so_para_o_proprio(dominios, outro_distribuidor):
-    u = Usuario(
-        nome="A",
-        email="a@agroirriga.com.br",
-        situacao=SituacaoUsuario.ATIVO,
-        tipo_organizacao="distribuidor",
-        distribuidor=outro_distribuidor,
-        perfil=perfil("distribuidor", "usuario"),
-    )
-    u.set_unusable_password()
-    violacao(u.save)
-
-
-def test_desativar_dominio_nao_trava_conta_ja_ativa(netafim_usuario):
-    from apps.contas.models import DominioEmailCorporativo
-
-    DominioEmailCorporativo.objects.filter(dominio="netafim.com").update(ativo=False)
-    netafim_usuario.telefone = "16999990000"
-    netafim_usuario.save()  # não deve levantar
-
-
-# --------------------------------------------------------------------------- tokens
-
-
-def test_inativar_conta_revoga_tokens(netafim_usuario):
-    registro, _ = tokens.emitir(netafim_usuario, TipoToken.REFRESH)
-    netafim_usuario.situacao = SituacaoUsuario.INATIVO
-    netafim_usuario.save()
-    registro.refresh_from_db()
-    assert registro.revogado_em is not None
-
-
-def test_revogar_dispositivo_revoga_tokens_dele(netafim_usuario):
-    aparelho = Dispositivo.objects.create(id_dispositivo=uuid.uuid4(), usuario=netafim_usuario)
-    do_aparelho, _ = tokens.emitir(netafim_usuario, TipoToken.REFRESH, dispositivo=aparelho)
-    outro, _ = tokens.emitir(netafim_usuario, TipoToken.REFRESH)
-    aparelho.revogado_em = timezone.now()
-    aparelho.save()
-    do_aparelho.refresh_from_db()
-    outro.refresh_from_db()
-    assert do_aparelho.revogado_em is not None
-    assert outro.revogado_em is None
-
-
-def test_token_guardado_somente_como_hash(netafim_usuario):
-    registro, claro = tokens.emitir(netafim_usuario, TipoToken.REFRESH)
-    assert claro not in registro.token_hash
-    assert registro.token_hash == tokens.hash_token(claro)
-
-
-def test_revogacao_de_token_nao_volta_atras(netafim_usuario):
-    registro, _ = tokens.emitir(netafim_usuario, TipoToken.REFRESH)
-    TokenAcesso.objects.filter(pk=registro.pk).update(revogado_em=timezone.now())
-    violacao(lambda: TokenAcesso.objects.filter(pk=registro.pk).update(revogado_em=None))
-
-
-def test_validade_e_dono_do_token_sao_imutaveis(netafim_usuario, netafim_admin):
-    registro, _ = tokens.emitir(netafim_usuario, TipoToken.REFRESH)
-    violacao(
-        lambda: TokenAcesso.objects.filter(pk=registro.pk).update(
-            expira_em=registro.expira_em + timedelta(days=1)
+@pytest.mark.parametrize(
+    "modelo",
+    [Usuario, Perfil, PermissaoModelo, Distribuidor, Cliente, Dispositivo, DominioEmailCorporativo],
+)
+def test_modelos_mapeiam_colunas_que_existem_no_banco(banco_sql, modelo):
+    """Se o banco mudar uma coluna que o Django usa, o teste acusa antes de a API quebrar."""
+    no_banco = {
+        c
+        for (c,) in banco_sql.todos(
+            "select column_name from information_schema.columns where table_name = %s",
+            modelo._meta.db_table,
         )
+    }
+    do_modelo = {f.column for f in modelo._meta.concrete_fields}
+    assert do_modelo <= no_banco, do_modelo - no_banco
+
+
+# --------------------------------------------------------------------------- RLS e privilégios
+
+
+def test_api_nao_tem_acesso_a_tabela_de_tokens():
+    """Tokens só passam pelas funções do banco: o papel da API não tem privilégio em
+    token_acesso."""
+    with pytest.raises(DatabaseError), transaction.atomic(), connection.cursor() as cursor:
+        cursor.execute("select count(*) from token_acesso")
+
+
+def test_sem_ator_o_rls_nega_tudo(netafim_admin):
+    with transaction.atomic():
+        contexto.limpar()
+        assert Usuario.objects.count() == 0
+
+
+def test_ator_comum_enxerga_so_a_si_mesmo(netafim_usuario, netafim_admin):
+    with contexto.como_ator(netafim_usuario.pk):
+        assert list(Usuario.objects.values_list("pk", flat=True)) == [netafim_usuario.pk]
+
+
+def test_netafim_admin_enxerga_todos(netafim_usuario, netafim_admin):
+    with contexto.como_ator(netafim_admin.pk):
+        assert Usuario.objects.count() == 2
+
+
+def test_contexto_fora_de_transacao_falha_alto():
+    with pytest.raises(RuntimeError):
+        contexto.definir_ator(1)
+
+
+def test_ator_nao_vaza_para_a_transacao_seguinte(netafim_usuario):
+    with contexto.como_ator(netafim_usuario.pk):
+        assert Usuario.objects.count() == 1
+    with transaction.atomic():
+        assert Usuario.objects.count() == 0  # nova transação: sem ator
+
+
+# --------------------------------------------------------------------------- gatilhos de proteção
+
+
+def _tentar_update(id_ator, comando, *args):
+    with pytest.raises(DatabaseError), contexto.como_ator(id_ator), connection.cursor() as cursor:
+        cursor.execute(comando, args)
+
+
+def test_usuario_nao_escala_o_proprio_privilegio(cliente_usuario, perfil_id):
+    _tentar_update(
+        cliente_usuario.pk,
+        "update usuario set id_perfil = %s where id_usuario = %s",
+        perfil_id("cliente", "admin"),
+        cliente_usuario.pk,
     )
-    violacao(lambda: TokenAcesso.objects.filter(pk=registro.pk).update(usuario=netafim_admin))
 
 
-def test_validade_maxima_de_90_dias(netafim_usuario):
-    agora = timezone.now()
-    violacao(
-        lambda: TokenAcesso.objects.create(
-            usuario=netafim_usuario,
-            tipo=TipoToken.REFRESH,
-            token_hash="a" * 64,
-            criado_em=agora,
-            expira_em=agora + timedelta(days=91),
+def test_perfil_de_outro_tipo_de_organizacao_e_barrado_pelo_banco(
+    netafim_admin, cliente_usuario, perfil_id
+):
+    # Mesmo o Netafim Admin: a chave estrangeira composta impede perfil de outro tipo de
+    # organização.
+    _tentar_update(
+        netafim_admin.pk,
+        "update usuario set id_perfil = %s where id_usuario = %s",
+        perfil_id("netafim", "admin"),
+        cliente_usuario.pk,
+    )
+
+
+def test_contadores_de_login_nao_mudam_direto(cliente_usuario):
+    _tentar_update(
+        cliente_usuario.pk,
+        "update usuario set falhas_login = 3, bloqueado_ate = null where id_usuario = %s",
+        cliente_usuario.pk,
+    )
+
+
+def test_aparelho_nao_muda_de_dono_nem_volta_atras_na_revogacao(
+    netafim_usuario, netafim_admin, banco_sql
+):
+    import uuid
+
+    id_aparelho = uuid.uuid4()
+    banco_sql.executar(
+        "insert into dispositivo (id_dispositivo, id_usuario, revogado_em) values (%s, %s, now())",
+        id_aparelho,
+        netafim_usuario.pk,
+    )
+    _tentar_update(
+        netafim_usuario.pk,
+        "update dispositivo set revogado_em = null where id_dispositivo = %s",
+        id_aparelho,
+    )
+
+
+# --------------------------------------------------------------------------- regras de integridade
+
+
+def test_email_unico_sem_diferenciar_maiusculas(criar_usuario, perfil_id, banco_sql):
+    pessoa = criar_usuario("netafim", "usuario", email="joao@netafim.com")
+    with pytest.raises(Exception, match="ux_usuario_email"):
+        criar_usuario("netafim", "usuario", email="JOAO@netafim.com")
+    assert pessoa.pk
+
+
+def test_banco_so_aceita_hash_de_senha(banco_sql):
+    with pytest.raises(Exception, match="ck_usuario_password_formato"):
+        banco_sql.executar(
+            "insert into usuario (nome, email, password) values ('A', 'x@gmail.com', 'senha-pura')"
         )
+
+
+def test_aprovacao_netafim_exige_dominio_corporativo(criar_usuario):
+    with pytest.raises(Exception, match="não está autorizado"):
+        criar_usuario("netafim", "usuario", email="alguem@gmail.com")
+
+
+def test_dominio_de_distribuidor_vale_so_para_o_proprio(
+    criar_usuario, distribuidor, outro_distribuidor
+):
+    with pytest.raises(Exception, match="não está autorizado"):
+        criar_usuario(
+            "distribuidor", "usuario", org=outro_distribuidor, email=f"a@{distribuidor.dominio}"
+        )
+
+
+def test_sync_seq_atribuido_pelo_banco_e_crescente(banco_sql, distribuidor, cliente):
+    sync_dist = banco_sql.um(
+        "select sync_seq from distribuidor where id_distribuidor = %s", distribuidor.pk
     )
+    sync_cli = banco_sql.um("select sync_seq from cliente where id_cliente = %s", cliente.pk)
+    assert 0 < sync_dist < sync_cli
+    banco_sql.executar("update cliente set nome = 'Fazenda II' where id_cliente = %s", cliente.pk)
+    assert banco_sql.um("select sync_seq from cliente where id_cliente = %s", cliente.pk) > sync_cli
 
 
-# --------------------------------------------------------------------------- sincronização
-
-
-def test_sync_seq_atribuido_pelo_banco_e_crescente(distribuidor, cliente):
-    distribuidor.refresh_from_db()
-    cliente.refresh_from_db()
-    assert distribuidor.sync_seq > 0
-    assert cliente.sync_seq > distribuidor.sync_seq
-    anterior = cliente.sync_seq
-    cliente.nome = "Fazenda Santa Clara II"
-    cliente.save()
-    cliente.refresh_from_db()
-    assert cliente.sync_seq > anterior
-
-
-def test_perfil_admin_tem_nivel_admin():
-    assert perfil("netafim", NivelPerfil.ADMIN).eh_admin
-
-
-def test_createsuperuser_cria_netafim_admin_e_dominio():
-    from apps.contas.models import DominioEmailCorporativo
-
-    admin = Usuario.objects.create_superuser("Chefe@NetafimBR.com", "Chefe", "Gotejo#Admin2026")
-    assert admin.eh_netafim_admin and admin.is_active and admin.is_staff
-    assert admin.email == "chefe@netafimbr.com"
-    assert DominioEmailCorporativo.objects.filter(dominio="netafimbr.com", ativo=True).exists()
-    assert admin.has_perm("qualquer") and admin.has_module_perms("contas")
+def test_trilha_de_auditoria_e_imutavel(netafim_admin, banco_sql):
+    banco_sql.executar("select fn_audit('logout')")
+    with pytest.raises(Exception, match="somente inserção"):
+        banco_sql.executar("update log_auditoria set resultado = 'falha'")
+    with pytest.raises(Exception, match="somente inserção"):
+        banco_sql.executar("delete from log_auditoria")
