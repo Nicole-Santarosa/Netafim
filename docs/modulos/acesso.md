@@ -55,6 +55,14 @@ Admins também cadastram pessoas por **convite** (`POST /usuarios`). O convidado
 - **Admin de distribuidor ou de cliente** cria usuários de nível Usuário da própria organização, que ficam pendentes até o Netafim Admin validar.
 - **Reenviar convite:** pendente recebe novo convite (14 dias); quem já foi aprovado recebe o link de redefinição (2 horas).
 
+### Links do e-mail (convite e redefinição de senha)
+
+Os e-mails levam um link `netafim://convite?acao=<convite|redefinir-senha>&token=<token>`. O app o abre sozinho, numa tela do módulo de acesso (**Definir senha de acesso** ou **Redefinir senha**), onde a pessoa cria a senha (no convite, também aceita o aviso de privacidade) e segue para o login.
+
+- O link é registrado por um `activity-alias` no manifesto do **próprio módulo** (`feature/acesso`), apontando para a `MainActivity`, e o Navigation Compose o leva até a tela. O `:app` não precisa conhecer o link.
+- O token é de uso único, só é validado pela API e é descartado do estado do app assim que usado. Link inválido ou expirado mostra uma mensagem e leva ao login.
+- Testado num celular real (Samsung SM-S938B): redefinição de senha, convite com aceite do aviso, e login com a senha criada.
+
 ## Quem gerencia quem
 
 | Ator | Vê | Gerencia |
@@ -92,6 +100,8 @@ Erros de regra de negócio seguem o formato do DRF com um código estável:
 2. **Swagger:** abra `http://localhost:8000/api/docs/`. Faça `POST /auth/login` (informe `dispositivo.id_dispositivo` com um UUID qualquer), copie o `access` e clique em **Authorize** (esquema `jwtAuth`).
 3. **Insomnia:** *Import → From URL* `http://localhost:8000/api/schema/` (ou o arquivo `docs/api/acesso-openapi.yaml`). Crie uma variável de ambiente `token` e use `Bearer {{ token }}`.
 4. **Primeiro administrador:** a API não cria o primeiro Netafim Admin (o RLS exige um administrador como ator). Rode `uv run python manage.py gerar_hash_senha` e aplique o hash no SQL Editor: `update usuario set password = '<hash>' where lower(email) = lower('<e-mail do admin>');`.
+
+5. **Teste de fumaça contra o banco de verdade** (só leitura, não cria nada): com a API ligada ao Supabase, rode `API_URL=... SMOKE_EMAIL=... SMOKE_SENHA=... uv run python scripts/smoke_api.py`. Confere login, `/me`, listas, renovação de sessão e logout.
 
 ## Como os outros módulos usam o acesso
 
