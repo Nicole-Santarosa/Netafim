@@ -88,6 +88,10 @@ db.sqlite3-journal
 # PostgreSQL / database dumps
 # ----------------------------
 *.sql
+# Exceção: retrato do esquema do banco (só estrutura e catálogos, sem dados pessoais) usado nos testes
+# do módulo de acesso, e as propostas de mudança no banco. Nunca versione dump com dados.
+!backend/db/snapshot_banco_atual.sql
+!backend/db/propostas/*.sql
 *.dump
 *.backup
 *.bak
