@@ -5,11 +5,16 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import androidx.navigation.compose.composable
 import androidx.navigation.navigation
 import com.netafim.posvenda.acesso.AcessoGrafo
 import com.netafim.posvenda.acesso.ui.cadastro.CadastroRota
 import com.netafim.posvenda.acesso.ui.cadastro.CadastroViewModel
+import com.netafim.posvenda.acesso.ui.link.LinkRota
+import com.netafim.posvenda.acesso.ui.link.LinkViewModel
 import com.netafim.posvenda.acesso.ui.login.LoginRota
 import com.netafim.posvenda.acesso.ui.login.LoginViewModel
 import com.netafim.posvenda.acesso.ui.perfil.PerfilRota
@@ -17,13 +22,14 @@ import com.netafim.posvenda.acesso.ui.perfil.PerfilViewModel
 import com.netafim.posvenda.acesso.ui.senha.EsqueciSenhaRota
 import com.netafim.posvenda.acesso.ui.senha.EsqueciSenhaViewModel
 
-/** Rotas do módulo de acesso. O app só precisa conhecer [GRAFO] e [PERFIL]. */
+/** Rotas do módulo de acesso. O app só precisa conhecer [GRAFO] e [PERFIL] (o link do e-mail entra sozinho). */
 object RotasAcesso {
     const val GRAFO = "acesso"
     const val LOGIN = "acesso/login"
     const val CADASTRO = "acesso/cadastro"
     const val ESQUECI_SENHA = "acesso/esqueci-senha"
     const val PERFIL = "acesso/perfil"
+    const val LINK = "acesso/link"
 }
 
 private val fabrica = viewModelFactory {
@@ -31,6 +37,7 @@ private val fabrica = viewModelFactory {
     initializer { CadastroViewModel(AcessoGrafo.repositorio) }
     initializer { PerfilViewModel(AcessoGrafo.repositorio) }
     initializer { EsqueciSenhaViewModel(AcessoGrafo.repositorio) }
+    initializer { LinkViewModel(AcessoGrafo.repositorio) }
 }
 
 /**
@@ -52,6 +59,27 @@ fun NavGraphBuilder.grafoAcesso(navController: NavHostController, aoEntrar: () -
         }
         composable(RotasAcesso.ESQUECI_SENHA) {
             EsqueciSenhaRota(viewModel = viewModel(factory = fabrica), aoVoltar = { navController.popBackStack() })
+        }
+        // Link do e-mail (convite ou redefinição de senha). O token vem como argumento da rota.
+        composable(
+            route = "${RotasAcesso.LINK}?acao={acao}&token={token}",
+            arguments = listOf(
+                navArgument("acao") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("token") { type = NavType.StringType; nullable = true; defaultValue = null },
+            ),
+            deepLinks = listOf(navDeepLink { uriPattern = "netafim://convite?acao={acao}&token={token}" }),
+        ) { entrada ->
+            LinkRota(
+                viewModel = viewModel(factory = fabrica),
+                acao = entrada.arguments?.getString("acao"),
+                token = entrada.arguments?.getString("token"),
+                aoIrParaLogin = {
+                    navController.navigate(RotasAcesso.GRAFO) {
+                        popUpTo(0) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+            )
         }
     }
 }

@@ -48,6 +48,11 @@ class RepositorioFalso : RepositorioAcesso {
     var resultadoCadastro: Resultado<String> = Resultado.Sucesso("Solicitação recebida.")
     var resultadoTermo: Resultado<String> = Resultado.Sucesso("1.0")
     var resultadoPerfil: Resultado<Usuario> = Resultado.Sucesso(USUARIO_EXEMPLO)
+    var resultadoConvite: Resultado<String> = Resultado.Sucesso("Senha definida.")
+    var resultadoRedefinir: Resultado<String> = Resultado.Sucesso("Senha redefinida.")
+    var ultimoConvite: Triple<String, String, String>? = null
+    var ultimaRedefinicao: Pair<String, String>? = null
+    var chamadasTermo = 0
     var ultimoCadastro: DadosCadastro? = null
     var chamadasEntrar = 0
     var saiu = false
@@ -65,7 +70,10 @@ class RepositorioFalso : RepositorioAcesso {
     }
 
     override suspend fun atualizarPerfil() = resultadoPerfil
-    override suspend fun versaoTermoVigente() = resultadoTermo
+    override suspend fun versaoTermoVigente(): Resultado<String> {
+        chamadasTermo++
+        return resultadoTermo
+    }
 
     override suspend fun solicitarCadastro(dados: DadosCadastro): Resultado<String> {
         ultimoCadastro = dados
@@ -73,6 +81,20 @@ class RepositorioFalso : RepositorioAcesso {
     }
 
     override suspend fun esqueciSenha(email: String): Resultado<String> = Resultado.Sucesso("ok")
+
+    override suspend fun aceitarConvite(
+        token: String,
+        senha: String,
+        versaoTermo: String,
+    ): Resultado<String> {
+        ultimoConvite = Triple(token, senha, versaoTermo)
+        return resultadoConvite
+    }
+
+    override suspend fun redefinirSenha(token: String, novaSenha: String): Resultado<String> {
+        ultimaRedefinicao = token to novaSenha
+        return resultadoRedefinir
+    }
 }
 
 fun falhaApi(codigo: String, mensagem: String = "erro", status: Int = 400) =

@@ -34,6 +34,14 @@
     <string name="acesso_esqueci_explicacao">Informe o e-mail cadastrado. Se ele estiver ativo, você receberá um link para criar uma nova senha.</string>
     <string name="acesso_enviar_link">Enviar link</string>
 
+    <!-- Link do e-mail: convite e redefinição de senha -->
+    <string name="acesso_link_titulo_convite">Definir senha de acesso</string>
+    <string name="acesso_link_titulo_redefinir">Redefinir senha</string>
+    <string name="acesso_link_explicacao_convite">Você foi convidado para o aplicativo Netafim. Crie a sua senha e aceite o aviso de privacidade para começar.</string>
+    <string name="acesso_link_explicacao_redefinir">Crie uma nova senha para entrar no aplicativo.</string>
+    <string name="acesso_link_nova_senha">Nova senha</string>
+    <string name="acesso_link_salvar_senha">Salvar senha</string>
+
     <!-- Perfil -->
     <string name="acesso_perfil_titulo">Meu perfil</string>
     <string name="acesso_perfil_organizacao">Organização</string>

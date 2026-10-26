@@ -122,6 +122,19 @@ class RepositorioAcessoRemoto(
     override suspend fun esqueciSenha(email: String): Resultado<String> =
         executar { apiPublica.esqueciSenha(EsqueciSenhaRequisicao(email.trim())).detail }
 
+    override suspend fun aceitarConvite(
+        token: String,
+        senha: String,
+        versaoTermo: String,
+    ): Resultado<String> = executar {
+        apiPublica.aceitarConvite(
+            AceitarConviteRequisicao(token, senha, aceiteTermo = true, versaoTermo = versaoTermo),
+        ).detail
+    }
+
+    override suspend fun redefinirSenha(token: String, novaSenha: String): Resultado<String> =
+        executar { apiPublica.redefinirSenha(RedefinirSenhaRequisicao(token, novaSenha)).detail }
+
     // ------------------------------------------------------------- ProvedorTokens
 
     override fun accessTokenAtual(): String? = _sessao.value?.accessToken

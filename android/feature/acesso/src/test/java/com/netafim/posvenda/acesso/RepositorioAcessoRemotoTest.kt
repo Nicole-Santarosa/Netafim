@@ -205,6 +205,36 @@ class RepositorioAcessoRemotoTest {
     }
 
     @Test
+    fun `aceitar convite envia token senha e aceite do termo`() = runTest {
+        servidor.enqueue(json("""{"detail":"Senha definida."}"""))
+
+        val r = repositorio.aceitarConvite("tok-" + "a".repeat(40), "Irrigacao#2026", "1.0")
+
+        assertEquals("Senha definida.", (r as Resultado.Sucesso).valor)
+        val requisicao = servidor.takeRequest()
+        assertEquals("/api/v1/auth/convite/aceitar", requisicao.path)
+        val corpo = requisicao.body.readUtf8()
+        assertTrue(corpo.contains("\"token\":\"tok-"))
+        assertTrue(corpo.contains("\"aceite_termo\":true"))
+        assertTrue(corpo.contains("\"versao_termo\":\"1.0\""))
+        assertNull(requisicao.getHeader("Authorization"))
+    }
+
+    @Test
+    fun `redefinir senha envia token e nova senha e mapeia link invalido`() = runTest {
+        servidor.enqueue(json("""{"detail":"Senha redefinida."}"""))
+        servidor.enqueue(json("""{"detail":"Link inválido.","codigo":"token_invalido"}""", 401))
+
+        assertTrue(repositorio.redefinirSenha("tok-" + "b".repeat(40), "Nova#Senha2026") is Resultado.Sucesso)
+        val requisicao = servidor.takeRequest()
+        assertEquals("/api/v1/auth/senha/redefinir", requisicao.path)
+        assertTrue(requisicao.body.readUtf8().contains("\"nova_senha\":\"Nova#Senha2026\""))
+
+        val falha = repositorio.redefinirSenha("tok-" + "c".repeat(40), "Nova#Senha2026") as Resultado.Falha
+        assertEquals("token_invalido", (falha.erro as ErroAcesso.Api).codigo)
+    }
+
+    @Test
     fun `sem conexao`() = runTest {
         servidor.shutdown()
         val r = repositorio.entrar("ana@agroirriga.com.br", "x") as Resultado.Falha

@@ -89,6 +89,20 @@ data class CadastroRequisicao(
 data class EsqueciSenhaRequisicao(val email: String)
 
 @Serializable
+data class AceitarConviteRequisicao(
+    val token: String,
+    val senha: String,
+    @SerialName("aceite_termo") val aceiteTermo: Boolean,
+    @SerialName("versao_termo") val versaoTermo: String,
+)
+
+@Serializable
+data class RedefinirSenhaRequisicao(
+    val token: String,
+    @SerialName("nova_senha") val novaSenha: String,
+)
+
+@Serializable
 data class TermoResposta(@SerialName("versao_vigente") val versaoVigente: String)
 
 @Serializable

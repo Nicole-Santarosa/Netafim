@@ -19,6 +19,12 @@ interface RepositorioAcesso {
     suspend fun solicitarCadastro(dados: DadosCadastro): Resultado<String>
 
     suspend fun esqueciSenha(email: String): Resultado<String>
+
+    /** Define a senha de um convite (link do e-mail) e registra o aceite do aviso de privacidade. */
+    suspend fun aceitarConvite(token: String, senha: String, versaoTermo: String): Resultado<String>
+
+    /** Conclui a redefinição de senha pelo link do e-mail. */
+    suspend fun redefinirSenha(token: String, novaSenha: String): Resultado<String>
 }
 
 data class DadosCadastro(

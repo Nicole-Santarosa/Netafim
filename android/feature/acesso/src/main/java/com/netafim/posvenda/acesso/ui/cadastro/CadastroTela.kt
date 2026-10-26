@@ -167,7 +167,7 @@ fun CadastroTela(
 }
 
 @Composable
-private fun AceiteTermo(
+internal fun AceiteTermo(
     aceito: Boolean,
     versao: String?,
     erro: String?,

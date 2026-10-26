@@ -24,6 +24,12 @@ interface AcessoApi {
     @POST("auth/senha/esqueci")
     suspend fun esqueciSenha(@Body corpo: EsqueciSenhaRequisicao): MensagemResposta
 
+    @POST("auth/convite/aceitar")
+    suspend fun aceitarConvite(@Body corpo: AceitarConviteRequisicao): MensagemResposta
+
+    @POST("auth/senha/redefinir")
+    suspend fun redefinirSenha(@Body corpo: RedefinirSenhaRequisicao): MensagemResposta
+
     @GET("me")
     suspend fun me(): UsuarioDto
 }

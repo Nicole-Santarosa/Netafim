@@ -5,7 +5,7 @@
 | Módulo | Conteúdo | Responsável |
 |---|---|---|
 | `:app` | Application, MainActivity, tema e navegação raiz (**provisório**) | a alinhar |
-| `:feature:acesso` | login, solicitação de cadastro, esqueci a senha, perfil e sessão | Rodrigo |
+| `:feature:acesso` | login, solicitação de cadastro, esqueci a senha, perfil, sessão e links de convite e redefinição de senha | Rodrigo |
 
 Cada integrante cria o próprio módulo em `feature/` e o registra no `settings.gradle.kts`, assim ninguém precisa editar o código do outro.
 
@@ -21,6 +21,25 @@ O emulador acessa a API do computador em `http://10.0.2.2:8000/api/v1/` (padrão
 ```
 
 HTTP sem TLS só é permitido no build de debug e para `10.0.2.2`/`localhost` (`src/debug/res/xml/network_security_config.xml`).
+
+### Celular físico (USB)
+
+O celular não enxerga o `10.0.2.2`. Com a depuração USB autorizada, encaminhe a porta da API pelo cabo e gere o app apontando para `localhost`:
+
+```bash
+adb reverse tcp:8000 tcp:8000
+./gradlew installDebug -Pnetafim.apiBaseUrl=http://localhost:8000/api/v1/
+```
+
+### Links dos e-mails (convite e redefinição de senha)
+
+Abrem o app numa tela do módulo de acesso. Para testar sem e-mail:
+
+```bash
+adb shell am start -a android.intent.action.VIEW -c android.intent.category.BROWSABLE   -d 'netafim://convite?acao=redefinir-senha&token=<token do e-mail>'
+```
+
+> No Windows, se o caminho do projeto tiver acento (como `Repositório`), o Gradle recusa a compilação. Use `-Pandroid.overridePathCheck=true` ou mova o projeto para uma pasta sem acento.
 
 ## Testes
 
