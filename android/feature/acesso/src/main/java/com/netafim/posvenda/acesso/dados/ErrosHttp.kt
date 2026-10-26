@@ -22,10 +22,19 @@ import retrofit2.HttpException
 internal object ErrosHttp {
 
     fun mapear(erro: Throwable, json: Json): ErroAcesso = when (erro) {
-        is HttpException -> mapearHttp(erro.code(), erro.response()?.errorBody()?.string(), json)
+        is HttpException -> mapearHttp(erro.code(), lerCorpo(erro), json)
         is IOException -> ErroAcesso.SemConexao
         else -> ErroAcesso.Inesperado()
     }
+
+    /**
+     * Lê o corpo do erro sem consumi-lo: o mesmo erro pode ser mapeado mais de uma vez
+     * (ex.: o login confere o código antes de repassar o erro), e `string()` esvaziaria
+     * o corpo na primeira leitura.
+     */
+    private fun lerCorpo(erro: HttpException): String? = runCatching {
+        erro.response()?.errorBody()?.source()?.peek()?.readUtf8()
+    }.getOrNull()
 
     fun codigoDe(erro: Throwable, json: Json): String? =
         (mapear(erro, json) as? ErroAcesso.Api)?.codigo
