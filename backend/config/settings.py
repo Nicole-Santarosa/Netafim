@@ -17,26 +17,54 @@ from django.core.exceptions import ImproperlyConfigured
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-def env(name: str, default: str | None = None, *, required: bool = False) -> str | None:
-    value = os.environ.get(name, default)
+def carregar_env(caminho: Path) -> None:
+    """Lê o arquivo .env (CHAVE=valor por linha) e joga em os.environ.
+
+    Variáveis que já existem no ambiente têm prioridade sobre o arquivo, assim
+    um servidor ou o CI conseguem sobrescrever sem mexer no .env.
+    """
+    if not caminho.exists():
+        return
+    for linha in caminho.read_text(encoding="utf-8").splitlines():
+        linha = linha.strip()
+        if not linha or linha.startswith("#") or "=" not in linha:
+            continue
+        chave, valor = linha.split("=", 1)
+        os.environ.setdefault(chave.strip(), valor.strip().strip("'\""))
+
+
+carregar_env(BASE_DIR / ".env")
+
+
+def env(*nomes: str, default: str | None = None, required: bool = False) -> str | None:
+    """Primeira variável preenchida entre as informadas (o nome curto do grupo e o DJANGO_*)."""
+    value = next((os.environ[n] for n in nomes if os.environ.get(n)), default)
     if required and not value:
-        raise ImproperlyConfigured(f"Variável de ambiente obrigatória ausente: {name}")
+        raise ImproperlyConfigured(
+            f"Variável de ambiente obrigatória ausente: {' ou '.join(nomes)}"
+        )
     return value
 
 
-def env_bool(name: str, default: bool = False) -> bool:
-    return str(env(name, str(default))).strip().lower() in {"1", "true", "yes", "sim"}
+def env_bool(*nomes: str, default: bool = False) -> bool:
+    return str(env(*nomes, default=str(default))).strip().lower() in {"1", "true", "yes", "sim"}
 
 
-def env_list(name: str, default: str = "") -> list[str]:
-    return [item.strip() for item in str(env(name, default)).split(",") if item.strip()]
+def env_list(*nomes: str, default: str = "") -> list[str]:
+    return [item.strip() for item in str(env(*nomes, default=default)).split(",") if item.strip()]
 
 
-DEBUG = env_bool("DJANGO_DEBUG", False)
+DEBUG = env_bool("DEBUG", "DJANGO_DEBUG", default=False)
+# Sem valor padrão em produção: se faltar, o projeto não sobe com segredo fraco.
 SECRET_KEY = env(
-    "DJANGO_SECRET_KEY", "dev-inseguro-troque-em-producao" if DEBUG else None, required=not DEBUG
+    "SECRET_KEY",
+    "DJANGO_SECRET_KEY",
+    default="dev-inseguro-troque-em-producao" if DEBUG else None,
+    required=not DEBUG,
 )
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1" if DEBUG else "")
+ALLOWED_HOSTS = env_list(
+    "ALLOWED_HOSTS", "DJANGO_ALLOWED_HOSTS", default="localhost,127.0.0.1" if DEBUG else ""
+)
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 # API pura com JWT: sem admin, sessões, mensagens nem as tabelas do Django. O esquema (tabelas,
@@ -78,13 +106,28 @@ TEMPLATES = [
 # PostgreSQL. A API conecta como app_django (sem BYPASSRLS), nunca como dono do esquema nem como
 # postgres. No Supabase use o Session pooler (IPv4, porta 5432): usuário
 # "app_django.<ref-do-projeto>".
-DATABASES = {
-    "default": dj_database_url.parse(
-        env("DATABASE_URL", "postgres://app_django:app_django@localhost:5432/netafim"),
-        conn_max_age=int(env("DATABASE_CONN_MAX_AGE", "60")),
-        conn_health_checks=True,
-    )
-}
+if os.environ.get("DB_HOST"):
+    # Variáveis separadas (convenção do grupo): sem o problema de caractere especial na senha.
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": env("DB_NAME", default="postgres"),
+            "USER": env("DB_USER", default="app_django"),
+            "PASSWORD": env("DB_PASSWORD", required=True),
+            "HOST": env("DB_HOST", required=True),
+            "PORT": env("DB_PORT", default="5432"),
+            "CONN_MAX_AGE": int(env("DATABASE_CONN_MAX_AGE", default="60")),
+            "CONN_HEALTH_CHECKS": True,
+        }
+    }
+else:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            env("DATABASE_URL", default="postgres://app_django:app_django@localhost:5432/netafim"),
+            conn_max_age=int(env("DATABASE_CONN_MAX_AGE", default="60")),
+            conn_health_checks=True,
+        )
+    }
 # Cada requisição é uma transação: o ator informado ao banco (set_config local) só vale dentro dela.
 DATABASES["default"]["ATOMIC_REQUESTS"] = True
 # Pooler do Supabase: sem cursor no servidor e sem prepared statements.
@@ -134,15 +177,15 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
     "DEFAULT_THROTTLE_RATES": {
-        "login": env("THROTTLE_LOGIN", "10/min"),
-        "cadastro": env("THROTTLE_CADASTRO", "5/hour"),
+        "login": env("THROTTLE_LOGIN", default="10/min"),
+        "cadastro": env("THROTTLE_CADASTRO", default="5/hour"),
     },
 }
 
 # Token de acesso curto (JWT). O refresh token é opaco, guardado só como hash
 # em TOKEN_ACESSO, com rotação e detecção de reuso (MER/DER, Anexo A.5).
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(env("JWT_ACCESS_MINUTOS", "15"))),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(env("JWT_ACCESS_MINUTOS", default="15"))),
     "ALGORITHM": "HS256",
     # "or": variável presente porém vazia (como no .env.example) cai na chave do Django.
     "SIGNING_KEY": env("JWT_SIGNING_KEY") or SECRET_KEY,
@@ -159,8 +202,8 @@ CONTAS = {
     # Estes dois valores só alimentam o texto dos e-mails.
     "CONVITE_DIAS": 14,
     "RESET_SENHA_HORAS": 2,
-    "VERSAO_TERMO_VIGENTE": env("VERSAO_TERMO_VIGENTE", "1.0"),
-    "URL_APP_CONVITE": env("URL_APP_CONVITE", "netafim://convite"),
+    "VERSAO_TERMO_VIGENTE": env("VERSAO_TERMO_VIGENTE", default="1.0"),
+    "URL_APP_CONVITE": env("URL_APP_CONVITE", default="netafim://convite"),
 }
 
 SPECTACULAR_SETTINGS = {
@@ -177,20 +220,20 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
-EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "nao-responda@netafim.local")
-EMAIL_HOST = env("EMAIL_HOST", "localhost")
-EMAIL_PORT = int(env("EMAIL_PORT", "587"))
-EMAIL_HOST_USER = env("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", "")
-EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="nao-responda@netafim.local")
+EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+EMAIL_PORT = int(env("EMAIL_PORT", default="587"))
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", default=True)
 
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", True)
+    SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = int(env("DJANGO_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_SECONDS = int(env("DJANGO_HSTS_SECONDS", default="31536000"))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
 
@@ -199,5 +242,5 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {"padrao": {"format": "%(asctime)s %(levelname)s %(name)s %(message)s"}},
     "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "padrao"}},
-    "root": {"handlers": ["console"], "level": env("LOG_LEVEL", "INFO")},
+    "root": {"handlers": ["console"], "level": env("LOG_LEVEL", default="INFO")},
 }
