@@ -23,6 +23,9 @@ ENV PATH="/opt/venv/bin:$PATH" \
 RUN DJANGO_DEBUG=true python manage.py collectstatic --noinput
 USER app
 EXPOSE 8000
+# Só confere que a porta responde: uma chamada HTTP aqui cairia no redirecionamento para HTTPS e no
+# ALLOWED_HOSTS de produção, e o container nunca ficaria saudável.
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/auth/termo')" || exit 1
-CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-3} --access-logfile -"]
+    CMD python -c "import socket; socket.create_connection(('127.0.0.1', 8000), 3)" || exit 1
+# Sem "migrate": o esquema é do banco do grupo e a API conecta como app_django, que não cria tabelas.
+CMD ["sh", "-c", "gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-3} --access-logfile -"]
