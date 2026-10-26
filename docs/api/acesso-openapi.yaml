@@ -1452,6 +1452,7 @@ components:
         dispositivo:
           $ref: '#/components/schemas/DispositivoEntradaRequest'
       required:
+      - dispositivo
       - email
       - senha
     Me:
