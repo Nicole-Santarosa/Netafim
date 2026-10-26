@@ -39,12 +39,13 @@ SECRET_KEY = env(
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1" if DEBUG else "")
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
+# API pura com JWT: sem admin, sessões, mensagens nem as tabelas do Django. O esquema (tabelas,
+# gatilhos, funções e RLS) é do banco do grupo; o Django nunca roda migrate nele (ver
+# apps/contas/models.py). django.contrib.auth e contenttypes ficam só porque o simplejwt e o
+# AbstractBaseUser os importam.
 INSTALLED_APPS = [
-    "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
     "drf_spectacular",
@@ -53,11 +54,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -72,27 +69,32 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-# Banco: PostgreSQL (Supabase em produção). O módulo usa CHECK constraints, índices
-# parciais e gatilhos do PostgreSQL, por isso outro SGBD não é suportado.
+# Banco: PostgreSQL (Supabase em produção). O módulo depende de RLS, gatilhos e funções do
+# PostgreSQL. A API conecta como app_django (sem BYPASSRLS), nunca como dono do esquema nem como
+# postgres. No Supabase use o Session pooler (IPv4, porta 5432): usuário
+# "app_django.<ref-do-projeto>".
 DATABASES = {
     "default": dj_database_url.parse(
-        env("DATABASE_URL", "postgres://netafim:netafim@localhost:5432/netafim"),
+        env("DATABASE_URL", "postgres://app_django:app_django@localhost:5432/netafim"),
         conn_max_age=int(env("DATABASE_CONN_MAX_AGE", "60")),
         conn_health_checks=True,
     )
 }
+# Cada requisição é uma transação: o ator informado ao banco (set_config local) só vale dentro dela.
+DATABASES["default"]["ATOMIC_REQUESTS"] = True
+# Pooler do Supabase: sem cursor no servidor e sem prepared statements.
+DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
+DATABASES["default"].setdefault("OPTIONS", {})["prepare_threshold"] = None
 
 AUTH_USER_MODEL = "contas.Usuario"
 
-# O e-mail é único só entre usuários não excluídos (índice único parcial e sem
-# diferenciar maiúsculas, MER/DER Anexo A.1), o que o Django não reconhece sozinho.
+# O e-mail é único só entre usuários não excluídos (índice único parcial ux_usuario_email, sem
+# diferenciar maiúsculas), o que o Django não reconhece sozinho.
 SILENCED_SYSTEM_CHECKS = ["auth.E003"]
 
 PASSWORD_HASHERS = [
@@ -120,6 +122,9 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
+    # Sem sessão do Django não existe AnonymousUser: o anônimo é None.
+    "UNAUTHENTICATED_USER": None,
+    "UNAUTHENTICATED_TOKEN": None,
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "apps.contas.autenticacao.AutenticacaoJWT",
     ],
@@ -139,7 +144,8 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(env("JWT_ACCESS_MINUTOS", "15"))),
     "ALGORITHM": "HS256",
-    "SIGNING_KEY": env("JWT_SIGNING_KEY", SECRET_KEY),
+    # "or": variável presente porém vazia (como no .env.example) cai na chave do Django.
+    "SIGNING_KEY": env("JWT_SIGNING_KEY") or SECRET_KEY,
     "USER_ID_FIELD": "id_usuario",
     "USER_ID_CLAIM": "sub",
     "AUTH_HEADER_TYPES": ("Bearer",),
@@ -147,11 +153,12 @@ SIMPLE_JWT = {
 }
 
 CONTAS = {
-    "REFRESH_DIAS": int(env("REFRESH_DIAS", "30")),
+    # Validades e bloqueio por tentativas são regras do BANCO (fn_emitir_token e
+    # fn_registrar_login):
+    # refresh 90 dias, convite 14 dias, redefinição 2 horas, bloqueio de 15 min após 5 falhas.
+    # Estes dois valores só alimentam o texto dos e-mails.
     "CONVITE_DIAS": 14,
     "RESET_SENHA_HORAS": 2,
-    "MAX_FALHAS_LOGIN": int(env("MAX_FALHAS_LOGIN", "5")),
-    "BLOQUEIO_MINUTOS": int(env("BLOQUEIO_MINUTOS", "15")),
     "VERSAO_TERMO_VIGENTE": env("VERSAO_TERMO_VIGENTE", "1.0"),
     "URL_APP_CONVITE": env("URL_APP_CONVITE", "netafim://convite"),
 }

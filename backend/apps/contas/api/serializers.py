@@ -236,7 +236,8 @@ class DispositivoEntradaSerializer(serializers.Serializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField(max_length=150)
     senha = serializers.CharField(max_length=128, trim_whitespace=False)
-    dispositivo = DispositivoEntradaSerializer(required=False)
+    # Obrigatório: o banco só emite refresh token para um aparelho do usuário.
+    dispositivo = DispositivoEntradaSerializer()
 
 
 class RefreshSerializer(serializers.Serializer):

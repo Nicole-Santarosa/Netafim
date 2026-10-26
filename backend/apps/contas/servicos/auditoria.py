@@ -7,6 +7,7 @@ não faz parte deste módulo. Aqui o evento é registrado em log e publicado no 
 sem alterar este módulo. Os nomes de ``acao`` seguem a lista do dicionário de dados.
 """
 
+import ipaddress
 import logging
 from dataclasses import asdict, dataclass, field
 from typing import Any
@@ -82,10 +83,15 @@ def registrar(
 
 
 def ip_da_requisicao(request) -> str | None:
+    """IP do cliente, só se for um endereço válido (o banco grava como ``inet``)."""
     if request is None:
         return None
     # Atrás do Nginx, o IP real vem no X-Forwarded-For (primeiro da lista).
     encaminhado = request.META.get("HTTP_X_FORWARDED_FOR")
-    if encaminhado:
-        return encaminhado.split(",")[0].strip() or None
-    return request.META.get("REMOTE_ADDR")
+    candidato = (encaminhado.split(",")[0].strip() if encaminhado else None) or request.META.get(
+        "REMOTE_ADDR"
+    )
+    try:
+        return str(ipaddress.ip_address(candidato)) if candidato else None
+    except ValueError:
+        return None

@@ -1,22 +1,20 @@
 """Login, logout, renovação de sessão e redefinição de senha."""
 
 from dataclasses import dataclass
-from datetime import timedelta
 from uuid import UUID
 
-from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as ErroValidacaoDjango
-from django.db import transaction
-from django.db.models import F
+from django.db import DatabaseError, IntegrityError, connection, transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
+from .. import contexto
 from ..constantes import SituacaoUsuario, TipoToken
 from ..excecoes import CredenciaisInvalidas, ErroNegocio
 from ..models import Dispositivo, Usuario
-from . import auditoria, notificacoes, tokens
+from . import auditoria, banco, notificacoes, tokens
 from .auditoria import Acao, Resultado
 
 
@@ -42,101 +40,116 @@ MENSAGENS_SITUACAO = {
 def autenticar(
     email: str, senha: str, *, request=None, dispositivo: DadosDispositivo | None = None
 ):
-    """Retorna (usuario, ParDeTokens). Erros nunca revelam se o e-mail existe."""
+    """
+    Retorna (usuario, ParDeTokens). Erros nunca revelam se o e-mail existe.
+
+    Falhas de senha e bloqueio (5 erros, 15 minutos) são contados pelo BANCO, em
+    ``fn_registrar_login``: a API não consegue alterar esses campos diretamente. Como a contagem
+    precisa ficar gravada mesmo quando o login falha, o erro só é levantado DEPOIS de a transação
+    terminar (e a view roda fora do ATOMIC_REQUESTS, ver views_auth).
+    """
     email = (email or "").strip().lower()
     ip = auditoria.ip_da_requisicao(request)
-    usuario = Usuario.objects.select_related("perfil").filter(email__iexact=email).first()
-
-    if usuario is None:
-        make_password(senha)  # mesmo custo de tempo de um usuário existente
-        auditoria.registrar(
-            Acao.LOGIN_FALHA, Resultado.FALHA, request=request, motivo="email_inexistente"
-        )
-        raise CredenciaisInvalidas()
-
-    if usuario.esta_bloqueado_temporariamente:
-        auditoria.registrar(
-            Acao.LOGIN_FALHA,
-            Resultado.NEGADO,
-            usuario=usuario,
-            request=request,
-            motivo="bloqueio_temporario",
-        )
-        raise CredenciaisInvalidas()
-
-    if not usuario.check_password(senha):
-        _registrar_falha(usuario, request)
-        raise CredenciaisInvalidas()
-
-    if usuario.situacao != SituacaoUsuario.ATIVO:
-        codigo, mensagem = MENSAGENS_SITUACAO[usuario.situacao]
-        auditoria.registrar(
-            Acao.LOGIN_FALHA, Resultado.NEGADO, usuario=usuario, request=request, motivo=codigo
-        )
-        raise ErroNegocio(mensagem, codigo, status_code=403)
+    agente = (request.META.get("HTTP_USER_AGENT", "")[:255] or None) if request else None
+    erro: Exception | None = None
+    usuario = par = None
 
     with transaction.atomic():
-        aparelho = _registrar_dispositivo(usuario, dispositivo) if dispositivo else None
-        Usuario.objects.filter(pk=usuario.pk).update(
-            falhas_login=0, bloqueado_ate=None, last_login=timezone.now()
-        )
-        par = tokens.emitir_sessao(usuario, dispositivo=aparelho, ip=ip)
+        contexto.limpar()
+        contexto.definir_email_login(email)  # sem ator ainda: o RLS libera só a linha deste e-mail
+        usuario = Usuario.objects.select_related("perfil").filter(email__iexact=email).first()
 
-    auditoria.registrar(
-        Acao.LOGIN_SUCESSO,
-        usuario=usuario,
-        request=request,
-        id_dispositivo=aparelho.pk if aparelho else None,
-    )
-    usuario.refresh_from_db()
+        if usuario is None:
+            make_password(senha)  # mesmo custo de tempo de um usuário existente
+            auditoria.registrar(
+                Acao.LOGIN_FALHA, Resultado.FALHA, request=request, motivo="email_inexistente"
+            )
+            erro = CredenciaisInvalidas()
+        else:
+            senha_ok = usuario.check_password(senha)
+            bloqueado = usuario.bloqueado_ate is not None and usuario.bloqueado_ate > timezone.now()
+            if bloqueado or not senha_ok:
+                # Bloqueado: o banco audita a tentativa e não anda o contador. Senha errada: conta.
+                _registrar_login(usuario.pk, False, ip, agente)
+                erro = CredenciaisInvalidas()
+            elif usuario.situacao != SituacaoUsuario.ATIVO:
+                codigo, mensagem = MENSAGENS_SITUACAO[usuario.situacao]
+                auditoria.registrar(
+                    Acao.LOGIN_FALHA,
+                    Resultado.NEGADO,
+                    usuario=usuario,
+                    request=request,
+                    motivo=codigo,
+                )
+                erro = ErroNegocio(mensagem, codigo, status_code=403)
+            else:
+                _, _, bloqueado_ate = _registrar_login(usuario.pk, True, ip, agente)
+                if bloqueado_ate is not None and bloqueado_ate > timezone.now():
+                    erro = CredenciaisInvalidas()  # travou entre a leitura e o registro
+                else:
+                    try:
+                        with (
+                            transaction.atomic()
+                        ):  # savepoint: o erro não desfaz o registro do login
+                            par = _abrir_sessao(usuario, dispositivo, ip)
+                    except ErroNegocio as exc:
+                        erro = exc
+
+    if erro is not None:
+        raise erro
+
+    auditoria.registrar(Acao.LOGIN_SUCESSO, usuario=usuario, request=request)
+    with transaction.atomic():
+        contexto.limpar()
+        contexto.definir_ator(usuario.pk)
+        usuario = banco.carregar_usuario_completo(usuario.pk)
     return usuario, par
 
 
-def _registrar_falha(usuario: Usuario, request) -> None:
-    limite = settings.CONTAS["MAX_FALHAS_LOGIN"]
-    with transaction.atomic():
-        Usuario.objects.filter(pk=usuario.pk).update(falhas_login=F("falhas_login") + 1)
-        usuario.refresh_from_db(fields=["falhas_login"])
-        bloqueou = usuario.falhas_login >= limite
-        if bloqueou:
-            Usuario.objects.filter(pk=usuario.pk).update(
-                falhas_login=0,
-                bloqueado_ate=timezone.now()
-                + timedelta(minutes=settings.CONTAS["BLOQUEIO_MINUTOS"]),
-            )
-    auditoria.registrar(
-        Acao.LOGIN_FALHA,
-        Resultado.FALHA,
-        usuario=usuario,
-        request=request,
-        motivo="senha_incorreta",
-    )
-    if bloqueou:
-        auditoria.registrar(
-            Acao.CONTA_BLOQUEADA,
-            usuario=usuario,
-            request=request,
-            minutos=settings.CONTAS["BLOQUEIO_MINUTOS"],
+def _registrar_login(id_usuario: int, sucesso: bool, ip: str | None, agente: str | None):
+    """Chama ``fn_registrar_login``; devolve (situação, falhas, bloqueado_até)."""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "select o_situacao, o_falhas, o_bloqueado_ate "
+            "from fn_registrar_login(%s, %s, %s, %s, null, null)",
+            [id_usuario, sucesso, ip, agente],
         )
+        return cursor.fetchone()
+
+
+def _abrir_sessao(usuario: Usuario, dados: DadosDispositivo | None, ip: str | None):
+    """Registra o aparelho e emite os tokens, já com o usuário como ator (RLS)."""
+    if dados is None:
+        raise ErroNegocio(
+            "Informe o identificador do aparelho para entrar.", "dispositivo_obrigatorio"
+        )
+    contexto.definir_ator(usuario.pk)
+    aparelho = _registrar_dispositivo(usuario, dados)
+    return tokens.emitir_sessao(usuario, id_dispositivo=aparelho.pk, ip=ip)
 
 
 def _registrar_dispositivo(usuario: Usuario, dados: DadosDispositivo) -> Dispositivo:
+    # O RLS só mostra ao usuário os aparelhos dele.
     aparelho = Dispositivo.objects.select_for_update().filter(pk=dados.id_dispositivo).first()
     if aparelho is None:
-        return Dispositivo.objects.create(
-            id_dispositivo=dados.id_dispositivo,
-            usuario=usuario,
-            modelo=dados.modelo,
-            versao_app=dados.versao_app,
-        )
-    if aparelho.usuario_id != usuario.pk:
-        # O app gera um novo identificador ao trocar de usuário no mesmo aparelho.
-        raise ErroNegocio(
-            "Este identificador de aparelho pertence a outro usuário. Gere um novo e tente "
-            "novamente.",
-            "dispositivo_de_outro_usuario",
-            status_code=409,
-        )
+        try:
+            with transaction.atomic():
+                return Dispositivo.objects.create(
+                    id_dispositivo=dados.id_dispositivo,
+                    usuario=usuario,
+                    modelo=dados.modelo,
+                    versao_app=dados.versao_app,
+                )
+        except IntegrityError as exc:
+            if banco.sqlstate(exc) != "23505":
+                raise
+            # O identificador existe e é de outro usuário (o RLS o esconde): o app gera outro.
+            raise ErroNegocio(
+                "Este identificador de aparelho pertence a outro usuário. Gere um novo e tente "
+                "novamente.",
+                "dispositivo_de_outro_usuario",
+                status_code=409,
+            ) from exc
     if aparelho.revogado_em is not None:
         raise ErroNegocio(
             "Este aparelho teve o acesso revogado. Procure a Netafim.",
@@ -145,7 +158,7 @@ def _registrar_dispositivo(usuario: Usuario, dados: DadosDispositivo) -> Disposi
         )
     aparelho.modelo = dados.modelo or aparelho.modelo
     aparelho.versao_app = dados.versao_app or aparelho.versao_app
-    aparelho.save(update_fields=["modelo", "versao_app"])
+    banco.salvar(aparelho, update_fields=["modelo", "versao_app"])
     return aparelho
 
 
@@ -161,7 +174,7 @@ def renovar_sessao(refresh: str, *, request=None):
 
 
 def encerrar_sessao(usuario: Usuario, refresh: str, *, request=None) -> None:
-    tokens.revogar(refresh, usuario=usuario)
+    tokens.revogar(refresh)
     auditoria.registrar(Acao.LOGOUT, usuario=usuario, request=request)
 
 
@@ -171,47 +184,56 @@ def alterar_senha(usuario: Usuario, senha_atual: str, nova_senha: str, *, reques
     if senha_atual == nova_senha:
         raise ErroNegocio("A nova senha deve ser diferente da atual.", "senha_repetida")
     validar_senha(nova_senha, usuario)
-    with transaction.atomic():
-        usuario.set_password(nova_senha)
-        usuario.exige_troca_senha = False
-        usuario.save(
-            update_fields=["password", "senha_alterada_em", "exige_troca_senha", "data_atualizacao"]
-        )
-        # Encerra todas as sessões: o app pede login com a nova senha.
-        tokens.revogar_todos(usuario, tipo=TipoToken.REFRESH)
+    usuario.set_password(nova_senha)
+    usuario.exige_troca_senha = False
+    banco.salvar(
+        usuario,
+        update_fields=["password", "senha_alterada_em", "exige_troca_senha", "data_atualizacao"],
+    )
+    # Encerra as sessões (o app pede login com a nova senha), se o banco já tiver a função.
+    tokens.revogar_todos(usuario.pk, tipo=TipoToken.REFRESH)
     auditoria.registrar(Acao.SENHA_ALTERADA, usuario=usuario, request=request)
 
 
 def solicitar_redefinicao_senha(email: str, *, request=None) -> None:
     """Sempre silencioso: a resposta da API é a mesma exista ou não o e-mail."""
-    usuario = Usuario.objects.filter(email__iexact=(email or "").strip()).first()
-    if usuario is None or usuario.situacao != SituacaoUsuario.ATIVO:
-        return
-    tokens.revogar_todos(usuario, tipo=TipoToken.RESET_SENHA)
-    _, token = tokens.emitir(usuario, TipoToken.RESET_SENHA, ip=auditoria.ip_da_requisicao(request))
-    notificacoes.redefinicao_senha(usuario, token)
+    email = (email or "").strip().lower()
+    with transaction.atomic():
+        contexto.limpar()
+        contexto.definir_email_login(email)
+        usuario = Usuario.objects.filter(email__iexact=email).first()
+        if usuario is None or usuario.situacao != SituacaoUsuario.ATIVO:
+            return
+        try:
+            token = tokens.emitir(
+                usuario.pk, TipoToken.RESET_SENHA, ip=auditoria.ip_da_requisicao(request)
+            )
+        except (ErroNegocio, DatabaseError):  # conta sem como redefinir: segue sem revelar
+            return
+        transaction.on_commit(lambda: notificacoes.redefinicao_senha(usuario, token))
 
 
 def definir_senha_por_token(token: str, nova_senha: str, tipo: str, *, request=None) -> Usuario:
     """Conclui convite ou redefinição de senha a partir do link enviado por e-mail."""
     with transaction.atomic():
-        registro = tokens.consumir(token, tipo)
-        usuario = registro.usuario
+        contexto.limpar()
+        id_usuario = tokens.consumir(token, tipo)
+        contexto.definir_ator(id_usuario)  # o dono do token passa a ser o ator
+        usuario = Usuario.objects.get(pk=id_usuario)
         validar_senha(nova_senha, usuario)
         usuario.set_password(nova_senha)
         usuario.exige_troca_senha = False
-        usuario.falhas_login = 0
-        usuario.bloqueado_ate = None
-        usuario.save(
+        banco.salvar(
+            usuario,
             update_fields=[
                 "password",
                 "senha_alterada_em",
                 "exige_troca_senha",
-                "falhas_login",
-                "bloqueado_ate",
                 "data_atualizacao",
-            ]
+            ],
         )
-        tokens.revogar_todos(usuario, tipo=TipoToken.REFRESH)
+        # Ainda com o dono do token como ator: a função do banco só aceita o titular ou o Netafim
+        # Admin.
+        tokens.revogar_todos(usuario.pk, tipo=TipoToken.REFRESH)
     auditoria.registrar(Acao.SENHA_ALTERADA, usuario=usuario, request=request, via=tipo)
     return usuario

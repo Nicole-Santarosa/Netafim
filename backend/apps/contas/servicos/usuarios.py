@@ -1,14 +1,20 @@
 """
 Ciclo de vida do usuário: solicitação de cadastro, convite, aprovação, recusa,
-perfil, situação, edição e exclusão lógica (MER/DER, seções 5.1 e 7.1).
+perfil, situação, edição e exclusão lógica.
+
+As regras de quem pode o quê estão em DUAS camadas: aqui (mensagens claras e códigos estáveis para o
+app) e no banco (RLS e gatilhos), que valem mesmo se esta camada falhar. Toda gravação usa
+``update_fields`` para nunca reenviar colunas que os gatilhos do banco protegem (perfil,
+organização, contadores de login, senha de terceiros).
 """
 
 from dataclasses import dataclass
 
 from django.conf import settings
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.utils import timezone
 
+from .. import contexto
 from ..constantes import (
     NivelPerfil,
     Permissao,
@@ -20,7 +26,7 @@ from ..constantes import (
 from ..escopo import pode_gerenciar
 from ..excecoes import ErroNegocio, SemPermissao
 from ..models import Cliente, Distribuidor, DominioEmailCorporativo, Perfil, Usuario
-from . import auditoria, notificacoes, tokens
+from . import auditoria, banco, notificacoes, tokens
 from .acesso import definir_senha_por_token, validar_senha
 from .auditoria import Acao, Resultado
 
@@ -97,23 +103,6 @@ def _exigir_dominio(email: str, organizacao: Organizacao) -> None:
         )
 
 
-def _salvar(usuario: Usuario, **kwargs) -> None:
-    """Salva convertendo violações das regras do banco em erro de negócio."""
-    try:
-        with transaction.atomic():
-            usuario.save(**kwargs)
-    except IntegrityError as exc:
-        restricao = getattr(getattr(exc.__cause__, "diag", None), "constraint_name", "") or ""
-        if restricao == "usuario_dominio_corporativo":
-            raise ErroNegocio(
-                "O domínio do e-mail não está autorizado para esta organização.",
-                "dominio_nao_autorizado",
-            ) from exc
-        if restricao == "usuario_email_unico_ci":
-            raise ErroNegocio("Já existe um usuário com este e-mail.", "email_em_uso") from exc
-        raise
-
-
 def _exigir(ator: Usuario, codigo: str) -> None:
     if not ator.tem_permissao(codigo):
         raise SemPermissao()
@@ -151,6 +140,14 @@ def _registrar_consentimento(usuario: Usuario, versao_termo: str) -> None:
     usuario.data_revogacao_consentimento = None
 
 
+CAMPOS_CONSENTIMENTO = [
+    "consentimento_lgpd",
+    "data_consentimento",
+    "versao_termo_consentimento",
+    "data_revogacao_consentimento",
+    "data_atualizacao",
+]
+
 # --------------------------------------------------------------------------- cadastro
 
 
@@ -163,24 +160,34 @@ def solicitar_cadastro(
     quais e-mails estão cadastrados.
     """
     email = email.strip().lower()
-    if Usuario.objects.filter(email__iexact=email).exists():
-        auditoria.registrar(
-            Acao.CADASTRO_SOLICITADO, Resultado.NEGADO, request=request, motivo="email_existente"
-        )
-        return None
-
-    usuario = Usuario(
-        nome=nome.strip(), email=email, telefone=telefone or None, situacao=SituacaoUsuario.PENDENTE
-    )
-    validar_senha(senha, usuario, campo="senha")
-    usuario.set_password(senha)
-    _registrar_consentimento(usuario, versao_termo)
-    try:
-        _salvar(usuario)
-    except ErroNegocio as exc:
-        if exc.codigo == "email_em_uso":  # corrida entre duas solicitações iguais
+    with transaction.atomic():
+        contexto.limpar()
+        # Sem ator ainda: o RLS só deixa ver (e devolver no INSERT) a linha deste e-mail.
+        contexto.definir_email_login(email)
+        if Usuario.objects.filter(email__iexact=email).exists():
+            auditoria.registrar(
+                Acao.CADASTRO_SOLICITADO,
+                Resultado.NEGADO,
+                request=request,
+                motivo="email_existente",
+            )
             return None
-        raise
+
+        usuario = Usuario(
+            nome=nome.strip(),
+            email=email,
+            telefone=telefone or None,
+            situacao=SituacaoUsuario.PENDENTE,
+        )
+        validar_senha(senha, usuario, campo="senha")
+        usuario.set_password(senha)
+        _registrar_consentimento(usuario, versao_termo)
+        try:
+            banco.salvar(usuario)
+        except ErroNegocio as exc:
+            if exc.codigo == "email_em_uso":  # corrida entre duas solicitações iguais
+                return None
+            raise
     auditoria.registrar(
         Acao.CADASTRO_SOLICITADO, usuario=usuario, request=request, entidade=usuario
     )
@@ -201,10 +208,13 @@ def criar_por_admin(
     request=None,
 ) -> Usuario:
     """
-    Netafim Admin cria qualquer usuário já ativo. Admin de distribuidor ou de
-    cliente cria usuários de nível Usuário da própria organização, que ficam
-    pendentes até a validação do Netafim Admin. Em ambos os casos o usuário
-    recebe um convite por e-mail para definir a senha.
+    Netafim Admin cria qualquer usuário, que já nasce aprovado. Admin de distribuidor ou de cliente
+    cria usuários de nível Usuário da própria organização, que ficam pendentes até a validação do
+    Netafim Admin. Em ambos os casos o usuário recebe um convite por e-mail para definir a senha.
+
+    O banco só emite convite para usuário pendente (``fn_emitir_token``); por isso o usuário é
+    criado pendente, o convite é emitido e, quando quem cria é o Netafim Admin, a aprovação vem logo
+    em seguida.
     """
     _exigir(ator, Permissao.CRIAR_USUARIO)
     email = email.strip().lower()
@@ -215,7 +225,6 @@ def criar_por_admin(
         organizacao = resolver_organizacao(tipo_organizacao, id_distribuidor, id_cliente)
         perfil = resolver_perfil(id_perfil, organizacao.tipo)
         _exigir_dominio(email, organizacao)
-        situacao, aprovado_por, data_aprovacao = SituacaoUsuario.ATIVO, ator, timezone.now()
     else:
         organizacao = Organizacao(
             ator.tipo_organizacao, distribuidor=ator.distribuidor, cliente=ator.cliente
@@ -223,29 +232,34 @@ def criar_por_admin(
         perfil = Perfil.objects.get(
             tipo_organizacao=ator.tipo_organizacao, nivel=NivelPerfil.USUARIO
         )
-        situacao, aprovado_por, data_aprovacao = SituacaoUsuario.PENDENTE, None, None
 
     usuario = Usuario(
         nome=nome.strip(),
         email=email,
         telefone=telefone or None,
-        situacao=situacao,
+        situacao=SituacaoUsuario.PENDENTE,
         tipo_organizacao=organizacao.tipo,
         distribuidor=organizacao.distribuidor,
         cliente=organizacao.cliente,
         perfil=perfil,
-        aprovado_por=aprovado_por,
-        data_aprovacao=data_aprovacao,
     )
     usuario.set_unusable_password()
-    _salvar(usuario)
+    banco.salvar(usuario)
 
-    _, token = tokens.emitir(usuario, TipoToken.CONVITE, ip=auditoria.ip_da_requisicao(request))
+    token = tokens.emitir(usuario.pk, TipoToken.CONVITE, ip=auditoria.ip_da_requisicao(request))
     transaction.on_commit(lambda: notificacoes.convite(usuario, token))
     auditoria.registrar(
         Acao.CADASTRO_SOLICITADO, usuario=ator, request=request, entidade=usuario, via="convite"
     )
-    if situacao == SituacaoUsuario.ATIVO:
+
+    if ator.eh_netafim_admin:
+        usuario.situacao = SituacaoUsuario.ATIVO
+        usuario.aprovado_por = ator
+        usuario.data_aprovacao = timezone.now()
+        banco.salvar(
+            usuario,
+            update_fields=["situacao", "aprovado_por", "data_aprovacao", "data_atualizacao"],
+        )
         auditoria.registrar(Acao.CADASTRO_APROVADO, usuario=ator, request=request, entidade=usuario)
     return usuario
 
@@ -253,28 +267,31 @@ def criar_por_admin(
 def aceitar_convite(token: str, senha: str, versao_termo: str, *, request=None) -> Usuario:
     with transaction.atomic():
         usuario = definir_senha_por_token(token, senha, TipoToken.CONVITE, request=request)
+        # O dono do convite segue como ator da transação (definido em definir_senha_por_token).
         _registrar_consentimento(usuario, versao_termo)
-        usuario.save(
-            update_fields=[
-                "consentimento_lgpd",
-                "data_consentimento",
-                "versao_termo_consentimento",
-                "data_revogacao_consentimento",
-                "data_atualizacao",
-            ]
-        )
+        banco.salvar(usuario, update_fields=CAMPOS_CONSENTIMENTO)
     return usuario
 
 
 def reenviar_convite(ator: Usuario, alvo: Usuario, *, request=None) -> None:
+    """
+    Reenvia o link para definir a senha. Pendente recebe um novo convite (14 dias); quem já foi
+    aprovado recebe o link de redefinição (2 horas), porque o banco só emite convite para usuário
+    pendente.
+    """
     _exigir(ator, Permissao.CRIAR_USUARIO)
     _exigir_gestao(ator, alvo)
     if alvo.has_usable_password():
         raise ErroNegocio("Este usuário já definiu a senha.", "convite_ja_aceito")
-    with transaction.atomic():
-        tokens.revogar_todos(alvo, tipo=TipoToken.CONVITE)
-        _, token = tokens.emitir(alvo, TipoToken.CONVITE, ip=auditoria.ip_da_requisicao(request))
+    ip = auditoria.ip_da_requisicao(request)
+    if alvo.situacao == SituacaoUsuario.PENDENTE:
+        token = tokens.emitir(alvo.pk, TipoToken.CONVITE, ip=ip)
         transaction.on_commit(lambda: notificacoes.convite(alvo, token))
+    elif alvo.situacao == SituacaoUsuario.ATIVO:
+        token = tokens.emitir(alvo.pk, TipoToken.RESET_SENHA, ip=ip)
+        transaction.on_commit(lambda: notificacoes.redefinicao_senha(alvo, token))
+    else:
+        raise ErroNegocio("Este usuário não pode receber convite.", "convite_indisponivel")
 
 
 # --------------------------------------------------------------------------- aprovação
@@ -315,7 +332,19 @@ def aprovar(
     alvo.situacao = SituacaoUsuario.ATIVO
     alvo.aprovado_por = ator
     alvo.data_aprovacao = timezone.now()
-    _salvar(alvo)
+    banco.salvar(
+        alvo,
+        update_fields=[
+            "tipo_organizacao",
+            "distribuidor",
+            "cliente",
+            "perfil",
+            "situacao",
+            "aprovado_por",
+            "data_aprovacao",
+            "data_atualizacao",
+        ],
+    )
 
     transaction.on_commit(lambda: notificacoes.cadastro_aprovado(alvo))
     auditoria.registrar(
@@ -337,7 +366,9 @@ def recusar(ator: Usuario, alvo: Usuario, *, request=None) -> Usuario:
     alvo.situacao = SituacaoUsuario.RECUSADO
     alvo.aprovado_por = ator
     alvo.data_aprovacao = timezone.now()
-    _salvar(alvo)
+    banco.salvar(
+        alvo, update_fields=["situacao", "aprovado_por", "data_aprovacao", "data_atualizacao"]
+    )
     transaction.on_commit(lambda: notificacoes.cadastro_recusado(alvo))
     auditoria.registrar(Acao.CADASTRO_RECUSADO, usuario=ator, request=request, entidade=alvo)
     return alvo
@@ -371,10 +402,14 @@ def alterar_situacao(ator: Usuario, alvo: Usuario, nova: str, *, request=None) -
         )
 
     alvo.situacao = nova
-    if nova == SituacaoUsuario.ATIVO:
+    campos = ["situacao", "data_atualizacao"]
+    # Zerar o contador de login é do Netafim Admin; os demais não podem mexer nele (gatilho do
+    # banco).
+    if nova == SituacaoUsuario.ATIVO and ator.eh_netafim_admin:
         alvo.falhas_login = 0
         alvo.bloqueado_ate = None
-    _salvar(alvo)
+        campos += ["falhas_login", "bloqueado_ate"]
+    banco.salvar(alvo, update_fields=campos)  # o banco revoga os tokens ao inativar ou bloquear
     auditoria.registrar(
         Acao.SITUACAO_ALTERADA, usuario=ator, request=request, entidade=alvo, de=atual, para=nova
     )
@@ -396,8 +431,8 @@ def definir_perfil(ator: Usuario, alvo: Usuario, id_perfil: int, *, request=None
         )
     anterior = alvo.perfil.nome_perfil if alvo.perfil_id else None
     alvo.perfil = perfil
-    _salvar(alvo)
-    tokens.revogar_todos(alvo, tipo=TipoToken.REFRESH)  # novas permissões no próximo login
+    banco.salvar(alvo, update_fields=["perfil", "data_atualizacao"])
+    # As permissões são lidas do banco a cada requisição: valem já na próxima, sem nova sessão.
     auditoria.registrar(
         Acao.PERFIL_ALTERADO,
         usuario=ator,
@@ -412,11 +447,14 @@ def definir_perfil(ator: Usuario, alvo: Usuario, id_perfil: int, *, request=None
 def editar(ator: Usuario, alvo: Usuario, *, request=None, **campos) -> Usuario:
     _exigir(ator, Permissao.EDITAR_USUARIO)
     _exigir_gestao(ator, alvo)
+    atualizar = ["data_atualizacao"]
     if "nome" in campos:
         alvo.nome = campos["nome"].strip()
+        atualizar.append("nome")
     if "telefone" in campos:
         alvo.telefone = campos["telefone"] or None
-    _salvar(alvo)
+        atualizar.append("telefone")
+    banco.salvar(alvo, update_fields=atualizar)
     return alvo
 
 
@@ -432,9 +470,11 @@ def excluir(ator: Usuario, alvo: Usuario, *, request=None) -> None:
         )
     situacao_anterior = alvo.situacao
     alvo.deletado_em = timezone.now()
+    campos = ["deletado_em", "data_atualizacao"]
     if alvo.situacao == SituacaoUsuario.ATIVO:
         alvo.situacao = SituacaoUsuario.INATIVO
-    _salvar(alvo)
+        campos.append("situacao")
+    banco.salvar(alvo, update_fields=campos)  # o banco revoga os tokens da conta excluída
     auditoria.registrar(
         Acao.SITUACAO_ALTERADA,
         usuario=ator,

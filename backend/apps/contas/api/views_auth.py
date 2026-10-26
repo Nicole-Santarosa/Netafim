@@ -1,5 +1,7 @@
 """Endpoints de autenticação e da conta do próprio usuário (/auth e /me)."""
 
+from django.db.transaction import non_atomic_requests
+from django.utils.decorators import method_decorator
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -35,6 +37,10 @@ class PublicaView(APIView):
     permission_classes = [AllowAny]
 
 
+# Login e renovação rodam FORA do ATOMIC_REQUESTS: a contagem de falhas e a revogação por reuso de
+# refresh (feitas pelo banco) precisam ficar gravadas mesmo quando a resposta é um erro. Os serviços
+# abrem a própria transação e só levantam o erro depois que ela termina.
+@method_decorator(non_atomic_requests, name="dispatch")
 @extend_schema(tags=["auth"], request=s.LoginSerializer, responses=s.TokensSerializer)
 class LoginView(PublicaView):
     throttle_scope = "login"
@@ -43,20 +49,19 @@ class LoginView(PublicaView):
         entrada = s.LoginSerializer(data=request.data)
         entrada.is_valid(raise_exception=True)
         dados = entrada.validated_data
-        dispositivo = None
-        if dados.get("dispositivo"):
-            d = dados["dispositivo"]
-            dispositivo = acesso.DadosDispositivo(
-                id_dispositivo=d["id_dispositivo"],
-                modelo=d.get("modelo") or None,
-                versao_app=d.get("versao_app") or None,
-            )
+        d = dados["dispositivo"]
+        dispositivo = acesso.DadosDispositivo(
+            id_dispositivo=d["id_dispositivo"],
+            modelo=d.get("modelo") or None,
+            versao_app=d.get("versao_app") or None,
+        )
         usuario, par = acesso.autenticar(
             dados["email"], dados["senha"], request=request, dispositivo=dispositivo
         )
         return resposta_tokens(usuario, par)
 
 
+@method_decorator(non_atomic_requests, name="dispatch")
 @extend_schema(tags=["auth"], request=s.RefreshSerializer, responses=s.TokensSerializer)
 class RenovarSessaoView(PublicaView):
     throttle_scope = "login"
