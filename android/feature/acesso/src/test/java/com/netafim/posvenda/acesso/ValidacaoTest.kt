@@ -56,7 +56,7 @@ class ValidacaoTest {
 
     @Test
     fun `descreve so as permissoes do usuario na ordem definida`() {
-        val textos = DescricaoPermissoes.para(setOf("criar_usuario", "abrir_atendimento", "desconhecida"))
+        val textos = DescricaoPermissoes.para(setOf("criar_usuarios", "abrir_atendimento", "desconhecida"))
         assertEquals(listOf("Abrir atendimentos", "Cadastrar usuários"), textos)
     }
 }

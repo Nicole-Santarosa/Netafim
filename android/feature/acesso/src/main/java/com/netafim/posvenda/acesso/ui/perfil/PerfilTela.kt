@@ -235,7 +235,7 @@ private fun PerfilTelaPreview() {
                     telefone = "16999998888", situacao = "ativo",
                     perfil = Perfil(3, "Distribuidor Admin", "distribuidor", "admin"),
                     organizacao = Organizacao("distribuidor", 1, "Agro Irriga Ltda"),
-                    permissoes = setOf("abrir_atendimento", "vincular_tecnico", "criar_usuario"),
+                    permissoes = setOf("abrir_atendimento", "vincular_tecnico", "criar_usuarios"),
                     exigeTrocaSenha = false,
                 ),
                 aviso = "Sem conexão: mostrando os dados salvos no aparelho.",
