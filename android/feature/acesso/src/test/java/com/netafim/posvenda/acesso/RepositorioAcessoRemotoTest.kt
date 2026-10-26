@@ -148,6 +148,29 @@ class RepositorioAcessoRemotoTest {
     }
 
     @Test
+    fun `logout com access expirado revoga tambem o refresh renovado`() = runTest {
+        servidor.enqueue(json(tokensJson()))
+        repositorio.entrar("ana@agroirriga.com.br", "x")
+
+        servidor.enqueue(json("""{"detail":"Token expirado"}""", 401)) // logout com ref-1
+        servidor.enqueue(json(tokensJson(access = "acc-2", refresh = "ref-2"))) // refresh
+        servidor.enqueue(MockResponse().setResponseCode(204)) // logout repetido (corpo antigo)
+        servidor.enqueue(MockResponse().setResponseCode(204)) // logout com ref-2
+
+        repositorio.sair()
+
+        assertNull(repositorio.sessao.value)
+        assertNull(armazenamento.guardada)
+        servidor.takeRequest() // login
+        assertTrue(servidor.takeRequest().body.readUtf8().contains("ref-1"))
+        assertEquals("/api/v1/auth/refresh", servidor.takeRequest().path)
+        assertTrue(servidor.takeRequest().body.readUtf8().contains("ref-1"))
+        val ultimo = servidor.takeRequest()
+        assertEquals("/api/v1/auth/logout", ultimo.path)
+        assertTrue(ultimo.body.readUtf8().contains("ref-2"))
+    }
+
+    @Test
     fun `sessao restaurada do aparelho sem internet`() = runTest {
         servidor.enqueue(json(tokensJson()))
         repositorio.entrar("ana@agroirriga.com.br", "x")

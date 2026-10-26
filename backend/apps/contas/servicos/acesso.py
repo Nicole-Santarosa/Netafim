@@ -161,7 +161,7 @@ def renovar_sessao(refresh: str, *, request=None):
 
 
 def encerrar_sessao(usuario: Usuario, refresh: str, *, request=None) -> None:
-    tokens.revogar(refresh)
+    tokens.revogar(refresh, usuario=usuario)
     auditoria.registrar(Acao.LOGOUT, usuario=usuario, request=request)
 
 

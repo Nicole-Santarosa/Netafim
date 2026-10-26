@@ -118,7 +118,19 @@ def test_refresh_rotaciona_o_token(api, netafim_usuario):
     assert api.post(REFRESH, {"refresh": r.data["refresh"]}, format="json").status_code == 200
 
 
-def test_reuso_de_refresh_rotacionado_encerra_a_sessao(api, netafim_usuario):
+def test_repeticao_logo_apos_rotacao_e_tolerada(api, netafim_usuario):
+    """Se a resposta da rotação se perde na rede, repetir o refresh antigo não derruba a sessão."""
+    antigo = logar(api, netafim_usuario).data["refresh"]
+    perdido = api.post(REFRESH, {"refresh": antigo}, format="json").data["refresh"]
+
+    r = api.post(REFRESH, {"refresh": antigo}, format="json")  # app não recebeu a resposta
+    assert r.status_code == 200
+    assert r.data["refresh"] not in (antigo, perdido)
+    assert api.post(REFRESH, {"refresh": r.data["refresh"]}, format="json").status_code == 200
+
+
+def test_reuso_de_refresh_rotacionado_encerra_a_sessao(api, netafim_usuario, settings):
+    settings.CONTAS = {**settings.CONTAS, "REFRESH_TOLERANCIA_SEGUNDOS": 0}
     roubado = logar(api, netafim_usuario).data["refresh"]
     legitimo = api.post(REFRESH, {"refresh": roubado}, format="json").data["refresh"]
 
@@ -142,7 +154,25 @@ def test_logout_revoga_o_refresh(api, netafim_usuario):
     assert api.post(REFRESH, {"refresh": dados["refresh"]}, format="json").status_code == 401
 
 
+def test_logout_nao_revoga_refresh_de_outro_usuario(api, como, netafim_usuario, netafim_admin):
+    alheio = logar(api, netafim_admin).data["refresh"]
+    r = como(netafim_usuario).post(LOGOUT, {"refresh": alheio}, format="json")
+    assert r.status_code == 204
+    assert api.post(REFRESH, {"refresh": alheio}, format="json").status_code == 200
+
+
 # --------------------------------------------------------------------------- aparelhos
+
+
+def test_access_token_de_aparelho_revogado_deixa_de_valer(
+    api, como, netafim_usuario, netafim_admin
+):
+    id_aparelho = str(uuid.uuid4())
+    access = logar(api, netafim_usuario, dispositivo={"id_dispositivo": id_aparelho}).data["access"]
+    api.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+    assert api.get(ME).status_code == 200
+    como(netafim_admin).post(f"/api/v1/dispositivos/{id_aparelho}/revogar")
+    assert api.get(ME).status_code == 401
 
 
 def test_login_registra_o_aparelho(api, netafim_usuario):

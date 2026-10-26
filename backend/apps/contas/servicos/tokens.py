@@ -5,7 +5,9 @@ Emissão, rotação e revogação de tokens (TOKEN_ACESSO).
 - Refresh token é rotacionado a cada uso: o antigo fica marcado como usado e
   aponta para o novo (substituido_por).
 - Reuso de um refresh já rotacionado indica roubo: todos os refresh do usuário
-  naquele aparelho são revogados.
+  naquele aparelho são revogados. Exceção: dentro de uma janela curta
+  (CONTAS["REFRESH_TOLERANCIA_SEGUNDOS"], padrão 30 s; 0 desliga) o reuso é tratado como
+  repetição legítima, porque a resposta da rotação pode ter se perdido na rede móvel.
 """
 
 import hashlib
@@ -27,6 +29,10 @@ VALIDADE = {
     TipoToken.CONVITE: lambda: timedelta(days=settings.CONTAS["CONVITE_DIAS"]),
     TipoToken.RESET_SENHA: lambda: timedelta(hours=settings.CONTAS["RESET_SENHA_HORAS"]),
 }
+
+
+def _tolerancia_reuso() -> timedelta:
+    return timedelta(seconds=settings.CONTAS.get("REFRESH_TOLERANCIA_SEGUNDOS", 30))
 
 
 def hash_token(token_claro: str) -> str:
@@ -104,11 +110,16 @@ def rotacionar_refresh(token_claro: str, *, ip: str | None = None) -> tuple[Usua
 def _rotacionar(token_claro: str, ip: str | None):
     atual = _buscar_para_uso(token_claro, TipoToken.REFRESH)
 
-    if atual.usado_em is not None and atual.revogado_em is None:
-        # Token já rotacionado sendo reutilizado: provável roubo. Revoga a cadeia.
-        revogar_refresh_do_aparelho(atual.usuario, atual.dispositivo)
-        return TokenInvalido("Sessão encerrada por segurança. Entre novamente.")
-    if not atual.valido:
+    agora = timezone.now()
+    repeticao = atual.usado_em is not None and atual.revogado_em is None
+    if repeticao:
+        if agora - atual.usado_em > _tolerancia_reuso():
+            # Token já rotacionado sendo reutilizado: provável roubo. Revoga a cadeia.
+            revogar_refresh_do_aparelho(atual.usuario, atual.dispositivo)
+            return TokenInvalido("Sessão encerrada por segurança. Entre novamente.")
+        if atual.expira_em <= agora:
+            return TokenInvalido("Sessão expirada. Entre novamente.")
+    elif not atual.valido:
         return TokenInvalido("Sessão expirada. Entre novamente.")
 
     usuario = atual.usuario
@@ -118,9 +129,10 @@ def _rotacionar(token_claro: str, ip: str | None):
         return TokenInvalido("Este aparelho teve o acesso revogado.")
 
     novo, novo_claro = emitir(usuario, TipoToken.REFRESH, dispositivo=atual.dispositivo, ip=ip)
-    atual.usado_em = timezone.now()
-    atual.substituido_por = novo
-    atual.save(update_fields=["usado_em", "substituido_por"])
+    if not repeticao:
+        atual.usado_em = agora
+        atual.substituido_por = novo
+        atual.save(update_fields=["usado_em", "substituido_por"])
     return usuario, _montar_par(usuario, novo, novo_claro, atual.dispositivo)
 
 
@@ -135,12 +147,14 @@ def consumir(token_claro: str, tipo: str) -> TokenAcesso:
     return registro
 
 
-def revogar(token_claro: str, tipo: str = TipoToken.REFRESH) -> bool:
-    return bool(
-        TokenAcesso.objects.filter(
-            token_hash=hash_token(token_claro), tipo=tipo, revogado_em__isnull=True
-        ).update(revogado_em=timezone.now())
-    )
+def revogar(
+    token_claro: str, tipo: str = TipoToken.REFRESH, *, usuario: Usuario | None = None
+) -> bool:
+    """Revoga o token informado; com ``usuario``, só se o token for dele."""
+    filtros = {"token_hash": hash_token(token_claro), "tipo": tipo, "revogado_em__isnull": True}
+    if usuario is not None:
+        filtros["usuario"] = usuario
+    return bool(TokenAcesso.objects.filter(**filtros).update(revogado_em=timezone.now()))
 
 
 def revogar_refresh_do_aparelho(usuario: Usuario, dispositivo: Dispositivo | None) -> int:

@@ -75,8 +75,13 @@ class RepositorioAcessoRemoto(
         val atual = _sessao.value
         if (atual != null) {
             // Revoga no servidor se houver conexão; sem conexão, o refresh expira sozinho.
-            runCatching { apiAutenticada.logout(RefreshRequisicao(atual.refreshToken)) }
-                .onFailure { if (it is CancellationException) throw it }
+            logoutNoServidor(atual.refreshToken)
+            // Se o access expirou, a renovação automática trocou o refresh no meio do
+            // logout (a repetição leva o corpo antigo): revoga também o novo.
+            val depois = _sessao.value
+            if (depois != null && depois.refreshToken != atual.refreshToken) {
+                logoutNoServidor(depois.refreshToken)
+            }
         }
         encerrarLocalmente()
     }
@@ -149,6 +154,11 @@ class RepositorioAcessoRemoto(
         )
         return Sessao(tokens.access, tokens.refresh, tokens.usuario.paraDominio())
             .also { _sessao.value = it }
+    }
+
+    private suspend fun logoutNoServidor(refresh: String) {
+        runCatching { apiAutenticada.logout(RefreshRequisicao(refresh)) }
+            .onFailure { if (it is CancellationException) throw it }
     }
 
     private suspend fun encerrarLocalmente() {

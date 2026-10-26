@@ -177,6 +177,15 @@ class DistribuidorViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
     lookup_value_regex = r"\d+"
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
+    def perform_destroy(self, instancia):
+        if instancia.clientes.filter(deletado_em__isnull=True).exists():
+            raise ErroNegocio(
+                "Exclua ou mova os clientes deste distribuidor antes.",
+                "distribuidor_com_clientes",
+                status_code=409,
+            )
+        super().perform_destroy(instancia)
+
     def get_permissions(self):
         if self.action in {"list", "retrieve"}:
             return [IsAuthenticated()]

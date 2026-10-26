@@ -37,10 +37,11 @@ Regras garantidas pelo PostgreSQL (seção 5.1), cobertas por testes em `test_ba
 ## Autenticação
 
 - **Access token:** JWT de 15 minutos no cabeçalho `Authorization: Bearer ...`.
-- **Refresh token:** opaco, 30 dias, guardado só como hash em `token_acesso`. Cada uso gera um novo (rotação). Reusar um refresh já trocado encerra a sessão daquele aparelho, porque indica roubo.
+- **Refresh token:** opaco, 30 dias, guardado só como hash em `token_acesso`. Cada uso gera um novo (rotação). Reusar um refresh já trocado encerra a sessão daquele aparelho, porque indica roubo. Exceção: nos primeiros 30 segundos após a troca, a repetição é aceita e gera outro refresh novo, porque a resposta da rotação pode ter se perdido na rede móvel (`CONTAS["REFRESH_TOLERANCIA_SEGUNDOS"]`; `0` desliga a tolerância).
 - **Bloqueio:** 5 senhas erradas seguidas bloqueiam o login por 15 minutos.
 - **Sem enumeração:** login, cadastro e "esqueci a senha" respondem igual exista ou não o e-mail.
-- **Aparelho:** o app envia um UUID próprio no login; o Netafim Admin pode revogar um aparelho perdido.
+- **Aparelho:** o app envia um UUID próprio no login; o Netafim Admin pode revogar um aparelho perdido. A revogação vale na hora, inclusive para o access token ainda não expirado.
+- **Logout:** só revoga refresh tokens do próprio usuário logado.
 
 ## Fluxo de cadastro (Regras de Negócio)
 

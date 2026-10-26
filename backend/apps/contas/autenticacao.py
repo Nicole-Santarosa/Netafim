@@ -5,14 +5,15 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import AuthenticationFailed, InvalidToken
 from rest_framework_simplejwt.settings import api_settings
 
-from .models import Usuario
+from .models import Dispositivo, Usuario
 
 
 class AutenticacaoJWT(JWTAuthentication):
     """
     Igual ao JWTAuthentication do simplejwt, mas carrega o perfil junto e só aceita
     contas ativas e não excluídas (situacao = ativo). Uma conta inativada, bloqueada
-    ou excluída perde o acesso na próxima requisição, mesmo com token ainda válido.
+    ou excluída, ou um aparelho revogado, perde o acesso na próxima requisição, mesmo
+    com token ainda válido.
     """
 
     def get_user(self, validated_token):
@@ -26,6 +27,14 @@ class AutenticacaoJWT(JWTAuthentication):
             raise AuthenticationFailed("Usuário não encontrado.", code="user_not_found") from exc
         if not usuario.is_active:
             raise AuthenticationFailed("Conta sem acesso liberado.", code="user_inactive")
+        id_dispositivo = validated_token.get("did")
+        if (
+            id_dispositivo
+            and Dispositivo.objects.filter(pk=id_dispositivo, revogado_em__isnull=False).exists()
+        ):
+            raise AuthenticationFailed(
+                "Este aparelho teve o acesso revogado.", code="device_revoked"
+            )
         return usuario
 
 

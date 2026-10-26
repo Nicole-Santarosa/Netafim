@@ -189,6 +189,12 @@ def test_organizacao_com_usuarios_nao_e_excluida(como, netafim_admin, cliente_us
     assert r.status_code == 409
 
 
+def test_distribuidor_com_clientes_nao_e_excluido(como, netafim_admin, distribuidor, cliente):
+    r = como(netafim_admin).delete(f"/api/v1/distribuidores/{distribuidor.pk}")
+    assert r.status_code == 409
+    assert r.data["codigo"] == "distribuidor_com_clientes"
+
+
 def test_dominios_restritos_ao_netafim_admin(como, netafim_admin, distrib_admin, distribuidor):
     corpo = {
         "dominio": "@NovaRevenda.com.br",
