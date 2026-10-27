@@ -87,7 +87,7 @@ backend/
 │   └── atendimentos/
 │       ├── __init__.py
 │       ├── apps.py
-│       └── models.py   model Atendimento (espelho da tabela, sem migrations)
+│       └── models.py   models do atendimento (espelho das tabelas, sem migrations)
 ├── config/
 │   ├── __init__.py
 │   ├── settings.py   configurações lidas das variáveis de ambiente
@@ -104,7 +104,7 @@ Pronto:
 - Base do projeto Django (config, manage.py, dependências com uv).
 - Conexão com o banco no Supabase testada.
 - DRF configurado para aceitar e devolver só JSON.
-- App atendimentos com o model Atendimento (espelho da tabela, sem migrations).
+- App atendimentos com os models do atendimento (espelho das tabelas, sem migrations).
 
 Ainda não existe:
 - Demais apps do Django.

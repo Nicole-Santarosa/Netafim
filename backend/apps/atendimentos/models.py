@@ -170,3 +170,126 @@ class Atendimento(models.Model):
     class Meta:
         managed = False
         db_table = "atendimento"
+
+
+class AtendimentoProblema(models.Model):
+    """Espelho da tabela atendimento_problema: a categoria (e, se houver, a
+    subcategoria) do problema informado no atendimento. Um atendimento pode ter
+    várias linhas, desde que a combinação não se repita entre as não excluídas.
+    """
+
+    # Identity do banco: o Django não envia esse valor, ele vem no retorno do INSERT.
+    id_atendimento_problema = models.AutoField(primary_key=True)
+
+    # Ligações guardadas como número simples, sem ForeignKey. A subcategoria é
+    # opcional e, quando existe, o banco exige que ela pertença à categoria.
+    id_atendimento = models.UUIDField()
+    id_categoria = models.IntegerField()
+    id_subcategoria = models.IntegerField(null=True, blank=True)
+
+    data_criacao = models.DateTimeField(db_default=Now())
+    data_atualizacao = models.DateTimeField(db_default=Now())
+    deletado_em = models.DateTimeField(null=True, blank=True)
+
+    # Preenchido por gatilho; aceita nulo aqui só para o INSERT poder seguir.
+    sync_seq = models.BigIntegerField(null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = "atendimento_problema"
+
+
+class AtendimentoCultura(models.Model):
+    """Espelho da tabela atendimento_cultura: as culturas ligadas ao atendimento.
+    A chave primária é o par (atendimento, cultura), sem coluna de id própria.
+    """
+
+    pk = models.CompositePrimaryKey("id_atendimento", "id_cultura")
+
+    id_atendimento = models.UUIDField()
+    id_cultura = models.IntegerField()
+
+    # Esta tabela não tem data_criacao, só data_atualizacao.
+    data_atualizacao = models.DateTimeField(db_default=Now())
+    deletado_em = models.DateTimeField(null=True, blank=True)
+
+    # Preenchido por gatilho; aceita nulo aqui só para o INSERT poder seguir.
+    sync_seq = models.BigIntegerField(null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = "atendimento_cultura"
+
+
+class AtendimentoTipoTreinamento(models.Model):
+    """Espelho da tabela atendimento_tipo_treinamento: os tipos de treinamento
+    pedidos no atendimento. Chave primária composta, como atendimento_cultura.
+    """
+
+    pk = models.CompositePrimaryKey("id_atendimento", "id_tipo_treinamento")
+
+    id_atendimento = models.UUIDField()
+    id_tipo_treinamento = models.IntegerField()
+
+    data_atualizacao = models.DateTimeField(db_default=Now())
+    deletado_em = models.DateTimeField(null=True, blank=True)
+
+    # Preenchido por gatilho; aceita nulo aqui só para o INSERT poder seguir.
+    sync_seq = models.BigIntegerField(null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = "atendimento_tipo_treinamento"
+
+
+# Listas de valores permitidos do histórico, iguais aos CHECKs de
+# historico_atendimento em infra/db/01_schema.sql.
+
+class TipoEvento(models.TextChoices):
+    CRIADO = "criado"
+    PROTOCOLO_GERADO = "protocolo_gerado"
+    DESTINADO = "destinado"
+    ATRIBUIDO = "atribuido"
+    AGENDADO = "agendado"
+    REAGENDADO = "reagendado"
+    STATUS_ALTERADO = "status_alterado"
+    RECLASSIFICADO = "reclassificado"
+    EDITADO_POS_FINALIZACAO = "editado_pos_finalizacao"
+    EXCLUIDO = "excluido"
+
+
+class OrigemEvento(models.TextChoices):
+    USUARIO = "usuario"
+    SISTEMA = "sistema"
+
+
+class HistoricoAtendimento(models.Model):
+    """Espelho da tabela historico_atendimento: a linha do tempo do atendimento.
+
+    Somente leitura. Quem grava é o banco, pelos gatilhos de atendimento e
+    agendamento, e um gatilho bloqueia UPDATE, DELETE e TRUNCATE. A API só
+    consulta; nunca deve criar, alterar nem apagar linhas por aqui.
+    """
+
+    # Identity do banco.
+    id_historico = models.BigAutoField(primary_key=True)
+
+    id_atendimento = models.UUIDField()
+    tipo_evento = models.CharField(max_length=30, choices=TipoEvento.choices)
+    origem_evento = models.CharField(max_length=10, choices=OrigemEvento.choices)
+
+    # Os dois valores são texto curto (até 100 caracteres) do que mudou, como
+    # status antigo e novo. O anterior é nulo quando não há valor de antes.
+    valor_anterior = models.CharField(max_length=100, null=True, blank=True)
+    valor_novo = models.CharField(max_length=100)
+
+    # Pelo CHECK do banco: origem usuario exige o responsável; origem sistema
+    # deixa o campo nulo.
+    id_usuario_responsavel = models.IntegerField(null=True, blank=True)
+
+    data_evento = models.DateTimeField(db_default=Now())
+    observacao = models.TextField(null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = "historico_atendimento"
