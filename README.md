@@ -82,6 +82,12 @@ DB_PASSWORD=<senha-do-app_django>
 
 ```
 backend/
+├── apps/
+│   ├── __init__.py
+│   └── atendimentos/
+│       ├── __init__.py
+│       ├── apps.py
+│       └── models.py   model Atendimento (espelho da tabela, sem migrations)
 ├── config/
 │   ├── __init__.py
 │   ├── settings.py   configurações lidas das variáveis de ambiente
@@ -98,9 +104,10 @@ Pronto:
 - Base do projeto Django (config, manage.py, dependências com uv).
 - Conexão com o banco no Supabase testada.
 - DRF configurado para aceitar e devolver só JSON.
+- App atendimentos com o model Atendimento (espelho da tabela, sem migrations).
 
 Ainda não existe:
-- Apps do Django.
-- Models.
+- Demais apps do Django.
+- Demais models.
 - Endpoints.
 - Autenticação.

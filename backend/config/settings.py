@@ -32,6 +32,7 @@ ALLOWED_HOSTS = [h for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h]
 # e as tabelas são todas dos scripts SQL em infra/db.
 INSTALLED_APPS = [
     "rest_framework",
+    "apps.atendimentos",
 ]
 
 MIDDLEWARE = [
