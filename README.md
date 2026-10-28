@@ -90,13 +90,53 @@ backend/
 │       └── models.py   models do atendimento (espelho das tabelas, sem migrations)
 ├── config/
 │   ├── __init__.py
-│   ├── settings.py   configurações lidas das variáveis de ambiente
-│   ├── urls.py       rotas (ainda vazio)
+│   ├── settings.py        configurações lidas das variáveis de ambiente
+│   ├── settings_teste.py  configurações dos testes (banco local, com trava de segurança)
+│   ├── urls.py            rotas (ainda vazio)
 │   └── wsgi.py
+├── tests/
+│   ├── test_conexao.py
+│   └── test_trava_seguranca.py
+├── conftest.py            ajuste do pytest para usar o banco já montado
 ├── manage.py
-├── pyproject.toml    dependências e versão do Python
+├── pyproject.toml         dependências e versão do Python
 └── uv.lock
 ```
+
+### Testes
+
+Os testes rodam sempre em um PostgreSQL local em Docker, nunca no Supabase. O SQLite não serve, porque não executa gatilhos nem RLS.
+
+Os scripts SQL ainda não estão versionados no repositório. A pasta `infra/db` (scripts 01 a 04) é passada pelo responsável pelo banco.
+
+1. Subir o PostgreSQL local:
+
+   ```
+   docker run -d --name netafim-pg-teste \
+     -e POSTGRES_PASSWORD=senha_local_teste \
+     -p 127.0.0.1:5544:5432 postgres:16
+   ```
+
+2. Criar o banco e carregar os scripts em ordem (na raiz do repositório). O script 03 cria a role `app_django`; a senha dela é definida no último comando:
+
+   ```
+   docker exec netafim-pg-teste createdb -U postgres netafim_teste
+   for f in 01_schema 02_funcoes_gatilhos 03_seguranca_rls 04_dados_iniciais; do
+     docker exec -i netafim-pg-teste psql -U postgres -d netafim_teste -v ON_ERROR_STOP=1 < infra/db/$f.sql || break
+   done
+   docker exec netafim-pg-teste psql -U postgres -d netafim_teste \
+     -c "alter role app_django with password 'senha_local_teste'"
+   ```
+
+3. Rodar os testes, dentro de `backend/`:
+
+   ```
+   uv run pytest
+   ```
+
+O `config/settings_teste.py` aponta para esse banco por padrão. Para usar outro banco local, defina `TESTE_DB_HOST`, `TESTE_DB_PORT`, `TESTE_DB_NAME`, `TESTE_DB_USER`, `TESTE_DB_PASSWORD` e, se quiser, `TESTE_SECRET_KEY`. Os valores desse arquivo têm prioridade sobre o `backend/.env`, então o banco do Supabase nunca é usado nos testes.
+
+Há uma trava de segurança: se o host do banco não for `127.0.0.1` nem `localhost`, o `settings_teste.py` levanta `ImproperlyConfigured` e os testes nem começam. O `test_trava_seguranca.py` confere essa trava.
 
 ### Estado atual do back-end
 
@@ -105,6 +145,7 @@ Pronto:
 - Conexão com o banco no Supabase testada.
 - DRF configurado para aceitar e devolver só JSON.
 - App atendimentos com os models do atendimento (espelho das tabelas, sem migrations).
+- Base de testes (pytest contra o PostgreSQL local em Docker, com trava contra banco remoto).
 
 Ainda não existe:
 - Demais apps do Django.
