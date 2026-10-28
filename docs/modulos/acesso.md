@@ -31,7 +31,7 @@ O esquema (tabelas, constraints, gatilhos, funções e RLS) é do **banco do gru
 
 ### Aviso para quem usa o banco compartilhado
 
-Não rode `migrate` contra o Supabase. O `Dockerfile` provisório ainda executa `migrate` na subida e deve deixar de fazê-lo.
+Não rode `migrate` contra o Supabase. O `Dockerfile` não executa `migrate` na subida (o esquema é do banco do grupo).
 
 ## Autenticação
 
@@ -100,6 +100,8 @@ Erros de regra de negócio seguem o formato do DRF com um código estável:
 2. **Swagger:** abra `http://localhost:8000/api/docs/`. Faça `POST /auth/login` (informe `dispositivo.id_dispositivo` com um UUID qualquer), copie o `access` e clique em **Authorize** (esquema `jwtAuth`).
 3. **Insomnia:** *Import → From URL* `http://localhost:8000/api/schema/` (ou o arquivo `docs/api/acesso-openapi.yaml`). Crie uma variável de ambiente `token` e use `Bearer {{ token }}`.
 4. **Primeiro administrador:** a API não cria o primeiro Netafim Admin (o RLS exige um administrador como ator). Rode `uv run python manage.py gerar_hash_senha` e aplique o hash no SQL Editor: `update usuario set password = '<hash>' where lower(email) = lower('<e-mail do admin>');`.
+
+   **Situação atual:** o Netafim Admin (`id_usuario` 1, perfil "Netafim Admin") já está configurado no banco do grupo. A senha foi definida em 28/10/2026 por esse procedimento e o login foi verificado na API contra o Supabase (HTTP 200). O cadastro mantém `exige_troca_senha = true`, então o primeiro acesso pede a troca da senha.
 
 5. **Teste de fumaça contra o banco de verdade** (só leitura, não cria nada): com a API ligada ao Supabase, rode `API_URL=... SMOKE_EMAIL=... SMOKE_SENHA=... uv run python scripts/smoke_api.py`. Confere login, `/me`, listas, renovação de sessão e logout.
 
