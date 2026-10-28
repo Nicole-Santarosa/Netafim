@@ -118,6 +118,16 @@ if os.environ.get("DB_HOST"):
             "PORT": env("DB_PORT", default="5432"),
             "CONN_MAX_AGE": int(env("DATABASE_CONN_MAX_AGE", default="60")),
             "CONN_HEALTH_CHECKS": True,
+            # Sem criptografia o padrão do libpq ("prefer") aceitaria uma conexão em texto puro.
+            # Fora da própria máquina exige SSL; DB_SSLMODE troca (ex.: "disable" num banco local).
+            "OPTIONS": {
+                "sslmode": env(
+                    "DB_SSLMODE",
+                    default="prefer"
+                    if os.environ["DB_HOST"] in {"localhost", "127.0.0.1", "db"}
+                    else "require",
+                )
+            },
         }
     }
 else:
