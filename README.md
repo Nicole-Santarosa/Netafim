@@ -84,10 +84,19 @@ DB_PASSWORD=<senha-do-app_django>
 backend/
 ├── apps/
 │   ├── __init__.py
-│   └── atendimentos/
+│   ├── atendimentos/
+│   │   ├── __init__.py
+│   │   ├── apps.py
+│   │   ├── models.py   models do atendimento (espelho das tabelas, sem migrations)
+│   │   └── tests/
+│   │       ├── __init__.py
+│   │       └── test_abertura_model.py
+│   └── core/
 │       ├── __init__.py
-│       ├── apps.py
-│       └── models.py   models do atendimento (espelho das tabelas, sem migrations)
+│       ├── erros.py    traduz erros do banco em respostas HTTP (EXCEPTION_HANDLER do DRF)
+│       └── tests/
+│           ├── __init__.py
+│           └── test_erros.py
 ├── config/
 │   ├── __init__.py
 │   ├── settings.py        configurações lidas das variáveis de ambiente
@@ -146,6 +155,7 @@ Pronto:
 - DRF configurado para aceitar e devolver só JSON.
 - App atendimentos com os models do atendimento (espelho das tabelas, sem migrations).
 - Base de testes (pytest contra o PostgreSQL local em Docker, com trava contra banco remoto).
+- Tradutor de erros do banco para a API (`apps/core/erros.py`): erro de regra de negócio, duplicado, referência inválida, campo obrigatório, sem permissão e valor inválido viram respostas HTTP com `codigo` e `detail`. Erro de CHECK de tabela não mostra a mensagem do banco; erro de gatilho mostra a própria mensagem.
 
 Ainda não existe:
 - Demais apps do Django.

@@ -77,4 +77,5 @@ REST_FRAMEWORK = {
     "UNAUTHENTICATED_TOKEN": None,
     # Autenticação fica para a próxima etapa; sem isso o DRF tentaria sessão e Basic.
     "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "EXCEPTION_HANDLER": "apps.core.erros.tratar_excecao",
 }
