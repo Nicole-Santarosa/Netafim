@@ -156,6 +156,7 @@ Pronto:
 - App atendimentos com os models do atendimento (espelho das tabelas, sem migrations).
 - Base de testes (pytest contra o PostgreSQL local em Docker, com trava contra banco remoto).
 - Tradutor de erros do banco para a API (`apps/core/erros.py`): erro de regra de negócio, duplicado, referência inválida, campo obrigatório, sem permissão e valor inválido viram respostas HTTP com `codigo` e `detail`. Erro de CHECK de tabela não mostra a mensagem do banco; erro de gatilho mostra a própria mensagem.
+- Serviço de abertura de atendimento (`apps/atendimentos/servicos.py`): `abrir_atendimento(id_solicitante, dados)` aceita só as colunas que o solicitante pode informar (o próprio solicitante entra como argumento, não nos dados), grava com `Atendimento.objects.create` e relê a linha para trazer protocolo, versão, sync_seq e status gerados pelo banco. Erros do banco passam direto para o tradutor. Reenvio do mesmo id ainda não é tratado (o banco recusa o duplicado).
 
 Ainda não existe:
 - Demais apps do Django.
