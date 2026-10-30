@@ -76,7 +76,7 @@ apps/contas/            módulo de acesso (usuários e permissões)
   api/                  serializers, views e rotas
   tests/                banco (contrato), autenticação, cadastro e restrições de acesso
 db/
-  snapshot_banco_atual.sql   retrato do banco, usado só nos testes
+  snapshot_banco_atual.sql   banco completo do grupo (scripts 01 a 04), usado só nos testes
   propostas/                 mudanças sugeridas ao banco (NÃO aplicadas)
 ```
 

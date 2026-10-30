@@ -27,7 +27,7 @@ O esquema (tabelas, constraints, gatilhos, funções e RLS) é do **banco do gru
 - **Tokens:** `app_django` não tem privilégio em `token_acesso`. Emitir, rotacionar e revogar passam só por `fn_emitir_token`, `fn_rotacionar_token` e `fn_revogar_token`.
 - **Falhas de login e bloqueio** (5 erros, 15 minutos) são contadas pelo banco em `fn_registrar_login`; a API não consegue alterar esses campos.
 - **Auditoria:** o banco grava a trilha (`log_auditoria`, com cadeia de hash) por gatilhos e funções. O sinal `evento_auditoria` da API fica só como log complementar.
-- Os testes usam um retrato do banco em [`backend/db/snapshot_banco_atual.sql`](../../backend/db/snapshot_banco_atual.sql). Se o banco mudar, regere o retrato e rode a suíte.
+- Os testes usam o banco completo do grupo (scripts 01 a 04, com a correção de visibilidade do atendimento) em [`backend/db/snapshot_banco_atual.sql`](../../backend/db/snapshot_banco_atual.sql). Se os scripts do grupo mudarem, regere o arquivo e rode a suíte.
 
 ### Aviso para quem usa o banco compartilhado
 
