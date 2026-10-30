@@ -1,0 +1,57 @@
+[project]
+name = "netafim-backend"
+version = "0.1.0"
+description = "API do aplicativo de pós-venda Netafim (Django REST Framework)"
+requires-python = ">=3.12"
+dependencies = [
+    "argon2-cffi>=23.1",
+    "dj-database-url>=2.3",
+    "django>=5.2,<5.3",
+    "djangorestframework>=3.16",
+    "djangorestframework-simplejwt>=5.5",
+    "drf-spectacular>=0.28",
+    "gunicorn>=23",
+    "psycopg[binary]>=3.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "pytest-django>=4.14.0",
+    "pytest-env>=1.8.1",
+    "ruff>=0.17.2",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py"]
+addopts = "--strict-markers"
+filterwarnings = ["error::RuntimeWarning"]
+env = [
+    "D:DJANGO_DEBUG=true",
+    "D:DJANGO_SECRET_KEY=chave-apenas-para-testes-com-32-bytes-ou-mais",
+    "D:DATABASE_URL=postgres://netafim:netafim@localhost:5432/netafim",
+    "EMAIL_BACKEND=django.core.mail.backends.locmem.EmailBackend",
+    "THROTTLE_LOGIN=1000/min",
+    "THROTTLE_CADASTRO=1000/min",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["**/migrations/*.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "DJ", "S", "SIM"]
+# DJ001: colunas de texto anuláveis seguem o MER/DER (NULL = "não informado").
+# DJ012: falso positivo com dois managers (objects sem excluídos + todos).
+ignore = ["S101", "DJ001", "DJ012"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/*.py" = ["S105", "S106"]
+"apps/contas/models.py" = ["S106"]  # regex de formato de hash, não é senha
+
+[tool.coverage.run]
+source = ["apps"]
+omit = ["**/migrations/*", "**/tests/*"]

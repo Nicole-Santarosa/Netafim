@@ -1,0 +1,58 @@
+name: Back-end
+
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**", "docs/api/**", ".github/workflows/backend.yml"]
+  pull_request:
+    paths: ["backend/**", "docs/api/**", ".github/workflows/backend.yml"]
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: netafim
+          POSTGRES_USER: netafim
+          POSTGRES_PASSWORD: netafim
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U netafim"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgres://netafim:netafim@localhost:5432/netafim
+      DJANGO_DEBUG: "true"
+      DJANGO_SECRET_KEY: chave-apenas-para-ci-com-32-bytes-ou-mais
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Instalar dependências
+        run: uv sync --frozen
+      - name: Lint e formatação (ruff)
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: Checagens do Django
+        run: |
+          uv run python manage.py check --deploy --fail-level ERROR
+          uv run python manage.py makemigrations --check --dry-run
+      - name: Testes (PostgreSQL)
+        run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=85
+      - name: Contrato da API atualizado
+        run: |
+          uv run python manage.py spectacular --file /tmp/openapi.yaml --validate
+          diff -u ../docs/api/acesso-openapi.yaml /tmp/openapi.yaml || {
+            echo "::error::docs/api/acesso-openapi.yaml desatualizado. Rode: uv run python manage.py spectacular --file ../docs/api/acesso-openapi.yaml";
+            exit 1;
+          }
