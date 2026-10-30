@@ -1,7 +1,7 @@
 from django.urls import path
 
-from apps.atendimentos.views import AberturaAtendimentoView
+from apps.atendimentos.views import AtendimentosView
 
 urlpatterns = [
-    path("atendimentos", AberturaAtendimentoView.as_view()),
+    path("atendimentos", AtendimentosView.as_view()),
 ]

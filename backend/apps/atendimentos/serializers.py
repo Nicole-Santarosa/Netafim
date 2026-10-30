@@ -99,3 +99,32 @@ class AtendimentoCriadoSerializer(serializers.ModelSerializer):
         )
         # Nenhum campo é aceito na entrada: este serializer só mostra dados.
         read_only_fields = fields
+
+
+class AtendimentoListaSerializer(serializers.ModelSerializer):
+    """Item da lista de atendimentos: só leitura.
+
+    A tela calcula o "Aberto há X dias" a partir de data_abertura, então o
+    servidor não manda esse número pronto. O nome do produtor só vem preenchido
+    quando o atendimento o informou; o nome do cliente virá do snapshot, em
+    outra peça.
+    """
+
+    class Meta:
+        model = Atendimento
+        fields = (
+            "id_atendimento",
+            "numero_protocolo",
+            "status",
+            "motivo",
+            "origem",
+            "nome_produtor",
+            "nome_fazenda_informado",
+            "cidade",
+            "data_abertura",
+            "data_atualizacao",
+            "versao",
+            "sync_seq",
+        )
+        # Nenhum campo é aceito na entrada: este serializer só mostra dados.
+        read_only_fields = fields
