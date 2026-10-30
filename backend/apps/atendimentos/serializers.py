@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.atendimentos.models import Atendimento
+from apps.atendimentos.models import Atendimento, HistoricoAtendimento
 
 # Este serializer só recebe dados (a resposta fica para outra peça). Ele aceita
 # as mesmas colunas de COLUNAS_ACEITAS_NA_ABERTURA (servicos.py), menos duas:
@@ -127,4 +127,72 @@ class AtendimentoListaSerializer(serializers.ModelSerializer):
             "sync_seq",
         )
         # Nenhum campo é aceito na entrada: este serializer só mostra dados.
+        read_only_fields = fields
+
+
+class AtendimentoDetalheSerializer(serializers.ModelSerializer):
+    """Detalhe de um atendimento: só leitura. A lista de campos é explícita
+    (sem exclude) para uma coluna nova do banco não aparecer na API por acidente.
+    deletado_em fica de fora: o atendimento excluído nem chega aqui.
+    """
+
+    class Meta:
+        model = Atendimento
+        fields = (
+            "id_atendimento",
+            "numero_protocolo",
+            "origem",
+            "motivo",
+            "status",
+            "prioridade",
+            "id_solicitante",
+            "id_cliente",
+            "id_propriedade",
+            "id_distribuidor_origem",
+            "nome_produtor",
+            "nome_fazenda_informado",
+            "cidade",
+            "area_setor",
+            "destinado_a",
+            "id_distribuidor",
+            "id_tecnico_responsavel",
+            "contato_solicitante",
+            "numero_projeto_br",
+            "situacao_projeto",
+            "estado_projeto",
+            "tipo_venda",
+            "tipo_atendimento",
+            "descricao_problema",
+            "data_inicio_problema",
+            "data_sugerida",
+            "necessidade",
+            "qtd_participantes_prevista",
+            "snapshot_cliente",
+            "snapshot_propriedade",
+            "data_abertura",
+            "data_conclusao",
+            "data_encerramento",
+            "versao",
+            "data_criacao",
+            "data_atualizacao",
+        )
+        read_only_fields = fields
+
+
+class HistoricoAtendimentoSerializer(serializers.ModelSerializer):
+    """Um evento da linha do tempo do atendimento: só leitura. A observação e o
+    responsável ficam de fora por enquanto, porque a observação é texto livre e
+    pode ter dado pessoal.
+    """
+
+    class Meta:
+        model = HistoricoAtendimento
+        fields = (
+            "id_historico",
+            "tipo_evento",
+            "origem_evento",
+            "valor_anterior",
+            "valor_novo",
+            "data_evento",
+        )
         read_only_fields = fields

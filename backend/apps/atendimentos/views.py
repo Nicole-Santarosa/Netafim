@@ -1,14 +1,17 @@
 from rest_framework import serializers, status
+from rest_framework.exceptions import NotFound
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.atendimentos.models import Atendimento, Status
+from apps.atendimentos.models import Atendimento, HistoricoAtendimento, Status
 from apps.atendimentos.serializers import (
     AberturaAtendimentoSerializer,
     AtendimentoCriadoSerializer,
+    AtendimentoDetalheSerializer,
     AtendimentoListaSerializer,
+    HistoricoAtendimentoSerializer,
 )
 from apps.atendimentos.servicos import abrir_atendimento
 
@@ -72,3 +75,30 @@ class AtendimentosView(APIView):
             AtendimentoCriadoSerializer(atendimento).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class DetalheAtendimentoView(APIView):
+    """GET com os dados completos de um atendimento e a linha do tempo dele."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id_atendimento):
+        # Busca só pelo id e ignora os excluídos. Não há filtro por usuário: o
+        # RLS do banco esconde o que a pessoa não pode ver, e o resultado é o
+        # mesmo de um id que não existe. Responder 404 (e não 403) evita revelar
+        # que o atendimento existe.
+        atendimento = Atendimento.objects.filter(
+            id_atendimento=id_atendimento, deletado_em__isnull=True
+        ).first()
+        if atendimento is None:
+            raise NotFound()
+
+        # Linha do tempo em uma consulta só, da mais antiga para a mais nova; o
+        # id_historico desempata eventos com a mesma data.
+        historico = HistoricoAtendimento.objects.filter(
+            id_atendimento=id_atendimento
+        ).order_by("data_evento", "id_historico")
+
+        dados = dict(AtendimentoDetalheSerializer(atendimento).data)
+        dados["historico"] = HistoricoAtendimentoSerializer(historico, many=True).data
+        return Response(dados)
