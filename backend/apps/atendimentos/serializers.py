@@ -74,3 +74,25 @@ class AberturaAtendimentoSerializer(serializers.ModelSerializer):
                 {"area_setor": "Obrigatório quando a origem é netafim."}
             )
         return dados
+
+
+class AtendimentoCriadoSerializer(serializers.ModelSerializer):
+    """Resposta da abertura: só leitura. Devolve o que o aplicativo precisa
+    guardar depois de abrir o atendimento, que é o protocolo gerado pelo banco e
+    os campos de sincronização. Não é o serializer de detalhe, que virá em outra
+    peça.
+    """
+
+    class Meta:
+        model = Atendimento
+        fields = (
+            "id_atendimento",
+            "numero_protocolo",
+            "status",
+            "prioridade",
+            "versao",
+            "sync_seq",
+            "data_abertura",
+        )
+        # Nenhum campo é aceito na entrada: este serializer só mostra dados.
+        read_only_fields = fields

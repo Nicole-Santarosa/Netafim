@@ -1,2 +1,5 @@
-# Ainda sem rotas: os endpoints entram junto com as apps, nas próximas etapas.
-urlpatterns = []
+from django.urls import include, path
+
+urlpatterns = [
+    path("api/v1/", include("apps.atendimentos.urls")),
+]
