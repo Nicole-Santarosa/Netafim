@@ -8,12 +8,13 @@ from rest_framework.views import APIView
 from apps.atendimentos.models import Atendimento, HistoricoAtendimento, Status
 from apps.atendimentos.serializers import (
     AberturaAtendimentoSerializer,
+    AtendimentoAlteracaoSerializer,
     AtendimentoCriadoSerializer,
     AtendimentoDetalheSerializer,
     AtendimentoListaSerializer,
     HistoricoAtendimentoSerializer,
 )
-from apps.atendimentos.servicos import abrir_atendimento
+from apps.atendimentos.servicos import abrir_atendimento, atualizar_atendimento
 
 
 class PaginacaoAtendimentos(PageNumberPagination):
@@ -77,8 +78,23 @@ class AtendimentosView(APIView):
         )
 
 
+def montar_detalhe(atendimento):
+    """Dados completos do atendimento mais a linha do tempo (chave historico).
+    Usada pelo GET e pelo PATCH, para as duas respostas terem o mesmo formato."""
+    # Linha do tempo em uma consulta só, da mais antiga para a mais nova; o
+    # id_historico desempata eventos com a mesma data.
+    historico = HistoricoAtendimento.objects.filter(
+        id_atendimento=atendimento.id_atendimento
+    ).order_by("data_evento", "id_historico")
+
+    dados = dict(AtendimentoDetalheSerializer(atendimento).data)
+    dados["historico"] = HistoricoAtendimentoSerializer(historico, many=True).data
+    return dados
+
+
 class DetalheAtendimentoView(APIView):
-    """GET com os dados completos de um atendimento e a linha do tempo dele."""
+    """GET com os dados completos de um atendimento e a linha do tempo dele;
+    PATCH que altera status, destinação ou técnico."""
 
     permission_classes = [IsAuthenticated]
 
@@ -93,12 +109,19 @@ class DetalheAtendimentoView(APIView):
         if atendimento is None:
             raise NotFound()
 
-        # Linha do tempo em uma consulta só, da mais antiga para a mais nova; o
-        # id_historico desempata eventos com a mesma data.
-        historico = HistoricoAtendimento.objects.filter(
-            id_atendimento=id_atendimento
-        ).order_by("data_evento", "id_historico")
+        return Response(montar_detalhe(atendimento))
 
-        dados = dict(AtendimentoDetalheSerializer(atendimento).data)
-        dados["historico"] = HistoricoAtendimentoSerializer(historico, many=True).data
-        return Response(dados)
+    def patch(self, request, id_atendimento):
+        # Valida o corpo: versão obrigatória e pelo menos uma mudança.
+        serializer = AtendimentoAlteracaoSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Separa a versão que o aplicativo conhece do resto, que são as mudanças.
+        mudancas = dict(serializer.validated_data)
+        versao_esperada = mudancas.pop("versao")
+
+        # Erros do banco (transição proibida, falta de permissão no gatilho) não
+        # são capturados: o tradutor de apps/core/erros.py converte em 422.
+        atendimento = atualizar_atendimento(id_atendimento, versao_esperada, mudancas)
+
+        return Response(montar_detalhe(atendimento))

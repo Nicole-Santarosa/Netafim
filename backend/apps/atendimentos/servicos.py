@@ -1,3 +1,6 @@
+from rest_framework.exceptions import NotFound
+
+from apps.atendimentos.excecoes import ConflitoDeVersao, SemPermissaoParaAlterar
 from apps.atendimentos.models import Atendimento
 
 # Colunas que quem abre o atendimento pode informar. Qualquer chave fora desta
@@ -82,3 +85,60 @@ def abrir_atendimento(id_solicitante: int, dados: dict) -> Atendimento:
     # versao, sync_seq e status.
     atendimento.refresh_from_db()
     return atendimento
+
+
+# Colunas que o PATCH pode mudar. Ficam de fora todas as outras: os dados do
+# pedido (quem abriu, o que foi pedido) não se editam depois da abertura, e o
+# resto é controle do banco (protocolo, versao, sync_seq, datas, deletado_em).
+# - status: a mudança de estado; a máquina de estados e quem pode cada
+#   transição estão no gatilho do banco.
+# - destinado_a e id_distribuidor: a destinação, que só o Netafim Admin define.
+# - id_tecnico_responsavel: o técnico, que exige a permissão vincular_tecnico.
+COLUNAS_ALTERAVEIS = (
+    "status",
+    "destinado_a",
+    "id_distribuidor",
+    "id_tecnico_responsavel",
+)
+
+
+def atualizar_atendimento(id_atendimento, versao_esperada: int, mudancas: dict) -> Atendimento:
+    """Altera status, destinação ou técnico, desde que a versão do aplicativo
+    seja a do banco, e devolve o atendimento atualizado.
+
+    O gatilho do banco só soma 1 à versão a cada alteração e não compara com a
+    versão do aplicativo. Por isso a comparação é feita aqui, dentro do próprio
+    UPDATE (WHERE versao = esperada), sem janela entre ler e gravar. As regras de
+    transição e de quem pode o quê são do gatilho: os erros dele não são
+    capturados aqui e o tradutor de apps/core/erros.py converte em 422.
+    """
+    # Só as colunas permitidas; o resto é descartado.
+    mudancas = {c: v for c, v in mudancas.items() if c in COLUNAS_ALTERAVEIS}
+    if not mudancas:
+        raise ValueError("Nenhuma coluna alterável informada.")
+
+    # update() altera só as colunas pedidas (nunca save() do objeto inteiro).
+    linhas = Atendimento.objects.filter(
+        id_atendimento=id_atendimento,
+        versao=versao_esperada,
+        deletado_em__isnull=True,
+    ).update(**mudancas)
+
+    if linhas == 0:
+        # Nenhuma linha mudou. Descobre o motivo olhando o atendimento atual.
+        atual = Atendimento.objects.filter(
+            id_atendimento=id_atendimento, deletado_em__isnull=True
+        ).first()
+        if atual is None:
+            # Não existe, foi excluído ou o RLS esconde do usuário. Nos três
+            # casos a resposta é a mesma, para não revelar que o id existe.
+            raise NotFound()
+        if atual.versao != versao_esperada:
+            # Alguém alterou antes: a versão do aplicativo está velha.
+            raise ConflitoDeVersao(atual.versao)
+        # Visível e com a versão certa, mas o UPDATE não pegou nenhuma linha:
+        # só pode ter sido a policy de UPDATE (RLS) que impediu.
+        raise SemPermissaoParaAlterar()
+
+    # Releitura para devolver o que o gatilho mudou (versao, sync_seq, datas).
+    return Atendimento.objects.get(id_atendimento=id_atendimento)

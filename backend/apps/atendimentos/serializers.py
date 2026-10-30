@@ -1,6 +1,12 @@
 from rest_framework import serializers
 
-from apps.atendimentos.models import Atendimento, HistoricoAtendimento
+from apps.atendimentos.models import (
+    Atendimento,
+    DestinadoA,
+    HistoricoAtendimento,
+    Status,
+)
+from apps.atendimentos.servicos import COLUNAS_ALTERAVEIS
 
 # Este serializer só recebe dados (a resposta fica para outra peça). Ele aceita
 # as mesmas colunas de COLUNAS_ACEITAS_NA_ABERTURA (servicos.py), menos duas:
@@ -196,3 +202,31 @@ class HistoricoAtendimentoSerializer(serializers.ModelSerializer):
             "data_evento",
         )
         read_only_fields = fields
+
+
+class AtendimentoAlteracaoSerializer(serializers.Serializer):
+    """Entrada do PATCH: a versão que o aplicativo conhece mais o que mudar.
+
+    Só valida formato e lista de valores. As regras de transição de status e de
+    quem pode destinar, cancelar ou trocar o técnico são do banco (gatilho), e
+    por isso não se repetem aqui. Chaves desconhecidas são ignoradas e não
+    chegam ao validated_data.
+    """
+
+    # Versão que o aplicativo tem; a API compara com a do banco no UPDATE.
+    versao = serializers.IntegerField(min_value=1)
+
+    # As escolhas vêm dos TextChoices do model.
+    status = serializers.ChoiceField(choices=Status.choices, required=False)
+    destinado_a = serializers.ChoiceField(choices=DestinadoA.choices, required=False)
+    id_distribuidor = serializers.IntegerField(required=False)
+    # Aceita nulo para desvincular o técnico.
+    id_tecnico_responsavel = serializers.IntegerField(required=False, allow_null=True)
+
+    def validate(self, dados):
+        # Um PATCH só com a versão não muda nada: pede ao menos uma alteração.
+        if not any(coluna in dados for coluna in COLUNAS_ALTERAVEIS):
+            raise serializers.ValidationError(
+                "Informe ao menos uma alteração: " + ", ".join(COLUNAS_ALTERAVEIS) + "."
+            )
+        return dados
