@@ -67,6 +67,18 @@ def test_solicitante_e_sempre_o_do_argumento(mundo, entrar_como):
 
 
 @pytest.mark.django_db
+def test_grava_o_distribuidor_de_origem_informado(mundo, entrar_como):
+    entrar_como(mundo["id_usuario_cliente"])
+
+    atendimento = abrir_atendimento(
+        mundo["id_usuario_cliente"],
+        dados_basicos(mundo, id_distribuidor_origem=mundo["id_distribuidor"]),
+    )
+
+    assert atendimento.id_distribuidor_origem == mundo["id_distribuidor"]
+
+
+@pytest.mark.django_db
 def test_id_repetido_levanta_erro_do_banco(mundo, entrar_como):
     entrar_como(mundo["id_usuario_cliente"])
     dados = dados_basicos(mundo)

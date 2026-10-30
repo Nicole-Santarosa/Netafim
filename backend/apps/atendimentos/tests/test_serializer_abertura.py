@@ -102,6 +102,13 @@ def test_chaves_que_o_servidor_controla_nao_chegam_ao_validated_data():
         assert chave not in serializer.validated_data
 
 
+def test_id_distribuidor_origem_e_aceito_e_aparece_no_validated_data():
+    serializer, valido = validar(dados_minimos(id_distribuidor_origem=7))
+
+    assert valido, serializer.errors
+    assert serializer.validated_data["id_distribuidor_origem"] == 7
+
+
 def test_todo_campo_do_serializer_esta_nas_colunas_aceitas_do_servico():
     # Guarda: se alguém acrescentar um campo aqui que o serviço descarta, o
     # dado seria aceito na validação e perdido em silêncio na gravação.

@@ -3,13 +3,15 @@ from rest_framework import serializers
 from apps.atendimentos.models import Atendimento
 
 # Este serializer só recebe dados (a resposta fica para outra peça). Ele aceita
-# as mesmas colunas de COLUNAS_ACEITAS_NA_ABERTURA (servicos.py), menos três:
+# as mesmas colunas de COLUNAS_ACEITAS_NA_ABERTURA (servicos.py), menos duas:
 #
 # - snapshot_cliente e snapshot_propriedade: são a cópia do cliente e da
 #   propriedade no momento da abertura. Quem monta é o servidor, a partir do
 #   cadastro; se o aplicativo pudesse enviar, alguém poderia gravar dados falsos.
-# - id_distribuidor_origem: depende do usuário logado (da organização dele), e o
-#   banco não trava esse valor. O servidor preenche numa outra peça.
+#
+# O id_distribuidor_origem entra, porque o usuário escolhe o distribuidor numa
+# lista na tela. Não há validação extra aqui: se o id não existir, o banco recusa
+# com erro de chave estrangeira e o tradutor de erros responde 422.
 #
 # Chaves que não estão em fields (status, numero_protocolo, id_solicitante,
 # snapshots etc.) são simplesmente ignoradas pelo DRF e não chegam ao
@@ -25,6 +27,7 @@ class AberturaAtendimentoSerializer(serializers.ModelSerializer):
             "motivo",
             "id_cliente",
             "id_propriedade",
+            "id_distribuidor_origem",
             "nome_produtor",
             "nome_fazenda_informado",
             "cidade",

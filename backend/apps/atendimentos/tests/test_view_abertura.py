@@ -125,3 +125,19 @@ def test_cliente_de_outra_empresa_devolve_403(mundo, conexao_admin, entrar_como)
 
     assert resposta.status_code == 403
     assert resposta.data["codigo"] == "sem_permissao"
+
+
+@pytest.mark.django_db
+def test_distribuidor_de_origem_inexistente_devolve_422(mundo, entrar_como):
+    entrar_como(mundo["id_usuario_cliente"])
+    # Id muito acima de qualquer distribuidor real: o banco recusa pela chave
+    # estrangeira e o tradutor responde 422.
+    corpo = corpo_valido(mundo, id_distribuidor_origem=2_000_000_000)
+
+    resposta = cliente_autenticado(mundo["id_usuario_cliente"]).post(
+        URL, corpo, format="json"
+    )
+
+    assert resposta.status_code == 422
+    assert resposta.data["codigo"] == "referencia_invalida"
+    assert not Atendimento.objects.filter(id_atendimento=corpo["id_atendimento"]).exists()
