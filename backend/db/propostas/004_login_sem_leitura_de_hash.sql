@@ -1,49 +1,33 @@
 -- =====================================================================================
--- PROPOSTA DT-002 (NÃO aplicada no banco do grupo): a API deixa de ler o hash da senha e a trilha de auditoria.
+-- PROPOSTA DT-002, PARTE 1 DE 2 (NÃO aplicada no banco do grupo): papel app_auth e funções de credencial.
 --
--- ATENÇÃO: aplicar SOMENTE junto com a mudança correspondente no Django (mesma entrega). Se o REVOKE
--- entrar antes do código novo, o login e a AutenticacaoJWT quebram: o ORM seleciona todas as colunas,
--- inclusive `password`.
+-- Esta parte é ADITIVA: só cria o papel app_auth e as funções fn_credencial_por_email e
+-- fn_credencial_por_id. Não revoga nada. Por isso é compatível com o código Django ANTIGO e com o NOVO,
+-- e pode ser aplicada antes, durante ou depois de cada colega atualizar o código. A parte 2 (005) é a que
+-- revoga o SELECT de app_django em usuario.password e em log_auditoria.
 --
--- Hoje: app_django tem SELECT em usuario (inclui password) e em log_auditoria. Quem conseguir executar
--- SQL pela API (injeção, credencial vazada) lista o hash de todos os usuários e lê a trilha inteira.
+-- Ordem de publicação sugerida:
+--   1. aplicar esta 004 (aditiva) e definir a senha de app_auth fora do repositório;
+--   2. cada pessoa atualiza o código e configura DB_AUTH_USER e DB_AUTH_PASSWORD;
+--   3. conferir o modo seguro contra o banco real (login pela conexão "auth");
+--   4. só então aplicar a 005 (REVOKE), quando TODOS estiverem no código novo.
 --
--- O que muda:
---   1. app_django perde o SELECT em log_auditoria (a API só GRAVA nela, por fn_audit) e passa a ter SELECT em
---      usuario somente nas colunas que não são `password`.
---   2. Nasce o papel app_auth, SEM nenhum privilégio de tabela, que só executa duas funções
---      SECURITY DEFINER: fn_credencial_por_email e fn_credencial_por_id. É uma conexão separada
---      (alias "auth" no Django), usada só para conferir a senha.
+-- O que ela cria: o papel app_auth, SEM nenhum privilégio de tabela, que só executa duas funções
+-- SECURITY DEFINER (alias "auth" no Django), usadas só para conferir a senha.
 --
 -- Importante, para ficar claro o limite: o Django precisa do hash para conferir a senha, então o hash
--- ainda chega ao processo de login. O ganho é que a conexão COMUM da API deixa de poder ler `password` por
--- consulta e não consegue chamar as funções de credencial.
+-- ainda chega ao processo de login. O ganho (depois da 005) é que a conexão COMUM da API deixa de poder ler
+-- `password` por consulta e não consegue chamar as funções de credencial.
 --
 -- Depois de aplicar:
 --   * defina a senha de app_auth FORA do repositório:  ALTER ROLE app_auth WITH PASSWORD '<segredo>';
---     (no pooler do Supabase o usuário é "app_auth.<ref-do-projeto>", como em app_django);
---   * ao criar coluna nova em usuario, conceda também o SELECT dela a app_django (concessão por coluna
---     não é automática): GRANT SELECT (nova_coluna) ON public.usuario TO app_django;
---   * leitura da trilha passa a ser só pelo dono do esquema (fn_verifica_cadeia_auditoria e fn_ancora_auditoria).
+--     (no pooler do Supabase o usuário é "app_auth.<ref-do-projeto>", como em app_django).
 --
+-- Idempotente (CREATE ROLE com IF NOT EXISTS; GRANT, REVOKE e CREATE OR REPLACE repetem sem erro).
 -- Aplicar com o dono do esquema, depois do "de acordo" do grupo.
 -- =====================================================================================
 
--- 1. app_django: sem log_auditoria e sem a coluna password --------------------------------------
-REVOKE SELECT ON public.log_auditoria FROM app_django;
-
-REVOKE SELECT ON public.usuario FROM app_django;
-DO $$
-BEGIN
-  EXECUTE 'GRANT SELECT (' || (
-    SELECT string_agg(quote_ident(attname), ', ' ORDER BY attnum)
-      FROM pg_attribute
-     WHERE attrelid = 'public.usuario'::regclass AND attnum > 0 AND NOT attisdropped
-       AND attname <> 'password'
-  ) || ') ON public.usuario TO app_django';
-END $$;
-
--- 2. app_auth: o único papel que recebe o hash ----------------------------------------------------
+-- app_auth: o único papel que recebe o hash ----------------------------------------------------
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_auth') THEN
