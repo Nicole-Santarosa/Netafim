@@ -15,13 +15,20 @@ cd backend
 uv sync
 ```
 
-A API conecta como **`app_django`** (sem `BYPASSRLS`), nunca como dono do esquema nem como `postgres`:
+### Conexão com o banco
 
-```
-DATABASE_URL=postgres://app_django:SENHA@HOST:5432/postgres?sslmode=require
-```
+A API conecta como **`app_django`** (sem `BYPASSRLS`), nunca como dono do esquema nem como `postgres`. O `config/settings.py` aceita **dois modos**; configure só um:
 
-No **Supabase** use o *Session pooler* (IPv4, porta 5432) em *Connect*; o usuário vira `app_django.<ref-do-projeto>`. Senhas com caracteres especiais precisam ir codificadas na URL (`@` → `%40`, `#` → `%23`, `/` → `%2F`).
+| Modo | Variáveis | Observações |
+|---|---|---|
+| **`DB_*`** (convenção do grupo) | `DB_HOST` (obrigatória), `DB_PASSWORD` (obrigatória), `DB_PORT` (padrão `5432`), `DB_NAME` (padrão `postgres`), `DB_USER` (padrão `app_django`), `DB_SSLMODE` | **Tem prioridade:** vale sempre que `DB_HOST` estiver preenchido. Evita o problema de caractere especial na senha. `DB_SSLMODE` é `prefer` quando o host é `localhost`, `127.0.0.1` ou `db`, e `require` em qualquer outro; use `disable` num banco local sem SSL. |
+| **`DATABASE_URL`** | `postgres://app_django:SENHA@HOST:5432/postgres?sslmode=require` | Senhas com caracteres especiais precisam ir codificadas na URL (`@` → `%40`, `#` → `%23`, `/` → `%2F`). Sem `DB_HOST` nem `DATABASE_URL`, o padrão é `postgres://app_django:app_django@localhost:5432/netafim`, só para uso local. |
+
+`DATABASE_CONN_MAX_AGE` (padrão `60`, em segundos) vale nos dois modos.
+
+No **Supabase** use o *Session pooler* (IPv4, porta 5432) em *Connect*; o usuário vira `app_django.<ref-do-projeto>`.
+
+As variáveis **`POSTGRES_*`** do `.env.example` **não são lidas pela API**: servem só ao `docker-compose.yml`, para criar o banco do contêiner `db`. Atenção: nesse arquivo a API recebe `DATABASE_URL` com o usuário `POSTGRES_USER`, que é o superusuário do contêiner e não o `app_django`, então o RLS não é exercido. O contêiner nasce vazio (o Django nunca cria as tabelas); para usá-lo, carregue [`db/snapshot_banco_atual.sql`](db/snapshot_banco_atual.sql), que cria o `app_django`, e aponte a API para ele pelos modos acima. O `docker-compose.yml` é provisório e não foi testado nesta revisão.
 
 > **Não rode `migrate` contra o banco do grupo.** O esquema é mantido nos scripts SQL do banco.
 
