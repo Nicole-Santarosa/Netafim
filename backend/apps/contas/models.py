@@ -15,6 +15,7 @@ from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.db import models
 from django.utils import timezone
 
+from .campos import HashSenhaField
 from .constantes import NivelPerfil, SituacaoUsuario, StatusOrganizacao, TipoOrganizacao
 
 
@@ -174,6 +175,8 @@ class Usuario(AbstractBaseUser):
     nome = models.CharField(max_length=150)
     email = models.EmailField(max_length=150)
     telefone = models.CharField(max_length=20, null=True, blank=True)
+    # Só de escrita (DT-002): nunca é lido por esta conexão. Ver campos.HashSenhaField.
+    password = HashSenhaField("password", max_length=128)
 
     situacao = models.CharField(
         max_length=15, choices=SituacaoUsuario.choices, default=SituacaoUsuario.PENDENTE
@@ -253,9 +256,53 @@ class Usuario(AbstractBaseUser):
     def is_active(self) -> bool:  # usado pelo Django e pelo simplejwt
         return self.situacao == SituacaoUsuario.ATIVO and self.deletado_em is None
 
+    # ----- senha (DT-002): o hash é só de escrita ------------------------------------
+
+    _hash_novo = False  # há um hash novo, definido nesta instância, ainda não gravado
+
     def set_password(self, raw_password):
         super().set_password(raw_password)
         self.senha_alterada_em = timezone.now()
+        self._hash_novo = True
+
+    def set_unusable_password(self):
+        super().set_unusable_password()
+        self._hash_novo = True
+
+    def check_password(self, raw_password):
+        raise NotImplementedError(
+            "O hash da senha não é lido por esta conexão (DT-002). Use credenciais.conferir()."
+        )
+
+    def has_usable_password(self):
+        raise NotImplementedError(
+            "O hash da senha não é lido por esta conexão (DT-002). Para saber se o convite foi "
+            "aceito use aguarda_definir_senha; para a checagem exata, "
+            "credenciais.senha_utilizavel()."
+        )
+
+    @property
+    def aguarda_definir_senha(self) -> bool:
+        """
+        Convite ainda não aceito. O usuário criado por convite nasce com senha inutilizável e sem
+        ``senha_alterada_em``; o autocadastro grava a data junto com a senha e, depois, qualquer
+        troca de hash preenche a data (gatilho ``fn_usuario_antes`` do banco).
+        """
+        return self.senha_alterada_em is None
+
+    def save(self, *args, **kwargs):
+        """
+        Um usuário carregado do banco tem ``password = None`` (campo só de escrita). Para um
+        ``save()`` comum não gravar esse ``None`` por cima do hash, a coluna só entra no UPDATE
+        quando um hash novo foi definido nesta instância (``set_password``).
+        """
+        if not args and not self._state.adding:
+            campos = kwargs.get("update_fields")
+            if campos is None:
+                campos = [f.name for f in self._meta.concrete_fields if not f.primary_key]
+            kwargs["update_fields"] = [c for c in campos if c != "password" or self._hash_novo]
+        super().save(*args, **kwargs)
+        self._hash_novo = False
 
     def clean(self):
         super().clean()

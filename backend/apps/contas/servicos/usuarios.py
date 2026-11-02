@@ -26,7 +26,7 @@ from ..constantes import (
 from ..escopo import pode_gerenciar
 from ..excecoes import ErroNegocio, SemPermissao
 from ..models import Cliente, Distribuidor, DominioEmailCorporativo, Perfil, Usuario
-from . import auditoria, banco, notificacoes, tokens
+from . import auditoria, banco, credenciais, notificacoes, tokens
 from .acesso import definir_senha_por_token, validar_senha
 from .auditoria import Acao, Resultado
 
@@ -281,7 +281,7 @@ def reenviar_convite(ator: Usuario, alvo: Usuario, *, request=None) -> None:
     """
     _exigir(ator, Permissao.CRIAR_USUARIO)
     _exigir_gestao(ator, alvo)
-    if alvo.has_usable_password():
+    if credenciais.senha_utilizavel(alvo.pk):
         raise ErroNegocio("Este usuário já definiu a senha.", "convite_ja_aceito")
     ip = auditoria.ip_da_requisicao(request)
     if alvo.situacao == SituacaoUsuario.PENDENTE:

@@ -35,7 +35,11 @@ RETRATO = Path(__file__).resolve().parents[3] / "db" / "snapshot_banco_atual.sql
 PROPOSTA_REVOGAR_TOKENS = (
     Path(__file__).resolve().parents[3] / "db" / "propostas" / "001_fn_revogar_tokens_usuario.sql"
 )
+PROPOSTA_LOGIN_SEM_HASH = (
+    Path(__file__).resolve().parents[3] / "db" / "propostas" / "004_login_sem_leitura_de_hash.sql"
+)
 SENHA_APP_DJANGO = os.environ.get("TEST_APP_DJANGO_PASSWORD", "app_django_teste")
+SENHA_APP_AUTH = os.environ.get("TEST_APP_AUTH_PASSWORD", "app_auth_teste")
 _seq = itertools.count(1)
 
 
@@ -57,6 +61,11 @@ def _modelo():
         adm.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(nome)))
     with psycopg.connect(_conninfo(nome), autocommit=True) as conn:
         conn.execute(RETRATO.read_text(encoding="utf-8"))
+        # DT-002: a API não lê o hash da senha; o login usa o papel app_auth (conexão "auth").
+        conn.execute(PROPOSTA_LOGIN_SEM_HASH.read_text(encoding="utf-8"))
+        conn.execute(
+            sql.SQL("ALTER ROLE app_auth WITH PASSWORD {}").format(sql.Literal(SENHA_APP_AUTH))
+        )
     yield nome
     with psycopg.connect(_conninfo("postgres"), autocommit=True) as adm:
         adm.execute(sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(nome)))
@@ -85,6 +94,19 @@ def banco(_modelo, django_db_blocker, settings):
         HOST=base.get("host", "localhost"),
         PORT=base.get("port", "5432"),
     )
+    # Segunda conexão, só para conferir senha (DT-002): papel app_auth, no mesmo banco do teste.
+    conexao_auth = connections["auth"]
+    conexao_auth.close()
+    originais_auth = {
+        k: conexao_auth.settings_dict.get(k) for k in ("NAME", "USER", "PASSWORD", "HOST", "PORT")
+    }
+    conexao_auth.settings_dict.update(
+        NAME=nome,
+        USER="app_auth",
+        PASSWORD=SENHA_APP_AUTH,
+        HOST=base.get("host", "localhost"),
+        PORT=base.get("port", "5432"),
+    )
     # Hash rápido nos testes; o teste do cadastro confere o Argon2 de produção à parte.
     settings.PASSWORD_HASHERS = [
         "django.contrib.auth.hashers.MD5PasswordHasher",
@@ -94,6 +116,7 @@ def banco(_modelo, django_db_blocker, settings):
         yield nome
         connections.close_all()
     conexao.settings_dict.update(originais)
+    conexao_auth.settings_dict.update(originais_auth)
     with psycopg.connect(_conninfo("postgres"), autocommit=True) as adm:
         adm.execute(sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(nome)))
 
