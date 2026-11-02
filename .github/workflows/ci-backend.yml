@@ -1,0 +1,37 @@
+name: CI - Backend
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Testes do Backend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Instalar dependências
+        run: uv sync
+
+      - name: Executar testes
+        run: uv run python manage.py test
