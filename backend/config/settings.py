@@ -148,19 +148,20 @@ DATABASES["default"].setdefault("OPTIONS", {})["prepare_threshold"] = None
 # fn_credencial_por_email e fn_credencial_por_id. É a única que recebe o hash da senha; a conexão
 # "default" (app_django) não lê usuario.password. Mesmo banco e servidor, outro usuário. No pooler
 # do Supabase o usuário é "app_auth.<ref-do-projeto>". Sem ATOMIC_REQUESTS (só leitura de função).
-DATABASES["auth"] = {
-    **DATABASES["default"],
-    "OPTIONS": dict(DATABASES["default"]["OPTIONS"]),
-    "USER": env("DB_AUTH_USER", default="app_auth"),
-    # Em produção (DB_HOST) a senha é obrigatória; o padrão "app_auth" só existe no modo local
-    # (DATABASE_URL), como o do app_django.
-    "PASSWORD": env(
-        "DB_AUTH_PASSWORD",
-        default=None if os.environ.get("DB_HOST") else "app_auth",
-        required=bool(os.environ.get("DB_HOST")),
-    ),
-    "ATOMIC_REQUESTS": False,
-}
+#
+# OPCIONAL de propósito: só existe quando DB_AUTH_PASSWORD está definida. Sem ela nada falha na
+# subida (quem importa este settings, como os testes do módulo de atendimentos, segue funcionando) e
+# o login usa o modo LEGADO (ver servicos/credenciais.py), que só funciona enquanto o banco ainda
+# deixa o app_django ler a senha, isto é, antes de aplicar a proposta 004.
+CONEXAO_AUTH_CONFIGURADA = bool(env("DB_AUTH_PASSWORD"))
+if CONEXAO_AUTH_CONFIGURADA:
+    DATABASES["auth"] = {
+        **DATABASES["default"],
+        "OPTIONS": dict(DATABASES["default"]["OPTIONS"]),
+        "USER": env("DB_AUTH_USER", default="app_auth"),
+        "PASSWORD": env("DB_AUTH_PASSWORD"),
+        "ATOMIC_REQUESTS": False,
+    }
 
 AUTH_USER_MODEL = "contas.Usuario"
 

@@ -9,9 +9,11 @@ from datetime import UTC, datetime
 
 import pytest
 from django.contrib.auth.hashers import make_password
-from django.db import models
+from django.core.exceptions import ImproperlyConfigured
+from django.db import OperationalError, ProgrammingError, models
 from django.db.models.sql import UpdateQuery
 
+from apps.contas.apps import verificar_conexao_auth
 from apps.contas.models import Dispositivo, Usuario
 from apps.contas.servicos import credenciais
 
@@ -223,12 +225,147 @@ def test_senha_utilizavel(conexao_auth):
     assert credenciais.senha_utilizavel(1) is False
 
 
+# ---------------------------------------------------------------- modo seguro x modo legado
+
+
+def _erro_de_banco(classe, estado=None):
+    """Erro do Django com a causa do psycopg (que traz o sqlstate), sem tocar no banco."""
+    erro = classe("falha simulada")
+    if estado is not None:
+        erro.__cause__ = type("Causa", (Exception,), {"sqlstate": estado})()
+    return erro
+
+
+class _CursorQueFalha(_Cursor):
+    def __init__(self, erro):
+        super().__init__(None)
+        self.erro = erro
+
+    def execute(self, comando, params):
+        super().execute(comando, params)
+        raise self.erro
+
+
+class _ConexoesProibidas(dict):
+    """Falha se o código tentar usar a conexão auth (o modo legado não pode)."""
+
+    def __getitem__(self, chave):
+        raise AssertionError("o modo legado não pode abrir a conexão auth")
+
+
+@pytest.fixture
+def conexao_comum(monkeypatch):
+    def _preparar(cursor):
+        monkeypatch.setattr(credenciais, "connection", _Conexao(cursor))
+        return cursor
+
+    return _preparar
+
+
+@pytest.fixture
+def sem_conexao_auth(settings, monkeypatch):
+    settings.CONEXAO_AUTH_CONFIGURADA = False
+    monkeypatch.setattr(credenciais, "connections", _ConexoesProibidas())
+
+
+def test_modo_legado_le_pela_conexao_comum_sem_abrir_a_auth(sem_conexao_auth, conexao_comum):
+    hash_da_senha = make_password(SENHA)
+    cursor = conexao_comum(_Cursor((9, hash_da_senha, "ativo", 0, None)))
+
+    credencial = credenciais.por_email(" Maria@Gmail.com ")
+
+    assert credenciais.modo_seguro() is False
+    assert credencial == credenciais.Credencial(9, hash_da_senha, "ativo", 0, None)
+    comando, params = cursor.chamadas[0]
+    assert "from usuario" in comando and "fn_credencial" not in comando
+    assert "deletado_em is null" in comando  # conta excluída não existe, como nas funções
+    assert params == ["maria@gmail.com"]
+
+
+def test_modo_legado_por_id(sem_conexao_auth, conexao_comum):
+    cursor = conexao_comum(_Cursor((9, make_password(SENHA), "ativo", 0, None)))
+    assert credenciais.por_id(9).id_usuario == 9
+    assert cursor.chamadas[0][1] == [9]
+
+
+def test_modo_legado_depois_do_revoke_falha_com_mensagem_clara(sem_conexao_auth, conexao_comum):
+    conexao_comum(_CursorQueFalha(_erro_de_banco(ProgrammingError, "42501")))
+    with pytest.raises(ImproperlyConfigured, match="DB_AUTH_PASSWORD"):
+        credenciais.por_email("maria@gmail.com")
+
+
+def test_modo_legado_nao_mascara_outros_erros_de_banco(sem_conexao_auth, conexao_comum):
+    conexao_comum(_CursorQueFalha(_erro_de_banco(ProgrammingError, "42P01")))  # tabela inexistente
+    with pytest.raises(ProgrammingError):
+        credenciais.por_email("maria@gmail.com")
+
+
+def test_modo_seguro_nao_toca_na_conexao_comum(conexao_auth, monkeypatch):
+    conexao_auth((9, make_password(SENHA), "ativo", 0, None))
+    monkeypatch.setattr(credenciais, "connection", None)  # qualquer uso levantaria erro
+    assert credenciais.modo_seguro() is True
+    assert credenciais.por_email("maria@gmail.com").id_usuario == 9
+
+
+@pytest.mark.parametrize(
+    "erro",
+    [
+        _erro_de_banco(OperationalError),  # papel ou senha da auth inexistentes (004 não aplicada)
+        _erro_de_banco(ProgrammingError, "42883"),  # função fn_credencial_* ainda não existe
+    ],
+    ids=["auth_inexistente", "funcao_inexistente"],
+)
+def test_modo_seguro_sem_a_004_cai_no_legado_e_avisa(erro, monkeypatch, conexao_comum, caplog):
+    monkeypatch.setattr(credenciais, "connections", {"auth": _Conexao(_CursorQueFalha(erro))})
+    hash_da_senha = make_password(SENHA)
+    conexao_comum(_Cursor((9, hash_da_senha, "ativo", 0, None)))
+
+    with caplog.at_level("WARNING", logger=credenciais.log.name):
+        credencial = credenciais.por_email("maria@gmail.com")
+
+    assert credencial.hash == hash_da_senha
+    assert "conexao auth indisponivel" in caplog.text
+    assert hash_da_senha not in caplog.text  # o hash nunca vai para o log
+
+
+def test_modo_seguro_sem_privilegio_na_funcao_nao_cai_no_legado(monkeypatch, conexao_comum):
+    erro = _erro_de_banco(ProgrammingError, "42501")  # a função existe, mas a auth não pode usá-la
+    monkeypatch.setattr(credenciais, "connections", {"auth": _Conexao(_CursorQueFalha(erro))})
+    comum = conexao_comum(_Cursor((9, make_password(SENHA), "ativo", 0, None)))
+
+    with pytest.raises(ProgrammingError):
+        credenciais.por_email("maria@gmail.com")
+    assert comum.chamadas == []  # nem tentou o modo legado
+
+
+def test_auth_fora_do_ar_depois_do_revoke_sobe_o_erro_da_auth(monkeypatch, conexao_comum):
+    erro_auth = _erro_de_banco(OperationalError)
+    monkeypatch.setattr(credenciais, "connections", {"auth": _Conexao(_CursorQueFalha(erro_auth))})
+    conexao_comum(_CursorQueFalha(_erro_de_banco(ProgrammingError, "42501")))  # REVOKE já aplicado
+
+    with pytest.raises(OperationalError) as info:
+        credenciais.por_email("maria@gmail.com")
+    assert info.value is erro_auth  # o problema é a conexão auth, não a configuração legada
+
+
 # --------------------------------------------------------------------------- configuração
 
 
 def test_alias_auth_e_separado_da_conexao_comum(settings):
+    """Nos testes o pytest-env define DB_AUTH_PASSWORD, então a conexão auth existe."""
     bancos = settings.DATABASES
+    assert settings.CONEXAO_AUTH_CONFIGURADA is True
     assert "auth" in bancos
     assert bancos["auth"]["USER"] != bancos["default"]["USER"]
     assert bancos["auth"]["ATOMIC_REQUESTS"] is False
     assert bancos["default"]["ATOMIC_REQUESTS"] is True
+
+
+def test_check_avisa_so_no_modo_legado(settings):
+    settings.CONEXAO_AUTH_CONFIGURADA = True
+    assert verificar_conexao_auth(None) == []
+
+    settings.CONEXAO_AUTH_CONFIGURADA = False
+    avisos = verificar_conexao_auth(None)
+    assert [a.id for a in avisos] == ["contas.W001"]
+    assert avisos[0].level == 30  # Warning: não derruba o --fail-level ERROR do CI

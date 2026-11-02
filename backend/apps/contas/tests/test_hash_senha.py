@@ -5,8 +5,11 @@ auditoria, e o hash só chega pela conexão ``auth`` (papel app_auth), por duas 
 Os testes de comportamento sem banco estão em ``tests/unitarios/test_hash_senha.py``.
 """
 
+import uuid
+
 import pytest
 from django.contrib.auth.hashers import check_password, make_password
+from django.core.exceptions import ImproperlyConfigured
 from django.db import DatabaseError, connection, connections, transaction
 from django.urls import reverse
 
@@ -148,3 +151,57 @@ def test_convite_pendente_vem_de_senha_alterada_em(como, criar_usuario):
 
     ja_definiu = criar_usuario(senha_alterada_em="2026-01-02T03:04:05+00:00")
     assert como(ja_definiu).get(ME).data["convite_pendente"] is False
+
+
+# --------------------------------------------------------------------------- transição: 004 e 005
+
+
+class _ConexoesProibidas(dict):
+    """Falha se o login tentar abrir a conexão auth (o modo legado não pode)."""
+
+    def __getitem__(self, chave):
+        raise AssertionError("o modo legado não pode abrir a conexão auth")
+
+
+def _logar(api, pessoa, senha=SENHA):
+    corpo = {
+        "email": pessoa.email,
+        "senha": senha,
+        "dispositivo": {"id_dispositivo": str(uuid.uuid4())},
+    }
+    return api.post(reverse("auth-login"), corpo, format="json")
+
+
+@pytest.fixture
+def modo_legado(settings, monkeypatch):
+    """Simula a API sem DB_AUTH_PASSWORD: nada de conexão auth."""
+    settings.CONEXAO_AUTH_CONFIGURADA = False
+    monkeypatch.setattr(credenciais, "connections", _ConexoesProibidas())
+
+
+def test_antes_da_005_o_modo_legado_faz_login(api, netafim_usuario, antes_da_005, modo_legado):
+    assert _logar(api, netafim_usuario).status_code == 200
+    assert _logar(api, netafim_usuario, senha="errada").status_code == 401
+
+
+def test_depois_da_005_o_modo_legado_falha_pedindo_a_conexao_auth(
+    api, netafim_usuario, modo_legado
+):
+    with pytest.raises(ImproperlyConfigured, match="DB_AUTH_PASSWORD"):
+        _logar(api, netafim_usuario)
+
+
+def test_modo_seguro_sem_as_funcoes_da_004_cai_no_legado_e_avisa(
+    api, netafim_usuario, antes_da_005, banco_sql, caplog
+):
+    """DB_AUTH_PASSWORD já configurada, mas a 004 ainda não aplicada neste banco."""
+    banco_sql.executar("drop function fn_credencial_por_email(text)")
+    with caplog.at_level("WARNING", logger=credenciais.log.name):
+        r = _logar(api, netafim_usuario)
+    assert r.status_code == 200
+    assert "conexao auth indisponivel" in caplog.text
+
+
+def test_depois_da_005_a_conexao_auth_continua_funcionando(api, netafim_usuario):
+    assert credenciais.modo_seguro() is True
+    assert _logar(api, netafim_usuario).status_code == 200
