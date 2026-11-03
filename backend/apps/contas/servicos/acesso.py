@@ -14,7 +14,7 @@ from .. import contexto
 from ..constantes import SituacaoUsuario, TipoToken
 from ..excecoes import CredenciaisInvalidas, ErroNegocio
 from ..models import Dispositivo, Usuario
-from . import auditoria, banco, notificacoes, tokens
+from . import auditoria, banco, credenciais, notificacoes, tokens
 from .auditoria import Acao, Resultado
 
 
@@ -66,7 +66,11 @@ def autenticar(
             )
             erro = CredenciaisInvalidas()
         else:
-            senha_ok = usuario.check_password(senha)
+            # O hash vem da conexão "auth" (DT-002); esta conexão não lê usuario.password.
+            credencial = credenciais.por_email(email)
+            if credencial is not None and credencial.id_usuario != usuario.pk:
+                credencial = None  # nunca confere a senha de outra conta
+            senha_ok = credenciais.conferir(credencial, senha)
             bloqueado = usuario.bloqueado_ate is not None and usuario.bloqueado_ate > timezone.now()
             if bloqueado or not senha_ok:
                 # Bloqueado: o banco audita a tentativa e não anda o contador. Senha errada: conta.
@@ -179,7 +183,7 @@ def encerrar_sessao(usuario: Usuario, refresh: str, *, request=None) -> None:
 
 
 def alterar_senha(usuario: Usuario, senha_atual: str, nova_senha: str, *, request=None) -> None:
-    if not usuario.check_password(senha_atual):
+    if not credenciais.conferir(credenciais.por_id(usuario.pk), senha_atual):
         raise ErroNegocio("A senha atual está incorreta.", "senha_atual_incorreta")
     if senha_atual == nova_senha:
         raise ErroNegocio("A nova senha deve ser diferente da atual.", "senha_repetida")

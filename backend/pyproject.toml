@@ -32,6 +32,8 @@ env = [
     "D:DJANGO_DEBUG=true",
     "D:DJANGO_SECRET_KEY=chave-apenas-para-testes-com-32-bytes-ou-mais",
     "D:DATABASE_URL=postgres://netafim:netafim@localhost:5432/netafim",
+    # liga a conexão "auth" (DT-002) nos testes; o conftest aponta o alias para o banco de cada teste
+    "D:DB_AUTH_PASSWORD=app_auth_teste",
     "EMAIL_BACKEND=django.core.mail.backends.locmem.EmailBackend",
     "THROTTLE_LOGIN=1000/min",
     "THROTTLE_CADASTRO=1000/min",

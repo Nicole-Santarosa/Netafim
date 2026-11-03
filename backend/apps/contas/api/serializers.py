@@ -98,7 +98,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
         return organizacao_de(obj)
 
     def get_convite_pendente(self, obj) -> bool:
-        return not obj.has_usable_password()
+        return obj.aguarda_definir_senha
 
 
 class MeSerializer(UsuarioSerializer):
