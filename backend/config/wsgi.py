@@ -1,4 +1,3 @@
-"""Entrada WSGI para servidores de produção."""
 import os
 
 from django.core.wsgi import get_wsgi_application
