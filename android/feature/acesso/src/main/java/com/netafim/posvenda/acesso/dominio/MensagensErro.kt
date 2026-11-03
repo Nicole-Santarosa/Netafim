@@ -18,6 +18,15 @@ object MensagensErro {
         "dispositivo_revogado" to "Este aparelho teve o acesso revogado. Procure a Netafim.",
         "termo_desatualizado" to
             "O aviso de privacidade foi atualizado. Leia e aceite a nova versão.",
+        "codigo_mfa_invalido" to
+            "Código incorreto ou expirado. Confira o aplicativo e tente de novo.",
+        "desafio_mfa_invalido" to "O tempo para informar o código acabou. Entre novamente.",
+        "senha_incorreta" to "A senha está incorreta.",
+        "mfa_indisponivel" to
+            "A verificação em duas etapas não está disponível agora. Procure a Netafim.",
+        "mfa_ja_ativo" to "A verificação em duas etapas já está ativa.",
+        "mfa_nao_iniciado" to "Comece a configuração de novo para gerar o código.",
+        "mfa_inativo" to "A verificação em duas etapas não está ativa.",
         "token_invalido" to "Sua sessão expirou. Entre novamente.",
     )
 

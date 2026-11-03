@@ -39,5 +39,11 @@ object Validacao {
         return if (digitos.length in 10..11) null else "Informe DDD e número."
     }
 
+    /** Código do aplicativo (6 dígitos) ou de recuperação (10 letras/números, com ou sem hífen). */
+    fun codigoMfa(valor: String): String? {
+        val limpo = valor.filter { it != ' ' && it != '-' }
+        return if (limpo.length >= 6) null else "Informe o código de 6 dígitos."
+    }
+
     fun somenteDigitos(valor: String): String = valor.filter { it.isDigit() }
 }

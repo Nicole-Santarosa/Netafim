@@ -17,6 +17,7 @@ import com.netafim.posvenda.acesso.ui.link.LinkRota
 import com.netafim.posvenda.acesso.ui.link.LinkViewModel
 import com.netafim.posvenda.acesso.ui.login.LoginRota
 import com.netafim.posvenda.acesso.ui.login.LoginViewModel
+import com.netafim.posvenda.acesso.ui.perfil.MfaViewModel
 import com.netafim.posvenda.acesso.ui.perfil.PerfilRota
 import com.netafim.posvenda.acesso.ui.perfil.PerfilViewModel
 import com.netafim.posvenda.acesso.ui.senha.EsqueciSenhaRota
@@ -36,6 +37,7 @@ private val fabrica = viewModelFactory {
     initializer { LoginViewModel(AcessoGrafo.repositorio) }
     initializer { CadastroViewModel(AcessoGrafo.repositorio) }
     initializer { PerfilViewModel(AcessoGrafo.repositorio) }
+    initializer { MfaViewModel(AcessoGrafo.repositorio) }
     initializer { EsqueciSenhaViewModel(AcessoGrafo.repositorio) }
     initializer { LinkViewModel(AcessoGrafo.repositorio) }
 }
@@ -89,6 +91,7 @@ fun NavGraphBuilder.telaPerfil(navController: NavHostController) {
     composable(RotasAcesso.PERFIL) {
         PerfilRota(
             viewModel = viewModel(factory = fabrica),
+            mfaViewModel = viewModel(factory = fabrica),
             aoVoltar = { navController.popBackStack() },
             aoSair = {
                 navController.navigate(RotasAcesso.GRAFO) {
