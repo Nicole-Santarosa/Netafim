@@ -2,7 +2,9 @@
 # PROVISÓRIO: criado junto com o módulo de acesso para a API rodar; alinhar com
 # o responsável pela infraestrutura (infra/, Nginx, Object Storage) antes do merge.
 #
-# Uso: cp .env.example .env && docker compose up --build
+# Uso, a partir da raiz do repositório:
+#   cp .env.example .env && docker compose -f infra/docker-compose.yml --env-file .env up --build
+# (--env-file é necessário para a interpolação de ${POSTGRES_*}, que lê o .env da pasta do compose.)
 
 services:
   db:
@@ -22,8 +24,8 @@ services:
       retries: 10
 
   backend:
-    build: ./backend
-    env_file: .env
+    build: ../backend
+    env_file: ../.env
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-netafim}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-netafim}
     depends_on:

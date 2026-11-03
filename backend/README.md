@@ -54,7 +54,7 @@ uv run pytest --cov
 uv run ruff check . && uv run ruff format --check .
 ```
 
-Os testes rodam **como a API roda no ar**: conectados como `app_django`, com RLS, gatilhos e funções reais. O `DATABASE_URL` dos testes aponta para um PostgreSQL com **superusuário**, só para criar e derrubar os bancos de teste. Cada teste ganha um banco novo, copiado de um modelo criado a partir de [`db/snapshot_banco_atual.sql`](db/snapshot_banco_atual.sql), um retrato do banco do grupo. Se o banco mudar, regere o retrato e rode a suíte.
+Os testes rodam **como a API roda no ar**: conectados como `app_django`, com RLS, gatilhos e funções reais. O `DATABASE_URL` dos testes aponta para um PostgreSQL com **superusuário**, só para criar e derrubar os bancos de teste. Cada teste ganha um banco novo, copiado de um modelo criado a partir de [`db/testes/schema_teste.sql`](db/testes/schema_teste.sql), um retrato do banco do grupo. Se o banco mudar, regere o retrato e rode a suíte.
 
 ## Contrato da API
 
@@ -76,8 +76,10 @@ apps/contas/            módulo de acesso (usuários e permissões)
   api/                  serializers, views e rotas
   tests/                banco (contrato), autenticação, cadastro e restrições de acesso
 db/
-  snapshot_banco_atual.sql   banco completo do grupo (scripts 01 a 04), usado só nos testes
-  propostas/                 mudanças sugeridas ao banco (NÃO aplicadas)
+  testes/                    schema_teste.sql (banco completo do grupo, scripts 01 a 04, usado só nos testes)
+                             e dados_teste.sql (usuários de teste, só para banco local)
 ```
+
+Os scripts de banco (as propostas de mudança, **não aplicadas**) ficam em [`../infra/db/propostas/`](../infra/db/propostas/), fora do `backend/`.
 
 Detalhes do módulo: [`docs/modulos/acesso.md`](../docs/modulos/acesso.md).

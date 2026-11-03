@@ -3,9 +3,9 @@ name: Back-end
 on:
   push:
     branches: [main]
-    paths: ["backend/**", "docs/api/**", ".github/workflows/backend.yml"]
+    paths: ["backend/**", "infra/db/**", "docs/api/**", ".github/workflows/backend.yml"]
   pull_request:
-    paths: ["backend/**", "docs/api/**", ".github/workflows/backend.yml"]
+    paths: ["backend/**", "infra/db/**", "docs/api/**", ".github/workflows/backend.yml"]
 
 concurrency:
   group: backend-${{ github.ref }}

@@ -179,7 +179,7 @@ def revogar_todos(id_usuario: int, *, tipo: str | None = None) -> int | None:
     """
     Encerra todas as sessões do usuário (troca ou redefinição de senha).
 
-    Depende de ``fn_revogar_tokens_usuario``, proposta em ``backend/db/propostas``. Enquanto a
+    Depende de ``fn_revogar_tokens_usuario``, proposta em ``infra/db/propostas``. Enquanto a
     função não existir no banco, as sessões antigas continuam valendo até expirar e isto só registra
     um aviso.
     """

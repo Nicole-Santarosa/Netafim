@@ -2,7 +2,7 @@
 Infraestrutura dos testes do módulo de acesso.
 
 Os testes rodam EXATAMENTE como a API roda no ar: conectados como ``app_django`` (sem BYPASSRLS),
-contra um PostgreSQL com o retrato do banco do grupo (``backend/db/snapshot_banco_atual.sql``): RLS,
+contra um PostgreSQL com o retrato do banco do grupo (``backend/db/testes/schema_teste.sql``): RLS,
 gatilhos e funções reais. Por isso cada teste ganha um banco novo, criado a partir de um
 banco-modelo (CREATE DATABASE ... TEMPLATE), em vez de uma transação revertida: as transações da API
 precisam ser de verdade (ator por transação, contagem de falhas de login gravada mesmo na falha,
@@ -31,10 +31,9 @@ from rest_framework_simplejwt.tokens import AccessToken
 from apps.contas.constantes import NivelPerfil, SituacaoUsuario, TipoOrganizacao
 
 SENHA = "Irrigacao#Segura2026"
-RETRATO = Path(__file__).resolve().parents[3] / "db" / "snapshot_banco_atual.sql"
-PROPOSTA_REVOGAR_TOKENS = (
-    Path(__file__).resolve().parents[3] / "db" / "propostas" / "001_fn_revogar_tokens_usuario.sql"
-)
+RETRATO = Path(__file__).resolve().parents[3] / "db" / "testes" / "schema_teste.sql"
+PROPOSTAS = Path(__file__).resolve().parents[4] / "infra" / "db" / "propostas"
+PROPOSTA_REVOGAR_TOKENS = PROPOSTAS / "001_fn_revogar_tokens_usuario.sql"
 SENHA_APP_DJANGO = os.environ.get("TEST_APP_DJANGO_PASSWORD", "app_django_teste")
 _seq = itertools.count(1)
 

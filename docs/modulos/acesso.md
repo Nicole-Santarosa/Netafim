@@ -27,7 +27,7 @@ O esquema (tabelas, constraints, gatilhos, funções e RLS) é do **banco do gru
 - **Tokens:** `app_django` não tem privilégio em `token_acesso`. Emitir, rotacionar e revogar passam só por `fn_emitir_token`, `fn_rotacionar_token` e `fn_revogar_token`.
 - **Falhas de login e bloqueio** (5 erros, 15 minutos) são contadas pelo banco em `fn_registrar_login`; a API não consegue alterar esses campos.
 - **Auditoria:** o banco grava a trilha (`log_auditoria`, com cadeia de hash) por gatilhos e funções. O sinal `evento_auditoria` da API fica só como log complementar.
-- Os testes usam o banco completo do grupo (scripts 01 a 04, com a correção de visibilidade do atendimento) em [`backend/db/snapshot_banco_atual.sql`](../../backend/db/snapshot_banco_atual.sql). Se os scripts do grupo mudarem, regere o arquivo e rode a suíte.
+- Os testes usam o banco completo do grupo (scripts 01 a 04, com a correção de visibilidade do atendimento) em [`backend/db/testes/schema_teste.sql`](../../backend/db/testes/schema_teste.sql). Se os scripts do grupo mudarem, regere o arquivo e rode a suíte.
 
 ### Aviso para quem usa o banco compartilhado
 
@@ -137,11 +137,11 @@ if (usuario?.temPermissao(Permissoes.ABRIR_ATENDIMENTO) == true) { ... }
 
 ## Pontos para alinhar com o grupo
 
-Arquivos **provisórios** criados só para o módulo rodar e ser testado: `backend/config/` (settings, urls), `backend/Dockerfile`, `docker-compose.yml`, `.env.example`, `android/` raiz e `android/app/`, `.github/workflows/`. A branch do Rafael também mexe em `config/settings.py`, `pyproject.toml` e `uv.lock`, então haverá conflito de merge a resolver.
+Arquivos **provisórios** criados só para o módulo rodar e ser testado: `backend/config/` (settings, urls), `backend/Dockerfile`, `infra/docker-compose.yml`, `.env.example`, `android/` raiz e `android/app/`, `.github/workflows/`. A branch do Rafael também mexe em `config/settings.py`, `pyproject.toml` e `uv.lock`, então haverá conflito de merge a resolver.
 
 ### Sobre o banco (itens que dependem de quem mantém o SQL)
 
-1. **Encerrar sessões na troca de senha.** O banco não tem como revogar todos os tokens de um usuário. Há uma proposta em [`backend/db/propostas/001_fn_revogar_tokens_usuario.sql`](../../backend/db/propostas/001_fn_revogar_tokens_usuario.sql). Enquanto não for aplicada, a API troca a senha, registra um aviso no log e as sessões antigas valem até expirar.
+1. **Encerrar sessões na troca de senha.** O banco não tem como revogar todos os tokens de um usuário. Há uma proposta em [`infra/db/propostas/001_fn_revogar_tokens_usuario.sql`](../../infra/db/propostas/001_fn_revogar_tokens_usuario.sql). Enquanto não for aplicada, a API troca a senha, registra um aviso no log e as sessões antigas valem até expirar.
 2. **A API lê o hash da senha e a trilha de auditoria.** `app_django` tem `SELECT` na tabela `usuario` inteira e em `log_auditoria`. Sugestão: privilégio por coluna (sem `password`) e sem leitura da auditoria.
 3. **Gatilho `fn_usuario_protege` não protege senha, e-mail nem consentimento de terceiros.** Um admin de empresa com `editar_usuarios` poderia alterá-los direto no banco (a API não oferece isso).
 4. **Política `usuario_insert_admin`** deixa um admin de empresa inserir usuário já ativo e com perfil admin. A API restringe (pendente, nível Usuário), mas o banco não.
