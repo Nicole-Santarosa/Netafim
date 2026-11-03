@@ -86,7 +86,9 @@ class Atendimento(models.Model):
     numero_protocolo = models.CharField(max_length=20, blank=True, default="")
 
     # Classificação do pedido. status e prioridade têm valor padrão no banco
-    # (o db_default repete aqui o padrão que já existe na coluna).
+    # (o db_default repete aqui o padrão que já existe na coluna). A prioridade
+    # tem default 'media' na coluna e nenhum gatilho a altera: quem decide o
+    # valor é o default, e a abertura pela API não aceita essa coluna.
     origem = models.CharField(max_length=20, choices=Origem.choices)
     motivo = models.CharField(max_length=30, choices=Motivo.choices)
     status = models.CharField(
@@ -146,16 +148,22 @@ class Atendimento(models.Model):
     snapshot_propriedade = models.JSONField(null=True, blank=True)
 
     # Datas do ciclo de vida. data_abertura é o relógio do aparelho. As datas de
-    # conclusão e encerramento são preenchidas pelo gatilho quando o status muda.
+    # conclusão e encerramento são preenchidas pelo gatilho com now() quando o
+    # status muda, mas só se a coluna vier nula: um valor enviado é mantido. A
+    # API de hoje não aceita essas duas colunas.
     data_abertura = models.DateTimeField(db_default=Now())
     data_conclusao = models.DateTimeField(null=True, blank=True)
     data_encerramento = models.DateTimeField(null=True, blank=True)
 
-    # Controle preenchido pelo banco por gatilho:
-    # versao (concorrência otimista, começa em 1 e soma 1 a cada alteração),
-    # id_atualizado_por, data_criacao e data_atualizacao (relógio do servidor).
+    # Controle da concorrência otimista: o gatilho força 1 no INSERT e soma 1 em
+    # todo UPDATE. As alterações pelo serviço usam update() com WHERE versao,
+    # nunca save() do objeto inteiro.
     versao = models.IntegerField(db_default=1)
+    # Preenchido pelo gatilho com o usuário logado (nulo no processo automático).
     id_atualizado_por = models.IntegerField(null=True, blank=True)
+    # data_criacao só tem default now() no banco; nenhum gatilho a mantém, então
+    # ela não é preenchida por gatilho. data_atualizacao, essa sim, o gatilho
+    # grava com o relógio do servidor a cada alteração.
     data_criacao = models.DateTimeField(db_default=Now())
     data_atualizacao = models.DateTimeField(db_default=Now())
 
@@ -289,6 +297,25 @@ class HistoricoAtendimento(models.Model):
 
     data_evento = models.DateTimeField(db_default=Now())
     observacao = models.TextField(null=True, blank=True)
+
+    # O histórico é gravado só pelos gatilhos do banco. Bloquear aqui impede que
+    # um create() ou save() fabrique um evento falso; a leitura e as consultas
+    # continuam livres. bulk_create e QuerySet.delete() não passam por estes
+    # métodos, mas o banco protege: o app_django só tem SELECT nessa tabela
+    # (03_seguranca_rls.sql, sem policy de INSERT), então qualquer INSERT do
+    # Django é recusado por falta de privilégio, e UPDATE, DELETE e TRUNCATE
+    # também são recusados pelos gatilhos de imutabilidade.
+    def save(self, *args, **kwargs):
+        raise RuntimeError(
+            "O histórico do atendimento é gravado só pelos gatilhos do banco, "
+            "nunca pelo Django."
+        )
+
+    def delete(self, *args, **kwargs):
+        raise RuntimeError(
+            "O histórico do atendimento é gravado só pelos gatilhos do banco, "
+            "nunca pelo Django."
+        )
 
     class Meta:
         managed = False

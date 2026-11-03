@@ -4,7 +4,7 @@ import uuid
 import pytest
 from django.db import connection
 
-from apps.atendimentos.models import Atendimento
+from apps.atendimentos.models import Atendimento, HistoricoAtendimento
 
 
 @pytest.mark.django_db
@@ -37,3 +37,18 @@ def test_abertura_preenche_campos_do_banco(mundo, entrar_como):
         )
         eventos = {linha[0] for linha in cursor.fetchall()}
     assert {"criado", "protocolo_gerado"} <= eventos
+
+
+def test_historico_nao_grava_nem_apaga_pelo_django():
+    # O histórico é só dos gatilhos do banco: save() e delete() precisam recusar
+    # antes de qualquer acesso ao banco (por isso o teste dispensa django_db).
+    evento = HistoricoAtendimento(
+        id_atendimento=uuid.uuid4(),
+        tipo_evento="criado",
+        origem_evento="sistema",
+        valor_novo="x",
+    )
+    with pytest.raises(RuntimeError, match="gatilhos do banco"):
+        evento.save()
+    with pytest.raises(RuntimeError, match="gatilhos do banco"):
+        evento.delete()
