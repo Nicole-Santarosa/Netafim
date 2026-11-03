@@ -88,6 +88,12 @@ db.sqlite3-journal
 # PostgreSQL / database dumps
 # ----------------------------
 *.sql
+# Exceção: scripts de banco em infra/db/base/ e infra/db/migracoes/ (numerados NNN_descricao.sql) e os
+# dados de teste fictícios em backend/db/testes/. Qualquer outro .sql, como um dump, continua ignorado.
+# Nunca versione dump com dados reais.
+!infra/db/base/*.sql
+!infra/db/migracoes/*.sql
+!backend/db/testes/*.sql
 *.dump
 *.backup
 *.bak
