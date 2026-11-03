@@ -3,7 +3,7 @@ Modelos do módulo de acesso: apenas o MAPEAMENTO das tabelas do banco do grupo.
 
 O esquema (tabelas, constraints, gatilhos, funções e RLS) pertence ao banco, não ao Django:
 todos os modelos são ``managed = False`` e o Django nunca cria nem altera essas tabelas.
-O retrato do banco usado nos testes está em ``backend/db/testes/schema_teste.sql``.
+O retrato do banco usado nos testes está em ``infra/db/base/001_schema_inicial.sql``.
 
 Contrato com o banco (ver ``contexto.py``): a API conecta como ``app_django`` e informa o ator em
 cada transação. ``token_acesso`` não tem modelo de propósito: o papel da API não tem privilégio
