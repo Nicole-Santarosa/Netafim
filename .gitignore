@@ -88,12 +88,11 @@ db.sqlite3-journal
 # PostgreSQL / database dumps
 # ----------------------------
 *.sql
-# Exceção: scripts de banco em infra/db/ (as propostas em infra/db/propostas/ e os scripts oficiais
-# numerados, como 001_schema.sql) e arquivos SQL de teste em backend/db/testes/ (retrato do esquema
-# e dados de teste fictícios). Qualquer outro .sql, como um dump, continua ignorado.
+# Exceção: scripts de banco em infra/db/base/ e infra/db/migracoes/ (numerados NNN_descricao.sql) e os
+# dados de teste fictícios em backend/db/testes/. Qualquer outro .sql, como um dump, continua ignorado.
 # Nunca versione dump com dados reais.
-!infra/db/propostas/*.sql
-!infra/db/[0-9][0-9][0-9]_*.sql
+!infra/db/base/*.sql
+!infra/db/migracoes/*.sql
 !backend/db/testes/*.sql
 *.dump
 *.backup
