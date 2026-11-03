@@ -43,6 +43,8 @@ jobs:
         run: |
           uv run ruff check .
           uv run ruff format --check .
+      - name: Numeração dos scripts de banco
+        run: python ../infra/db/verificar_migracoes.py
       - name: Checagens do Django
         run: |
           uv run python manage.py check --deploy --fail-level ERROR
