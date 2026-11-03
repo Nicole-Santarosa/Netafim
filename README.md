@@ -87,10 +87,23 @@ backend/
 │   ├── atendimentos/
 │   │   ├── __init__.py
 │   │   ├── apps.py
-│   │   ├── models.py   models do atendimento (espelho das tabelas, sem migrations)
+│   │   ├── excecoes.py      conflito de versão e falta de permissão na alteração
+│   │   ├── models.py        models do atendimento (espelho das tabelas, sem migrations)
+│   │   ├── serializers.py   entrada da abertura e da alteração, saída da lista, do detalhe e do histórico
+│   │   ├── servicos.py      abrir_atendimento e atualizar_atendimento
+│   │   ├── urls.py          rotas de /api/v1/atendimentos
+│   │   ├── views.py         listagem, abertura, detalhe e alteração
 │   │   └── tests/
 │   │       ├── __init__.py
-│   │       └── test_abertura_model.py
+│   │       ├── test_abertura_model.py
+│   │       ├── test_historico_origem.py
+│   │       ├── test_integridade_propriedade.py
+│   │       ├── test_serializer_abertura.py
+│   │       ├── test_servico_abertura.py
+│   │       ├── test_view_abertura.py
+│   │       ├── test_view_alteracao.py
+│   │       ├── test_view_detalhe.py
+│   │       └── test_view_listagem.py
 │   └── core/
 │       ├── __init__.py
 │       ├── erros.py    traduz erros do banco em respostas HTTP (EXCEPTION_HANDLER do DRF)
@@ -101,7 +114,7 @@ backend/
 │   ├── __init__.py
 │   ├── settings.py        configurações lidas das variáveis de ambiente
 │   ├── settings_teste.py  configurações dos testes (banco local, com trava de segurança)
-│   ├── urls.py            rotas (ainda vazio)
+│   ├── urls.py            rotas (api/v1/ inclui as do atendimento)
 │   └── wsgi.py
 ├── tests/
 │   ├── test_conexao.py
@@ -146,6 +159,21 @@ Os scripts SQL ainda não estão versionados no repositório. A pasta `infra/db`
 O `config/settings_teste.py` aponta para esse banco por padrão. Para usar outro banco local, defina `TESTE_DB_HOST`, `TESTE_DB_PORT`, `TESTE_DB_NAME`, `TESTE_DB_USER`, `TESTE_DB_PASSWORD` e, se quiser, `TESTE_SECRET_KEY`. Os valores desse arquivo têm prioridade sobre o `backend/.env`, então o banco do Supabase nunca é usado nos testes.
 
 Há uma trava de segurança: se o host do banco não for `127.0.0.1` nem `localhost`, o `settings_teste.py` levanta `ImproperlyConfigured` e os testes nem começam. O `test_trava_seguranca.py` confere essa trava.
+
+O que cada arquivo de teste cobre (67 testes no total, conferidos com `uv run pytest --collect-only -q`):
+
+- `tests/test_conexao.py` (1): a conexão de teste é local e não ignora o RLS.
+- `tests/test_trava_seguranca.py` (1): o `settings_teste.py` recusa host que não seja local.
+- `apps/core/tests/test_erros.py` (8): o tradutor de erros do banco (23514, 23505, 23503, 23502, 42501 e 22xxx) e dois erros reais do PostgreSQL.
+- `apps/atendimentos/tests/test_abertura_model.py` (2): a abertura pelo model preenche protocolo, status, prioridade, versão, sync_seq e histórico; `save()` e `delete()` do histórico são recusados.
+- `apps/atendimentos/tests/test_servico_abertura.py` (5): `abrir_atendimento`.
+- `apps/atendimentos/tests/test_serializer_abertura.py` (13): validação do corpo da abertura.
+- `apps/atendimentos/tests/test_view_abertura.py` (7): `POST /api/v1/atendimentos`.
+- `apps/atendimentos/tests/test_view_listagem.py` (6): `GET /api/v1/atendimentos`, com ordem, filtro, paginação e isolamento por empresa.
+- `apps/atendimentos/tests/test_view_detalhe.py` (6): `GET /api/v1/atendimentos/<uuid>`.
+- `apps/atendimentos/tests/test_view_alteracao.py` (9): `PATCH /api/v1/atendimentos/<uuid>`, com controle de versão e permissões.
+- `apps/atendimentos/tests/test_integridade_propriedade.py` (4): propriedade do mesmo cliente abre; propriedade de outro cliente é recusada pela FK composta (422); o CHECK `ck_atend_propriedade_cliente` é conferido por INSERT direto pela conexão de administrador; e o Cliente Usuário que envia `id_propriedade` sem `id_cliente` recebe 403 do RLS, que recusa antes de o CHECK ser avaliado. As propriedades são criadas por SQL, pela conexão de administrador, porque ainda não há model.
+- `apps/atendimentos/tests/test_historico_origem.py` (5): o CHECK de origem do histórico (usuário exige responsável, sistema não pode ter responsável) e o evento "criado" da abertura pela API, que sai como usuário.
 
 ### Estado atual do back-end
 
