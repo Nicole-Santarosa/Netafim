@@ -98,6 +98,7 @@ backend/
 │   │       ├── test_abertura_model.py
 │   │       ├── test_historico_origem.py
 │   │       ├── test_integridade_propriedade.py
+│   │       ├── test_rls_perfis.py
 │   │       ├── test_serializer_abertura.py
 │   │       ├── test_servico_abertura.py
 │   │       ├── test_view_abertura.py
@@ -160,7 +161,7 @@ O `config/settings_teste.py` aponta para esse banco por padrão. Para usar outro
 
 Há uma trava de segurança: se o host do banco não for `127.0.0.1` nem `localhost`, o `settings_teste.py` levanta `ImproperlyConfigured` e os testes nem começam. O `test_trava_seguranca.py` confere essa trava.
 
-O que cada arquivo de teste cobre (67 testes no total, conferidos com `uv run pytest --collect-only -q`):
+O que cada arquivo de teste cobre (86 testes no total, conferidos com `uv run pytest --collect-only -q`):
 
 - `tests/test_conexao.py` (1): a conexão de teste é local e não ignora o RLS.
 - `tests/test_trava_seguranca.py` (1): o `settings_teste.py` recusa host que não seja local.
@@ -174,6 +175,7 @@ O que cada arquivo de teste cobre (67 testes no total, conferidos com `uv run py
 - `apps/atendimentos/tests/test_view_alteracao.py` (9): `PATCH /api/v1/atendimentos/<uuid>`, com controle de versão e permissões.
 - `apps/atendimentos/tests/test_integridade_propriedade.py` (4): propriedade do mesmo cliente abre; propriedade de outro cliente é recusada pela FK composta (422); o CHECK `ck_atend_propriedade_cliente` é conferido por INSERT direto pela conexão de administrador; e o Cliente Usuário que envia `id_propriedade` sem `id_cliente` recebe 403 do RLS, que recusa antes de o CHECK ser avaliado. As propriedades são criadas por SQL, pela conexão de administrador, porque ainda não há model.
 - `apps/atendimentos/tests/test_historico_origem.py` (5): o CHECK de origem do histórico (usuário exige responsável, sistema não pode ter responsável) e o evento "criado" da abertura pela API, que sai como usuário.
+- `apps/atendimentos/tests/test_rls_perfis.py` (19): o RLS do atendimento nos seis perfis, com 8 usuários (um de cada perfil, mais o Distribuidor Admin e o Cliente Usuário de uma segunda organização) e 8 atendimentos montados pela conexão de administrador. Confere, por perfil, o que ele enxerga e o que consegue alterar (UPDATE com rowcount); o caso do Cliente Admin que vê o atendimento de outro usuário da empresa mas não o altera; o isolamento entre distribuidores e entre empresas.
 
 ### Estado atual do back-end
 
