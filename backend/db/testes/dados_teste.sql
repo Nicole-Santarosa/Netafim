@@ -26,7 +26,7 @@
 --     -d '{"email":"admin.teste@netafim.com","senha":"Teste#Netafim2026",
 --          "dispositivo":{"id_dispositivo":"11111111-1111-4111-8111-111111111111","modelo":"Teste"}}'
 --
--- Para limpar, recrie o banco local a partir do retrato (backend/db/testes/schema_teste.sql). Não há DELETE aqui
+-- Para limpar, recrie o banco local a partir do retrato (infra/db/base/001_schema_inicial.sql). Não há DELETE aqui
 -- de propósito: o esquema do grupo usa exclusão lógica e trilha de auditoria.
 -- =====================================================================================
 
