@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application>
+        <!--
+            Links dos e-mails de convite e de redefinição de senha: netafim://convite?acao=...&token=...
+            O alias abre a MainActivity do aplicativo; o Navigation Compose leva o link até a tela do
+            módulo de acesso (ver AcessoNavegacao). Fica aqui para o :app não precisar conhecer o link.
+            Atenção: depende do nome da classe com.netafim.posvenda.MainActivity.
+        -->
+        <activity-alias
+            android:name=".LinkAcessoAlias"
+            android:exported="true"
+            android:targetActivity="com.netafim.posvenda.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="convite"
+                    android:scheme="netafim" />
+            </intent-filter>
+        </activity-alias>
+    </application>
+
+</manifest>
