@@ -12,9 +12,9 @@ from rest_framework.exceptions import ValidationError
 
 from .. import contexto
 from ..constantes import SituacaoUsuario, TipoToken
-from ..excecoes import CredenciaisInvalidas, ErroNegocio
+from ..excecoes import CredenciaisInvalidas, DesafioMfa, ErroNegocio
 from ..models import Dispositivo, Usuario
-from . import auditoria, banco, credenciais, notificacoes, tokens
+from . import auditoria, banco, credenciais, mfa, notificacoes, tokens
 from .auditoria import Acao, Resultado
 
 
@@ -52,7 +52,7 @@ def autenticar(
     ip = auditoria.ip_da_requisicao(request)
     agente = (request.META.get("HTTP_USER_AGENT", "")[:255] or None) if request else None
     erro: Exception | None = None
-    usuario = par = None
+    usuario = par = desafio = None
 
     with transaction.atomic():
         contexto.limpar()
@@ -86,6 +86,23 @@ def autenticar(
                     motivo=codigo,
                 )
                 erro = ErroNegocio(mensagem, codigo, status_code=403)
+            elif usuario.mfa_ativo:
+                # Senha certa, mas a conta tem MFA: não abre sessão nem zera as falhas. O contador
+                # só zera quando o segundo fator também for correto (concluir_login_mfa).
+                if dispositivo is None:
+                    erro = ErroNegocio(
+                        "Informe o identificador do aparelho para entrar.",
+                        "dispositivo_obrigatorio",
+                    )
+                else:
+                    desafio = mfa.emitir_desafio(
+                        email,
+                        {
+                            "id": str(dispositivo.id_dispositivo),
+                            "m": dispositivo.modelo,
+                            "v": dispositivo.versao_app,
+                        },
+                    )
             else:
                 _, _, bloqueado_ate = _registrar_login(usuario.pk, True, ip, agente)
                 if bloqueado_ate is not None and bloqueado_ate > timezone.now():
@@ -101,8 +118,64 @@ def autenticar(
 
     if erro is not None:
         raise erro
+    if desafio is not None:
+        raise DesafioMfa(*desafio)
 
     auditoria.registrar(Acao.LOGIN_SUCESSO, usuario=usuario, request=request)
+    with transaction.atomic():
+        contexto.limpar()
+        contexto.definir_ator(usuario.pk)
+        usuario = banco.carregar_usuario_completo(usuario.pk)
+    return usuario, par
+
+
+def concluir_login_mfa(desafio: str, codigo: str, *, request=None):
+    """
+    Segundo passo do login com MFA: confere o código (TOTP ou de recuperação) e abre a sessão.
+
+    Cada código errado conta como falha de login: 5 seguidas bloqueiam a conta por 15 minutos,
+    como na senha, e o erro só sobe DEPOIS de a transação gravar a contagem (mesmo padrão de
+    ``autenticar``).
+    """
+    dados = mfa.ler_desafio(desafio)
+    email = dados["e"]
+    d = dados["d"]
+    dispositivo = DadosDispositivo(
+        id_dispositivo=UUID(str(d["id"])), modelo=d.get("m"), versao_app=d.get("v")
+    )
+    ip = auditoria.ip_da_requisicao(request)
+    agente = (request.META.get("HTTP_USER_AGENT", "")[:255] or None) if request else None
+    erro: Exception | None = None
+    usuario = par = metodo = None
+
+    with transaction.atomic():
+        contexto.limpar()
+        contexto.definir_email_login(email)
+        usuario = Usuario.objects.select_related("perfil").filter(email__iexact=email).first()
+        if usuario is None or usuario.situacao != SituacaoUsuario.ATIVO or not usuario.mfa_ativo:
+            erro = ErroNegocio("Desafio inválido.", "desafio_mfa_invalido", status_code=401)
+        elif usuario.bloqueado_ate is not None and usuario.bloqueado_ate > timezone.now():
+            _registrar_login(usuario.pk, False, ip, agente)  # o banco audita e não anda o contador
+            erro = CredenciaisInvalidas()
+        else:
+            metodo = mfa.verificar_segundo_fator(usuario.pk, codigo)
+            if metodo is None:
+                _registrar_login(usuario.pk, False, ip, agente)
+                erro = ErroNegocio(
+                    "Código incorreto ou expirado.", "codigo_mfa_invalido", status_code=401
+                )
+            else:
+                _registrar_login(usuario.pk, True, ip, agente)
+                try:
+                    with transaction.atomic():
+                        par = _abrir_sessao(usuario, dispositivo, ip)
+                except ErroNegocio as exc:
+                    erro = exc
+
+    if erro is not None:
+        raise erro
+
+    auditoria.registrar(Acao.LOGIN_SUCESSO, usuario=usuario, request=request, mfa=metodo)
     with transaction.atomic():
         contexto.limpar()
         contexto.definir_ator(usuario.pk)

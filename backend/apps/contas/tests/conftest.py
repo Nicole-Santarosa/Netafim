@@ -36,6 +36,7 @@ MIGRACOES = Path(__file__).resolve().parents[4] / "infra" / "db" / "migracoes"
 PROPOSTA_REVOGAR_TOKENS = MIGRACOES / "001_fn_revogar_tokens_usuario.sql"
 PROPOSTA_LOGIN_SEM_HASH = MIGRACOES / "004_login_sem_leitura_de_hash.sql"
 PROPOSTA_REVOGA_LEITURA = MIGRACOES / "005_revoga_leitura_de_hash_e_auditoria.sql"
+MIGRACAO_MFA = MIGRACOES / "007_mfa_totp.sql"
 SENHA_APP_DJANGO = os.environ.get("TEST_APP_DJANGO_PASSWORD", "app_django_teste")
 SENHA_APP_AUTH = os.environ.get("TEST_APP_AUTH_PASSWORD", "app_auth_teste")
 _seq = itertools.count(1)
@@ -66,6 +67,8 @@ def _modelo():
             sql.SQL("ALTER ROLE app_auth WITH PASSWORD {}").format(sql.Literal(SENHA_APP_AUTH))
         )
         conn.execute(PROPOSTA_REVOGA_LEITURA.read_text(encoding="utf-8"))
+        # MFA (007): tabelas e funções fn_mfa_* só para o app_auth.
+        conn.execute(MIGRACAO_MFA.read_text(encoding="utf-8"))
     yield nome
     with psycopg.connect(_conninfo("postgres"), autocommit=True) as adm:
         adm.execute(sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(nome)))

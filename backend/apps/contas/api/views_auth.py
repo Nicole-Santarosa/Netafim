@@ -2,14 +2,15 @@
 
 from django.db.transaction import non_atomic_requests
 from django.utils.decorators import method_decorator
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import PolymorphicProxySerializer, extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ..constantes import TipoToken
-from ..servicos import acesso, usuarios
+from ..excecoes import DesafioMfa
+from ..servicos import acesso, mfa, usuarios
 from . import serializers as s
 
 MSG_CADASTRO = (
@@ -41,7 +42,15 @@ class PublicaView(APIView):
 # refresh (feitas pelo banco) precisam ficar gravadas mesmo quando a resposta é um erro. Os serviços
 # abrem a própria transação e só levantam o erro depois que ela termina.
 @method_decorator(non_atomic_requests, name="dispatch")
-@extend_schema(tags=["auth"], request=s.LoginSerializer, responses=s.TokensSerializer)
+@extend_schema(
+    tags=["auth"],
+    request=s.LoginSerializer,
+    responses=PolymorphicProxySerializer(
+        component_name="LoginResposta",
+        serializers=[s.TokensSerializer, s.LoginMfaSerializer],
+        resource_type_field_name=None,
+    ),
+)
 class LoginView(PublicaView):
     throttle_scope = "login"
 
@@ -55,8 +64,34 @@ class LoginView(PublicaView):
             modelo=d.get("modelo") or None,
             versao_app=d.get("versao_app") or None,
         )
-        usuario, par = acesso.autenticar(
-            dados["email"], dados["senha"], request=request, dispositivo=dispositivo
+        try:
+            usuario, par = acesso.autenticar(
+                dados["email"], dados["senha"], request=request, dispositivo=dispositivo
+            )
+        except DesafioMfa as desafio:
+            # senha correta, conta com MFA: ainda não há sessão, só o desafio para o segundo passo
+            return Response(
+                {
+                    "mfa_necessario": True,
+                    "desafio": desafio.desafio,
+                    "desafio_expira_em": desafio.expira_em,
+                }
+            )
+        return resposta_tokens(usuario, par)
+
+
+@method_decorator(non_atomic_requests, name="dispatch")
+@extend_schema(tags=["auth"], request=s.MfaVerificarSerializer, responses=s.TokensSerializer)
+class MfaVerificarView(PublicaView):
+    """Segundo passo do login: desafio + código do aplicativo (ou de recuperação) abre a sessão."""
+
+    throttle_scope = "mfa"
+
+    def post(self, request):
+        entrada = s.MfaVerificarSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        usuario, par = acesso.concluir_login_mfa(
+            entrada.validated_data["desafio"], entrada.validated_data["codigo"], request=request
         )
         return resposta_tokens(usuario, par)
 
@@ -183,4 +218,44 @@ class AlterarSenhaView(APIView):
         acesso.alterar_senha(
             request.user, dados["senha_atual"], dados["nova_senha"], request=request
         )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@extend_schema(tags=["me"])
+class MfaEstadoView(APIView):
+    @extend_schema(responses=s.MfaEstadoSerializer)
+    def get(self, request):
+        return Response(mfa.estado(request.user))
+
+
+@extend_schema(tags=["me"], request=None, responses=s.MfaIniciadoSerializer)
+class MfaIniciarView(APIView):
+    """Gera o segredo (ainda não ativo). Cadastre no aplicativo e confirme com um código."""
+
+    throttle_scope = "mfa"
+
+    def post(self, request):
+        return Response(mfa.iniciar(request.user))
+
+
+@extend_schema(tags=["me"], request=s.MfaCodigoSerializer, responses=s.MfaConfirmadoSerializer)
+class MfaConfirmarView(APIView):
+    throttle_scope = "mfa"
+
+    def post(self, request):
+        entrada = s.MfaCodigoSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        codigos = mfa.confirmar(request.user, entrada.validated_data["codigo"], request=request)
+        return Response({"codigos_recuperacao": codigos})
+
+
+@extend_schema(tags=["me"], request=s.MfaDesativarSerializer, responses={204: None})
+class MfaDesativarView(APIView):
+    throttle_scope = "mfa"
+
+    def post(self, request):
+        entrada = s.MfaDesativarSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        dados = entrada.validated_data
+        mfa.desativar(request.user, dados["senha"], dados["codigo"], request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)

@@ -80,7 +80,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Tokens'
+                $ref: '#/components/schemas/LoginResposta'
           description: ''
   /api/v1/auth/logout:
     post:
@@ -104,6 +104,34 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/auth/mfa/verificar:
+    post:
+      operationId: v1_auth_mfa_verificar_create
+      description: 'Segundo passo do login: desafio + código do aplicativo (ou de
+        recuperação) abre a sessão.'
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaVerificarRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MfaVerificarRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MfaVerificarRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tokens'
+          description: ''
   /api/v1/auth/refresh:
     post:
       operationId: v1_auth_refresh_create
@@ -614,6 +642,84 @@ paths:
               schema:
                 $ref: '#/components/schemas/Me'
           description: ''
+  /api/v1/me/mfa:
+    get:
+      operationId: v1_me_mfa_retrieve
+      tags:
+      - me
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaEstado'
+          description: ''
+  /api/v1/me/mfa/confirmar:
+    post:
+      operationId: v1_me_mfa_confirmar_create
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaCodigoRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MfaCodigoRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MfaCodigoRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaConfirmado'
+          description: ''
+  /api/v1/me/mfa/desativar:
+    post:
+      operationId: v1_me_mfa_desativar_create
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaDesativarRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MfaDesativarRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MfaDesativarRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/me/mfa/iniciar:
+    post:
+      operationId: v1_me_mfa_iniciar_create
+      description: Gera o segredo (ainda não ativo). Cadastre no aplicativo e confirme
+        com um código.
+      tags:
+      - me
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaIniciado'
+          description: ''
   /api/v1/me/senha:
     post:
       operationId: v1_me_senha_create
@@ -959,6 +1065,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedDispositivoList'
           description: ''
+  /api/v1/usuarios/{id_usuario}/mfa/resetar:
+    post:
+      operationId: v1_usuarios_mfa_resetar_create
+      description: Netafim Admin remove o MFA de quem perdeu o aparelho (e encerra
+        as sessões da pessoa).
+      parameters:
+      - in: path
+        name: id_usuario
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - usuarios
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/usuarios/{id_usuario}/perfil:
     post:
       operationId: v1_usuarios_perfil_create
@@ -1437,6 +1562,22 @@ components:
           maxLength: 150
       required:
       - email
+    LoginMfa:
+      type: object
+      description: 'Resposta do login quando a conta tem MFA: ainda NÃO há sessão;
+        falta o segundo fator.'
+      properties:
+        mfa_necessario:
+          type: boolean
+        desafio:
+          type: string
+        desafio_expira_em:
+          type: string
+          format: date-time
+      required:
+      - desafio
+      - desafio_expira_em
+      - mfa_necessario
     LoginRequest:
       type: object
       properties:
@@ -1455,6 +1596,10 @@ components:
       - dispositivo
       - email
       - senha
+    LoginResposta:
+      oneOf:
+      - $ref: '#/components/schemas/Tokens'
+      - $ref: '#/components/schemas/LoginMfa'
     Me:
       type: object
       properties:
@@ -1546,6 +1691,74 @@ components:
           type: string
       required:
       - detail
+    MfaCodigoRequest:
+      type: object
+      properties:
+        codigo:
+          type: string
+          minLength: 1
+          maxLength: 32
+      required:
+      - codigo
+    MfaConfirmado:
+      type: object
+      description: Os códigos de recuperação só aparecem nesta resposta; o banco guarda
+        apenas o hash.
+      properties:
+        codigos_recuperacao:
+          type: array
+          items:
+            type: string
+      required:
+      - codigos_recuperacao
+    MfaDesativarRequest:
+      type: object
+      properties:
+        senha:
+          type: string
+          minLength: 1
+          maxLength: 128
+        codigo:
+          type: string
+          minLength: 1
+          maxLength: 32
+      required:
+      - codigo
+      - senha
+    MfaEstado:
+      type: object
+      properties:
+        ativo:
+          type: boolean
+        codigos_recuperacao_restantes:
+          type: integer
+      required:
+      - ativo
+      - codigos_recuperacao_restantes
+    MfaIniciado:
+      type: object
+      properties:
+        segredo:
+          type: string
+        otpauth_uri:
+          type: string
+      required:
+      - otpauth_uri
+      - segredo
+    MfaVerificarRequest:
+      type: object
+      properties:
+        desafio:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        codigo:
+          type: string
+          minLength: 1
+          maxLength: 32
+      required:
+      - codigo
+      - desafio
     NivelPerfilEnum:
       enum:
       - admin

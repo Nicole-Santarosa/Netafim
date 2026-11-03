@@ -49,3 +49,12 @@ class SemPermissao(ErroNegocio):
 
     def __init__(self, mensagem: str = "Você não tem permissão para esta ação."):
         super().__init__(mensagem, self.default_code)
+
+
+class DesafioMfa(Exception):
+    """Senha correta, mas a conta tem MFA: o login só termina com o segundo fator. Não é um erro."""
+
+    def __init__(self, desafio: str, expira_em):
+        super().__init__("segundo fator necessário")
+        self.desafio = desafio
+        self.expira_em = expira_em
