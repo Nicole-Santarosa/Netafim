@@ -149,7 +149,7 @@ class UsuarioViewSet(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @extend_schema(responses=s.DispositivoSerializer(many=True))
-    @action(detail=True, methods=["get"])
+    @action(detail=True, methods=["get"], pagination_class=None)
     def dispositivos(self, request, id_usuario=None):
         alvo = self.get_object()
         if not (request.user.eh_netafim_admin or pode_gerenciar(request.user, alvo)):

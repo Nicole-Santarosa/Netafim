@@ -205,8 +205,16 @@ def _abrir_sessao(usuario: Usuario, dados: DadosDispositivo | None, ip: str | No
     return tokens.emitir_sessao(usuario, id_dispositivo=aparelho.pk, ip=ip)
 
 
+def _aparelho_de_outro_usuario() -> ErroNegocio:
+    return ErroNegocio(
+        "Este identificador de aparelho pertence a outro usuário. Gere um novo e tente novamente.",
+        "dispositivo_de_outro_usuario",
+        status_code=409,
+    )
+
+
 def _registrar_dispositivo(usuario: Usuario, dados: DadosDispositivo) -> Dispositivo:
-    # O RLS só mostra ao usuário os aparelhos dele.
+    # O RLS esconde de cada usuário os aparelhos alheios, menos do Netafim Admin, que vê todos.
     aparelho = Dispositivo.objects.select_for_update().filter(pk=dados.id_dispositivo).first()
     if aparelho is None:
         try:
@@ -221,12 +229,11 @@ def _registrar_dispositivo(usuario: Usuario, dados: DadosDispositivo) -> Disposi
             if banco.sqlstate(exc) != "23505":
                 raise
             # O identificador existe e é de outro usuário (o RLS o esconde): o app gera outro.
-            raise ErroNegocio(
-                "Este identificador de aparelho pertence a outro usuário. Gere um novo e tente "
-                "novamente.",
-                "dispositivo_de_outro_usuario",
-                status_code=409,
-            ) from exc
+            raise _aparelho_de_outro_usuario() from exc
+    if aparelho.usuario_id != usuario.pk:
+        # Visível por causa do Netafim Admin. Sem esta checagem o banco recusava a sessão e a API
+        # dizia "revogado" para um aparelho que nunca foi revogado.
+        raise _aparelho_de_outro_usuario()
     if aparelho.revogado_em is not None:
         raise ErroNegocio(
             "Este aparelho teve o acesso revogado. Procure a Netafim.",

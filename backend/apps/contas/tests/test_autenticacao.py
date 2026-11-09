@@ -240,6 +240,30 @@ def test_aparelho_de_outro_usuario(api, netafim_usuario, netafim_admin):
     assert r.data["codigo"] == "dispositivo_de_outro_usuario"
 
 
+def test_netafim_admin_com_aparelho_de_outro_usuario_tambem_recebe_409(
+    api, netafim_usuario, netafim_admin, banco_sql
+):
+    # O RLS deixa o Netafim Admin enxergar o aparelho alheio: sem checar o dono, a API
+    # respondia 403 "dispositivo_revogado" (mensagem errada) em vez de pedir outro identificador.
+    id_aparelho = {"id_dispositivo": str(uuid.uuid4())}
+    assert logar(api, netafim_usuario, dispositivo=id_aparelho).status_code == 200
+    r = logar(api, netafim_admin, dispositivo=id_aparelho)
+    assert r.status_code == 409
+    assert r.data["codigo"] == "dispositivo_de_outro_usuario"
+    # o aparelho continua sendo de quem o registrou e não ganhou token para o admin
+    assert (
+        banco_sql.um(
+            "select id_usuario from dispositivo where id_dispositivo = %s",
+            id_aparelho["id_dispositivo"],
+        )
+        == netafim_usuario.pk
+    )
+    assert (
+        banco_sql.um("select count(*) from token_acesso where id_usuario = %s", netafim_admin.pk)
+        == 0
+    )
+
+
 def test_aparelho_revogado_nao_entra_nem_renova(api, como, netafim_usuario, netafim_admin):
     id_aparelho = {"id_dispositivo": str(uuid.uuid4())}
     dados = logar(api, netafim_usuario, dispositivo=id_aparelho).data
@@ -259,6 +283,23 @@ def test_somente_netafim_admin_revoga_aparelho(api, como, netafim_usuario, distr
     id_aparelho = str(uuid.uuid4())
     logar(api, netafim_usuario, dispositivo={"id_dispositivo": id_aparelho})
     r = como(distrib_admin).post(f"/api/v1/dispositivos/{id_aparelho}/revogar")
+    assert r.status_code in (403, 404)
+
+
+def test_aparelhos_do_usuario_voltam_como_lista_simples(api, como, netafim_usuario, netafim_admin):
+    # O contrato (docs/api/acesso-openapi.yaml) descreve uma lista, sem paginação.
+    id_aparelho = str(uuid.uuid4())
+    logar(api, netafim_usuario, dispositivo={"id_dispositivo": id_aparelho, "modelo": "Pixel 8"})
+    r = como(netafim_admin).get(f"/api/v1/usuarios/{netafim_usuario.pk}/dispositivos")
+    assert r.status_code == 200
+    assert isinstance(r.data, list)
+    assert [a["id_dispositivo"] for a in r.data] == [id_aparelho]
+    assert {"id_dispositivo", "modelo", "versao_app", "revogado_em"} <= r.data[0].keys()
+
+
+def test_usuario_comum_nao_lista_aparelhos_de_outro(api, como, netafim_usuario, cliente_usuario):
+    logar(api, cliente_usuario)
+    r = como(netafim_usuario).get(f"/api/v1/usuarios/{cliente_usuario.pk}/dispositivos")
     assert r.status_code in (403, 404)
 
 
