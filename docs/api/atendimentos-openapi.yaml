@@ -72,6 +72,14 @@ paths:
         schema:
           $ref: '#/components/schemas/Status'
       - in: query
+        name: origem
+        required: false
+        description: |-
+          Filtra por origem (netafim, distribuidor ou cliente_final). Qualquer
+          outro valor responde 400. Junto com status, os dois filtros valem como E.
+        schema:
+          $ref: '#/components/schemas/Origem'
+      - in: query
         name: page
         required: false
         description: Número da página, a partir de 1. Página inexistente responde 404.
@@ -87,7 +95,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginaAtendimentos'
         '400':
-          description: O valor de status não é um dos status válidos.
+          description: O valor de status ou de origem não é um dos valores válidos.
           content:
             application/json:
               schema:

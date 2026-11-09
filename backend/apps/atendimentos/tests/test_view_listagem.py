@@ -197,3 +197,89 @@ def test_atendimento_excluido_nao_aparece(mundo, conexao_admin, entrar_como):
 
     ids = [r["id_atendimento"] for r in resposta.data["results"]]
     assert ids == [str(id_visivel)]
+
+
+def abrir_um_de_cada_origem(conexao_admin, outro):
+    """Grava, pela conexão de administrador, um atendimento de cada origem para
+    o usuário de uma empresa nova, para só existirem estes três na lista dele.
+    Os dados são confirmados porque a transação do teste não enxerga o que a
+    conexão de administrador grava sem commit. A origem netafim exige
+    area_setor (CHECK do banco). Devolve um dicionário origem -> id."""
+    ids = {}
+    with conexao_admin.cursor() as cur:
+        for origem, area_setor in (
+            ("netafim", "comercial"),
+            ("distribuidor", None),
+            ("cliente_final", None),
+        ):
+            ids[origem] = uuid.uuid4()
+            cur.execute(
+                """
+                insert into atendimento (id_atendimento, numero_protocolo, origem, motivo,
+                                         id_solicitante, id_cliente, area_setor,
+                                         contato_solicitante, sync_seq)
+                values (%s, 'OS-0000', %s, 'pos_venda', %s, %s, %s, '11999990000', 0)
+                """,
+                (ids[origem], origem, outro["id_usuario"], outro["id_cliente"], area_setor),
+            )
+    conexao_admin.commit()
+    return ids
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("origem", ["netafim", "distribuidor", "cliente_final"])
+def test_filtro_por_origem_devolve_so_aquela_origem(origem, mundo, conexao_admin, entrar_como):
+    outro = criar_empresa_e_usuario(conexao_admin, mundo)
+    ids = abrir_um_de_cada_origem(conexao_admin, outro)
+
+    entrar_como(outro["id_usuario"])
+    resposta = cliente_autenticado(outro["id_usuario"]).get(URL, {"origem": origem})
+
+    assert resposta.status_code == 200
+    resultados = resposta.data["results"]
+    assert [r["id_atendimento"] for r in resultados] == [str(ids[origem])]
+    assert resultados[0]["origem"] == origem
+
+
+@pytest.mark.django_db
+def test_origem_invalida_responde_400(mundo, entrar_como):
+    entrar_como(mundo["id_usuario_cliente"])
+
+    resposta = cliente_autenticado(mundo["id_usuario_cliente"]).get(URL, {"origem": "invalida"})
+
+    assert resposta.status_code == 400
+    assert "origem" in resposta.data
+
+
+@pytest.mark.django_db
+def test_filtro_por_origem_e_status_juntos(mundo, conexao_admin, entrar_como):
+    outro = criar_empresa_e_usuario(conexao_admin, mundo)
+    ids = abrir_um_de_cada_origem(conexao_admin, outro)
+
+    # Cancela só o de origem netafim. O gatilho só deixa cancelar o Netafim
+    # Admin ou o processo automático, então a alteração entra como ação do
+    # sistema (set_config local à transação, desfeito no commit).
+    with conexao_admin.cursor() as cur:
+        cur.execute("select set_config('app.acao_sistema', 'on', true)")
+        cur.execute(
+            "update atendimento set status = 'cancelado' where id_atendimento = %s",
+            (ids["netafim"],),
+        )
+    conexao_admin.commit()
+
+    entrar_como(outro["id_usuario"])
+    cliente = cliente_autenticado(outro["id_usuario"])
+
+    def ids_da_lista(filtros):
+        resposta = cliente.get(URL, filtros)
+        assert resposta.status_code == 200
+        return [r["id_atendimento"] for r in resposta.data["results"]]
+
+    # Os dois filtros valem como E: a mesma origem com status diferente muda
+    # o resultado, e o mesmo status com origem diferente também.
+    assert ids_da_lista({"origem": "netafim", "status": "cancelado"}) == [str(ids["netafim"])]
+    assert ids_da_lista({"origem": "netafim", "status": "aberto"}) == []
+    assert ids_da_lista({"origem": "cliente_final", "status": "aberto"}) == [
+        str(ids["cliente_final"])
+    ]
+    assert ids_da_lista({"origem": "cliente_final", "status": "cancelado"}) == []

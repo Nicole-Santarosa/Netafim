@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.atendimentos.models import Atendimento, HistoricoAtendimento, Status
+from apps.atendimentos.models import Atendimento, HistoricoAtendimento, Origem, Status
 from apps.atendimentos.serializers import (
     AberturaAtendimentoSerializer,
     AtendimentoAlteracaoSerializer,
@@ -15,6 +15,18 @@ from apps.atendimentos.serializers import (
     HistoricoAtendimentoSerializer,
 )
 from apps.atendimentos.servicos import abrir_atendimento, atualizar_atendimento
+
+
+def ler_filtro(request, campo, escolhas):
+    """Lê o filtro opcional ?campo=valor da URL. Só aceita os valores das
+    choices do model; qualquer outro responde 400 com o erro apontando o campo.
+    Devolve None quando o filtro não foi informado."""
+    valor = request.query_params.get(campo)
+    if valor is not None and valor not in escolhas.values:
+        raise serializers.ValidationError(
+            {campo: f"Valor inválido. Use um destes: {', '.join(escolhas.values)}."}
+        )
+    return valor
 
 
 class PaginacaoAtendimentos(PageNumberPagination):
@@ -38,21 +50,20 @@ class AtendimentosView(APIView):
     # (set_config) antes de esta view rodar, e o RLS depende disso.
 
     def get(self, request):
-        # Filtro opcional ?status=valor. Só aceita os valores do model; qualquer
-        # outro responde 400 com o erro apontando o campo status.
-        status_filtro = request.query_params.get("status")
-        if status_filtro is not None and status_filtro not in Status.values:
-            raise serializers.ValidationError(
-                {"status": f"Valor inválido. Use um destes: {', '.join(Status.values)}."}
-            )
+        # Filtros opcionais ?status= e ?origem=. Cada um é validado contra as
+        # choices do model (valor inválido responde 400). Os informados entram
+        # juntos no mesmo filter(), então valem como E.
+        filtros = {}
+        for campo, escolhas in (("status", Status), ("origem", Origem)):
+            valor = ler_filtro(request, campo, escolhas)
+            if valor is not None:
+                filtros[campo] = valor
 
         # Não há filtro por usuário nem por perfil de propósito: quem decide o
         # que cada pessoa enxerga é o RLS do banco. Aqui só tiramos os excluídos
         # logicamente e ordenamos do mais novo para o mais antigo, com o
         # id_atendimento para desempatar e a paginação ficar estável.
-        consulta = Atendimento.objects.filter(deletado_em__isnull=True)
-        if status_filtro is not None:
-            consulta = consulta.filter(status=status_filtro)
+        consulta = Atendimento.objects.filter(deletado_em__isnull=True, **filtros)
         consulta = consulta.order_by("-data_abertura", "id_atendimento")
 
         paginador = PaginacaoAtendimentos()
