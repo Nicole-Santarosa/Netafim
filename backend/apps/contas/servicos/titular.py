@@ -10,7 +10,7 @@ histórico legal dos atendimentos continua íntegro) e revoga aparelhos e tokens
 O prazo de resposta (15 dias, art. 19, II) vem do banco; ``atrasada`` avisa o administrador.
 """
 
-from django.db import DatabaseError, IntegrityError, connection, transaction
+from django.db import DatabaseError, IntegrityError, ProgrammingError, connection, transaction
 from django.utils import timezone
 
 from ..excecoes import ErroNegocio, SemPermissao
@@ -45,6 +45,17 @@ def _dicts(cursor) -> list[dict]:
     return [dict(zip(nomes, linha, strict=True)) for linha in cursor.fetchall()]
 
 
+_SQLSTATE_FUNCAO_INEXISTENTE = "42883"
+
+
+def _indisponivel() -> ErroNegocio:
+    return ErroNegocio(
+        "Os pedidos de titulares não estão disponíveis neste servidor.",
+        "lgpd_indisponivel",
+        status_code=503,
+    )
+
+
 def _nao_encontrada() -> ErroNegocio:
     return ErroNegocio("Pedido não encontrado.", "solicitacao_nao_encontrada", status_code=404)
 
@@ -53,9 +64,14 @@ def _nao_encontrada() -> ErroNegocio:
 
 
 def minhas_solicitacoes() -> list[dict]:
-    with connection.cursor() as cursor:
-        cursor.execute("select * from fn_titular_minhas_solicitacoes()")
-        return _dicts(cursor)
+    try:
+        with transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute("select * from fn_titular_minhas_solicitacoes()")
+            return _dicts(cursor)
+    except ProgrammingError as exc:  # a migração 010 ainda não foi aplicada no banco
+        if banco.sqlstate(exc) == _SQLSTATE_FUNCAO_INEXISTENTE:
+            raise _indisponivel() from exc
+        raise
 
 
 def registrar(usuario: Usuario, tipo: str, observacao: str | None, *, request=None) -> dict:
@@ -65,6 +81,10 @@ def registrar(usuario: Usuario, tipo: str, observacao: str | None, *, request=No
         with transaction.atomic(), connection.cursor() as cursor:
             cursor.execute("select fn_titular_registrar_solicitacao(%s, %s)", [tipo, observacao])
             id_solicitacao = cursor.fetchone()[0]
+    except ProgrammingError as exc:  # a migração 010 ainda não foi aplicada no banco
+        if banco.sqlstate(exc) == _SQLSTATE_FUNCAO_INEXISTENTE:
+            raise _indisponivel() from exc
+        raise
     except IntegrityError as exc:
         if banco.constraint(exc) == "ux_solic_aberta":
             raise ErroNegocio(
@@ -90,6 +110,13 @@ def exportar_dados(usuario: Usuario, *, request=None) -> dict:
     """
     from ..api import serializers as s  # evita ciclo: o serializer importa serviços
 
+    try:
+        solicitacoes = minhas_solicitacoes()
+    except ErroNegocio as exc:
+        # Sem a migração 010 o titular ainda pode exportar o que o módulo guarda dele.
+        if exc.codigo != "lgpd_indisponivel":
+            raise
+        solicitacoes = []
     dados = {
         "formato": 1,
         "exportado_em": timezone.now(),
@@ -102,7 +129,7 @@ def exportar_dados(usuario: Usuario, *, request=None) -> dict:
         },
         "exclusao_solicitada_em": usuario.data_exclusao_solicitada,
         "dispositivos": s.DispositivoSerializer(usuario.dispositivos.all(), many=True).data,
-        "solicitacoes_lgpd": minhas_solicitacoes(),
+        "solicitacoes_lgpd": solicitacoes,
     }
     with connection.cursor() as cursor:
         cursor.execute(

@@ -287,3 +287,28 @@ def _admin_netafim():
     from apps.contas.constantes import NivelPerfil, TipoOrganizacao
 
     return TipoOrganizacao.NETAFIM, NivelPerfil.ADMIN
+
+
+# --------------------------------------------------------------------------- sem a migração 010
+
+
+@pytest.fixture
+def sem_migracao_010(banco_sql):
+    banco_sql.executar("drop function fn_titular_registrar_solicitacao(text, text)")
+    banco_sql.executar("drop function fn_titular_minhas_solicitacoes()")
+
+
+def test_sem_a_migracao_010_as_rotas_do_titular_respondem_503(
+    como, sem_migracao_010, cliente_usuario
+):
+    for r in (pedir(como, cliente_usuario, "acesso"), como(cliente_usuario).get(MEUS)):
+        assert (r.status_code, r.data["codigo"]) == (503, "lgpd_indisponivel")
+
+
+def test_sem_a_migracao_010_a_exportacao_continua_funcionando(
+    como, sem_migracao_010, cliente_usuario
+):
+    r = como(cliente_usuario).get(DADOS)
+    assert r.status_code == 200
+    assert r.data["conta"]["email"] == cliente_usuario.email
+    assert r.data["solicitacoes_lgpd"] == []
