@@ -5,13 +5,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.atendimentos.models import Atendimento, HistoricoAtendimento, Origem, Status
+from apps.atendimentos.models import Atendimento, Cultura, HistoricoAtendimento, Origem, Status
 from apps.atendimentos.serializers import (
     AberturaAtendimentoSerializer,
     AtendimentoAlteracaoSerializer,
     AtendimentoCriadoSerializer,
     AtendimentoDetalheSerializer,
     AtendimentoListaSerializer,
+    CulturaSerializer,
     HistoricoAtendimentoSerializer,
 )
 from apps.atendimentos.servicos import abrir_atendimento, atualizar_atendimento
@@ -136,3 +137,20 @@ class DetalheAtendimentoView(APIView):
         atendimento = atualizar_atendimento(id_atendimento, versao_esperada, mudancas)
 
         return Response(montar_detalhe(atendimento))
+
+
+class CulturasView(APIView):
+    """GET com o catálogo de culturas, para o aplicativo montar a lista de
+    escolha do formulário de abertura."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Sem paginação: o catálogo é pequeno e o aplicativo precisa dele
+        # inteiro. Só as culturas em uso (o RLS libera o catálogo para todo
+        # usuário ativo, mas não esconde as excluídas logicamente), em ordem de
+        # nome, com o id para desempatar.
+        culturas = Cultura.objects.filter(deletado_em__isnull=True).order_by(
+            "nome", "id_cultura"
+        )
+        return Response(CulturaSerializer(culturas, many=True).data)

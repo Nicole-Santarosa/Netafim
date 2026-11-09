@@ -96,3 +96,33 @@ def entrar_como():
             )
 
     return entrar
+
+
+@pytest.fixture
+def cultura_excluida(conexao_admin):
+    """Cria uma cultura já excluída logicamente e devolve o id dela. Só o
+    Netafim Admin cadastra cultura, por isso ela é gravada (e confirmada) pela
+    conexão de administrador, com sufixo aleatório no nome.
+
+    Depois do teste, passe ou falhe, a linha é apagada de verdade, para o banco
+    de teste não acumular uma cultura nova a cada rodada. O rollback antes do
+    delete limpa a conexão caso o teste tenha deixado uma transação quebrada
+    nela. Ninguém se liga a essa cultura (a validação da abertura recusa), então
+    o delete não esbarra em chave estrangeira.
+    """
+    sufixo = uuid.uuid4().hex[:8]
+    with conexao_admin.cursor() as cur:
+        cur.execute(
+            "insert into cultura (nome, deletado_em, sync_seq) values (%s, now(), 0) "
+            "returning id_cultura",
+            (f"Excluida {sufixo}",),
+        )
+        id_cultura = cur.fetchone()[0]
+    conexao_admin.commit()
+    try:
+        yield id_cultura
+    finally:
+        conexao_admin.rollback()
+        with conexao_admin.cursor() as cur:
+            cur.execute("delete from cultura where id_cultura = %s", (id_cultura,))
+        conexao_admin.commit()

@@ -293,8 +293,36 @@ paths:
               example:
                 codigo: regra_de_negocio
                 detail: somente o Netafim Admin destina o atendimento
+  /api/v1/culturas:
+    get:
+      operationId: v1_culturas_list
+      tags:
+      - atendimentos
+      summary: Catálogo de culturas para o formulário de abertura
+      description: |-
+        Lista simples, sem paginação (o catálogo é pequeno), só com as culturas
+        em uso (excluídas logicamente não aparecem), em ordem de nome e depois de
+        id_cultura. O id_cultura é o que vai na lista culturas do POST de abertura.
+      responses:
+        '200':
+          description: Culturas em uso.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Cultura'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
 components:
   schemas:
+    Cultura:
+      type: object
+      properties:
+        id_cultura:
+          type: integer
+        nome:
+          type: string
     Status:
       type: string
       enum:

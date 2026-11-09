@@ -248,6 +248,16 @@ class AtendimentoDetalheSerializer(serializers.ModelSerializer):
         )
 
 
+class CulturaSerializer(serializers.ModelSerializer):
+    """Uma cultura do catálogo, para o formulário de abertura: só leitura, com
+    o id que vai na lista culturas do POST e o nome que aparece na tela."""
+
+    class Meta:
+        model = Cultura
+        fields = ("id_cultura", "nome")
+        read_only_fields = fields
+
+
 class HistoricoAtendimentoSerializer(serializers.ModelSerializer):
     """Um evento da linha do tempo do atendimento: só leitura. A observação e o
     responsável ficam de fora por enquanto, porque a observação é texto livre e

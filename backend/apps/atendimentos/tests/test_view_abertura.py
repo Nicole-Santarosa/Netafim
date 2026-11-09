@@ -2,7 +2,6 @@ import re
 import uuid
 
 import pytest
-from django.db import connection
 from rest_framework.test import APIClient
 
 from apps.atendimentos.models import Atendimento, AtendimentoCultura, Cultura
@@ -190,20 +189,12 @@ def test_cultura_repetida_devolve_400_no_campo_culturas(mundo, entrar_como):
 
 @pytest.mark.django_db
 def test_cultura_inexistente_ou_excluida_devolve_400_no_campo_culturas(
-    mundo, conexao_admin, entrar_como
+    mundo, cultura_excluida, entrar_como
 ):
-    # Cultura excluída logicamente, gravada (e confirmada) pela conexão de
-    # administrador, porque só o Netafim Admin cadastra cultura. O nome leva
-    # sufixo aleatório para não colidir entre execuções.
-    sufixo = uuid.uuid4().hex[:8]
-    with conexao_admin.cursor() as cur:
-        cur.execute(
-            "insert into cultura (nome, deletado_em, sync_seq) values (%s, now(), 0) "
-            "returning id_cultura",
-            (f"Excluida {sufixo}",),
-        )
-        id_excluida = cur.fetchone()[0]
-    conexao_admin.commit()
+    # A cultura excluída vem da fixture cultura_excluida (conftest.py), que a
+    # grava pela conexão de administrador e a apaga no fim, mesmo se o teste
+    # falhar, para não acumular linhas no banco de teste.
+    id_excluida = cultura_excluida
 
     entrar_como(mundo["id_usuario_cliente"])
     cliente = cliente_autenticado(mundo["id_usuario_cliente"])
