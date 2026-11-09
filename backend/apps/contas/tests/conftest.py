@@ -22,6 +22,7 @@ from pathlib import Path
 import psycopg
 import pytest
 from django.contrib.auth.hashers import make_password
+from django.core.cache import cache
 from django.db import connections
 from psycopg import sql
 from psycopg.conninfo import conninfo_to_dict, make_conninfo
@@ -37,6 +38,7 @@ PROPOSTA_REVOGAR_TOKENS = MIGRACOES / "001_fn_revogar_tokens_usuario.sql"
 PROPOSTA_LOGIN_SEM_HASH = MIGRACOES / "004_login_sem_leitura_de_hash.sql"
 PROPOSTA_REVOGA_LEITURA = MIGRACOES / "005_revoga_leitura_de_hash_e_auditoria.sql"
 MIGRACAO_MFA = MIGRACOES / "007_mfa_totp.sql"
+MIGRACAO_TITULAR = MIGRACOES / "010_titular_solicitacoes.sql"
 SENHA_APP_DJANGO = os.environ.get("TEST_APP_DJANGO_PASSWORD", "app_django_teste")
 SENHA_APP_AUTH = os.environ.get("TEST_APP_AUTH_PASSWORD", "app_auth_teste")
 _seq = itertools.count(1)
@@ -69,9 +71,19 @@ def _modelo():
         conn.execute(PROPOSTA_REVOGA_LEITURA.read_text(encoding="utf-8"))
         # MFA (007): tabelas e funções fn_mfa_* só para o app_auth.
         conn.execute(MIGRACAO_MFA.read_text(encoding="utf-8"))
+        # Direitos do titular (010): o titular registra e acompanha os próprios pedidos.
+        conn.execute(MIGRACAO_TITULAR.read_text(encoding="utf-8"))
     yield nome
     with psycopg.connect(_conninfo("postgres"), autocommit=True) as adm:
         adm.execute(sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(nome)))
+
+
+@pytest.fixture(autouse=True)
+def _cache_limpo():
+    """O limite de tentativas usa um cache em arquivo, que sobrevive entre testes e execuções."""
+    cache.clear()
+    yield
+    cache.clear()
 
 
 @pytest.fixture(autouse=True)

@@ -642,6 +642,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/Me'
           description: ''
+  /api/v1/me/dados:
+    get:
+      operationId: v1_me_dados_retrieve
+      description: 'Acesso e portabilidade: cópia dos dados pessoais do próprio usuário
+        (LGPD, art. 18).'
+      tags:
+      - lgpd
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DadosPessoais'
+          description: ''
   /api/v1/me/mfa:
     get:
       operationId: v1_me_mfa_retrieve
@@ -742,6 +758,49 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/me/solicitacoes-lgpd:
+    get:
+      operationId: v1_me_solicitacoes_lgpd_list
+      description: O titular lista e abre pedidos sobre os próprios dados.
+      tags:
+      - lgpd
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SolicitacaoTitular'
+          description: ''
+    post:
+      operationId: v1_me_solicitacoes_lgpd_create
+      description: O titular lista e abre pedidos sobre os próprios dados.
+      tags:
+      - lgpd
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SolicitacaoCriarRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SolicitacaoCriarRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SolicitacaoCriarRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitacaoTitular'
+          description: ''
   /api/v1/perfis:
     get:
       operationId: v1_perfis_list
@@ -848,6 +907,111 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Permissao'
+          description: ''
+  /api/v1/solicitacoes-lgpd:
+    get:
+      operationId: v1_solicitacoes_lgpd_list
+      description: Fila de pedidos de titulares (LGPD). Somente o Netafim Admin.
+      parameters:
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - atendida
+          - em_analise
+          - negada
+          - recebida
+      tags:
+      - lgpd
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SolicitacaoAdmin'
+          description: ''
+  /api/v1/solicitacoes-lgpd/{id}/analisar:
+    post:
+      operationId: v1_solicitacoes_lgpd_analisar_create
+      description: Fila de pedidos de titulares (LGPD). Somente o Netafim Admin.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - lgpd
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitacaoAdmin'
+          description: ''
+  /api/v1/solicitacoes-lgpd/{id}/atender:
+    post:
+      operationId: v1_solicitacoes_lgpd_atender_create
+      description: Fila de pedidos de titulares (LGPD). Somente o Netafim Admin.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - lgpd
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitacaoAdmin'
+          description: ''
+  /api/v1/solicitacoes-lgpd/{id}/negar:
+    post:
+      operationId: v1_solicitacoes_lgpd_negar_create
+      description: Fila de pedidos de titulares (LGPD). Somente o Netafim Admin.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - lgpd
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NegarSolicitacaoRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NegarSolicitacaoRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NegarSolicitacaoRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitacaoAdmin'
           description: ''
   /api/v1/usuarios:
     get:
@@ -1373,6 +1537,40 @@ components:
       required:
       - email
       - nome
+    DadosPessoais:
+      type: object
+      description: Cópia dos dados pessoais que o módulo de acesso guarda do titular.
+      properties:
+        formato:
+          type: integer
+        exportado_em:
+          type: string
+          format: date-time
+        conta:
+          $ref: '#/components/schemas/Me'
+        consentimento:
+          type: object
+          additionalProperties: {}
+        exclusao_solicitada_em:
+          type: string
+          format: date-time
+          nullable: true
+        dispositivos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dispositivo'
+        solicitacoes_lgpd:
+          type: array
+          items:
+            $ref: '#/components/schemas/SolicitacaoTitular'
+      required:
+      - consentimento
+      - conta
+      - dispositivos
+      - exclusao_solicitada_em
+      - exportado_em
+      - formato
+      - solicitacoes_lgpd
     DefinirPerfilRequest:
       type: object
       properties:
@@ -1755,6 +1953,15 @@ components:
       required:
       - codigo
       - desafio
+    NegarSolicitacaoRequest:
+      type: object
+      properties:
+        justificativa:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      required:
+      - justificativa
     NivelPerfilEnum:
       enum:
       - admin
@@ -2072,6 +2279,122 @@ components:
         * `recusado` - Recusado
         * `inativo` - Inativo
         * `bloqueado` - Bloqueado
+    SolicitacaoAdmin:
+      type: object
+      properties:
+        id_solicitacao:
+          type: integer
+        id_usuario:
+          type: integer
+          nullable: true
+        nome_titular:
+          type: string
+          nullable: true
+        email_contato:
+          type: string
+        tipo:
+          type: string
+        status:
+          type: string
+        observacao:
+          type: string
+          nullable: true
+        data_solicitacao:
+          type: string
+          format: date-time
+        data_prazo:
+          type: string
+          format: date-time
+        data_conclusao:
+          type: string
+          format: date-time
+          nullable: true
+        id_responsavel:
+          type: integer
+          nullable: true
+        justificativa_negativa:
+          type: string
+          nullable: true
+        atrasada:
+          type: boolean
+      required:
+      - atrasada
+      - data_conclusao
+      - data_prazo
+      - data_solicitacao
+      - email_contato
+      - id_responsavel
+      - id_solicitacao
+      - id_usuario
+      - justificativa_negativa
+      - nome_titular
+      - observacao
+      - status
+      - tipo
+    SolicitacaoCriarRequest:
+      type: object
+      properties:
+        tipo:
+          $ref: '#/components/schemas/SolicitacaoCriarTipoEnum'
+        observacao:
+          type: string
+          maxLength: 1000
+      required:
+      - tipo
+    SolicitacaoCriarTipoEnum:
+      enum:
+      - confirmacao
+      - acesso
+      - correcao
+      - anonimizacao
+      - eliminacao
+      - portabilidade
+      - compartilhamento
+      - revogacao_consentimento
+      type: string
+      description: |-
+        * `confirmacao` - confirmacao
+        * `acesso` - acesso
+        * `correcao` - correcao
+        * `anonimizacao` - anonimizacao
+        * `eliminacao` - eliminacao
+        * `portabilidade` - portabilidade
+        * `compartilhamento` - compartilhamento
+        * `revogacao_consentimento` - revogacao_consentimento
+    SolicitacaoTitular:
+      type: object
+      properties:
+        id_solicitacao:
+          type: integer
+        tipo:
+          type: string
+        status:
+          type: string
+        observacao:
+          type: string
+          nullable: true
+        data_solicitacao:
+          type: string
+          format: date-time
+        data_prazo:
+          type: string
+          format: date-time
+        data_conclusao:
+          type: string
+          format: date-time
+          nullable: true
+        justificativa_negativa:
+          type: string
+          nullable: true
+      required:
+      - data_conclusao
+      - data_prazo
+      - data_solicitacao
+      - id_solicitacao
+      - justificativa_negativa
+      - observacao
+      - status
+      - tipo
     StatusOrganizacaoEnum:
       enum:
       - ativo

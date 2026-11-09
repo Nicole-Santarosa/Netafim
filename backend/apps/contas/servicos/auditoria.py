@@ -36,6 +36,9 @@ class Acao:
     ACESSO_NEGADO = "acesso_negado"
     DISPOSITIVO_REVOGADO = "dispositivo_revogado"
     CONFIGURACAO_ALTERADA = "configuracao_alterada"
+    EXPORTACAO_DADOS = "exportacao_dados"
+    SOLICITACAO_TITULAR = "solicitacao_titular"
+    DADOS_ANONIMIZADOS = "dados_anonimizados"
 
 
 class Resultado:

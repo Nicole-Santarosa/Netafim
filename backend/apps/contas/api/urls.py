@@ -11,6 +11,7 @@ roteador.register("perfis", views.PerfilViewSet, basename="perfil")
 roteador.register("permissoes", views.PermissaoViewSet, basename="permissao")
 roteador.register("dominios", views.DominioViewSet, basename="dominio")
 roteador.register("dispositivos", views.DispositivoViewSet, basename="dispositivo")
+roteador.register("solicitacoes-lgpd", views.SolicitacaoTitularViewSet, basename="solicitacao-lgpd")
 
 urlpatterns = [
     path("auth/login", views_auth.LoginView.as_view(), name="auth-login"),
@@ -32,5 +33,11 @@ urlpatterns = [
     path("me/mfa/confirmar", views_auth.MfaConfirmarView.as_view(), name="me-mfa-confirmar"),
     path("me/mfa/desativar", views_auth.MfaDesativarView.as_view(), name="me-mfa-desativar"),
     path("me/senha", views_auth.AlterarSenhaView.as_view(), name="me-senha"),
+    path("me/dados", views_auth.DadosPessoaisView.as_view(), name="me-dados"),
+    path(
+        "me/solicitacoes-lgpd",
+        views_auth.MinhasSolicitacoesView.as_view(),
+        name="me-solicitacoes-lgpd",
+    ),
     *roteador.urls,
 ]

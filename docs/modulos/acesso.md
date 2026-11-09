@@ -53,11 +53,22 @@ Opcional por usuário (`usuario.mfa_ativo`), compatível com Google Authenticato
 
 - **Ativar** (logado): `POST me/mfa/iniciar` devolve o segredo e o link `otpauth://`; o titular cadastra no app autenticador e confirma com `POST me/mfa/confirmar` `{codigo}`. A confirmação liga o MFA e devolve **10 códigos de recuperação, uma única vez** (o banco guarda só o hash). `GET me/mfa` mostra o estado e quantos códigos restam.
 - **Login em dois passos:** com MFA ativo, `POST auth/login` (e-mail e senha corretos) responde `200 {"mfa_necessario": true, "desafio": "...", "desafio_expira_em": ...}` **sem abrir sessão**. O app envia `POST auth/mfa/verificar` `{desafio, codigo}` (código do app ou de recuperação) e só então recebe os tokens. O desafio é assinado e vale 5 minutos.
-- **Força bruta:** cada código errado conta como falha de login (5 seguidas bloqueiam por 15 minutos, como na senha); `THROTTLE_MFA` limita as tentativas por IP. Um código TOTP vale **uma vez** (anti-replay pelo último passo aceito); um código de recuperação também.
+- **Força bruta:** cada código errado conta como falha de login (5 seguidas bloqueiam por 15 minutos, como na senha); `THROTTLE_MFA` limita as tentativas por IP (o cache do limite é em arquivo, compartilhado entre os workers; ver `CACHE_DIR` em `.env.example`). Um código TOTP vale **uma vez** (anti-replay pelo último passo aceito); um código de recuperação também.
 - **Desativar:** `POST me/mfa/desativar` `{senha, codigo}` exige a senha **e** um código. Apaga segredo e códigos (um gatilho do banco também faz isso ao desligar por qualquer caminho, inclusive anonimização LGPD).
 - **Perdeu o aparelho e os códigos:** o Netafim Admin remove o MFA com `POST usuarios/{id}/mfa/resetar` (encerra as sessões da pessoa; fica na auditoria como `mfa_alterado`).
 - **Isolamento (mesmo desenho da DT-002):** segredo e hashes ficam em tabelas sem privilégio para `app_django`; só a conexão `auth` (`app_auth`) executa as funções `fn_mfa_*` (migração `007_mfa_totp.sql`). Sem a conexão `auth` ou sem a 007, as rotas de MFA respondem `503 mfa_indisponivel` e o login segue só com senha (nenhum usuário tem MFA antes da 007).
 - **Limite conhecido:** o segredo TOTP precisa ser reversível (o servidor calcula o código), então fica legível por quem administra o banco ou tem a senha do `app_auth`. A proteção em repouso é a do provedor do banco; criptografia em nível de aplicação é evolução futura. Obrigar MFA para administradores é decisão do grupo (hoje é opcional).
+
+### Direitos do titular (LGPD, art. 18)
+
+A pessoa pode pedir, pelo app, acesso, correção, anonimização, eliminação, portabilidade, confirmação de tratamento, informação de compartilhamento e revogação do consentimento. O prazo padrão de resposta é de **15 dias** (art. 19, II; o banco grava `data_prazo` e a fila marca `atrasada`; prazo a confirmar com o jurídico).
+
+- **Titular:** `POST me/solicitacoes-lgpd` `{tipo, observacao?}` registra o pedido **sempre em nome de quem está logado**; `GET me/solicitacoes-lgpd` acompanha (inclusive a justificativa de uma negativa); `GET me/dados` devolve uma cópia dos dados pessoais que este módulo guarda (conta, consentimento, aparelhos e pedidos). Não inclui hash de senha, segredo de MFA nem tokens. Os dados de **atendimentos** são do módulo de atendimentos, que deve acrescentar a própria seção. Só um pedido em aberto por tipo (`409 solicitacao_em_aberto`).
+- **Netafim Admin:** `GET solicitacoes-lgpd?status=` (ordenada pelo prazo), `POST solicitacoes-lgpd/{id}/analisar`, `/atender` e `/negar` `{justificativa}`. Atender um pedido de **anonimização ou eliminação** executa `fn_anonimizar_usuario`: nome, e-mail e telefone são descaracterizados, a conta fica inativa e excluída, aparelhos e sessões são revogados, e segredo e códigos de MFA são apagados. O `id` e o histórico legal dos atendimentos ficam. O registro do pedido permanece, sem nome nem e-mail.
+- **Trava de função:** um administrador **não atende o próprio** pedido de anonimização (`403 proprio_pedido`); outro administrador precisa fazê-lo. O último Netafim Admin ativo não é anonimizado.
+- **Por que há funções no banco (migração `010`):** as policies de `solicitacao_titular` só deixam o Netafim Admin ler e gravar, então o titular não conseguiria registrar o próprio pedido. As funções `fn_titular_registrar_solicitacao` e `fn_titular_minhas_solicitacoes` fazem isso só para o usuário logado, sem afrouxar nenhuma policy. Sem a `010` aplicada, as rotas do titular falham (a função não existe).
+- **Auditoria:** o banco registra `solicitacao_titular`, `exportacao_dados` e `dados_anonimizados` na trilha encadeada. A trilha não aceita e-mail nem segredo em `detalhes`.
+- **Limite:** não há notificação por e-mail ao titular quando o pedido é concluído (depende do SMTP).
 
 ## Fluxo de cadastro (Regras de Negócio)
 
@@ -103,6 +114,8 @@ O contrato completo, gerado pelo código, está em [`docs/api/acesso-openapi.yam
 | `POST auth/cadastro` · `GET auth/termo` | público (app) |
 | `POST auth/convite/aceitar` · `auth/senha/esqueci` · `auth/senha/redefinir` | público (link do e-mail) |
 | `GET/PATCH me` · `POST me/senha` | usuário logado |
+| `GET me/dados` · `GET/POST me/solicitacoes-lgpd` | titular (usuário logado) |
+| `GET solicitacoes-lgpd` · `POST solicitacoes-lgpd/{id}/analisar\|atender\|negar` | Netafim Admin |
 | `GET/POST usuarios` · `GET/PATCH/DELETE usuarios/{id}` | admins, no escopo |
 | `POST usuarios/{id}/aprovar` · `recusar` · `situacao` · `perfil` · `reenviar-convite` | admins, conforme a permissão |
 | `GET usuarios/{id}/dispositivos` · `POST dispositivos/{id}/revogar` | Netafim Admin |

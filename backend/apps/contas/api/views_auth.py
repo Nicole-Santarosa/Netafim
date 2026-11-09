@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 
 from ..constantes import TipoToken
 from ..excecoes import DesafioMfa
-from ..servicos import acesso, mfa, usuarios
+from ..servicos import acesso, mfa, titular, usuarios
 from . import serializers as s
 
 MSG_CADASTRO = (
@@ -259,3 +259,41 @@ class MfaDesativarView(APIView):
         dados = entrada.validated_data
         mfa.desativar(request.user, dados["senha"], dados["codigo"], request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# --------------------------------------------------------------------------- direitos do titular
+
+
+@extend_schema(tags=["lgpd"], responses=s.DadosPessoaisSerializer)
+class DadosPessoaisView(APIView):
+    """Acesso e portabilidade: cópia dos dados pessoais do próprio usuário (LGPD, art. 18)."""
+
+    throttle_scope = "titular"
+
+    def get(self, request):
+        return Response(titular.exportar_dados(request.user, request=request))
+
+
+@extend_schema(tags=["lgpd"])
+class MinhasSolicitacoesView(APIView):
+    """O titular lista e abre pedidos sobre os próprios dados."""
+
+    throttle_scope = "titular"
+
+    @extend_schema(responses=s.SolicitacaoTitularSerializer(many=True))
+    def get(self, request):
+        return Response(titular.minhas_solicitacoes())
+
+    @extend_schema(
+        request=s.SolicitacaoCriarSerializer, responses={201: s.SolicitacaoTitularSerializer}
+    )
+    def post(self, request):
+        entrada = s.SolicitacaoCriarSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        pedido = titular.registrar(
+            request.user,
+            entrada.validated_data["tipo"],
+            entrada.validated_data.get("observacao"),
+            request=request,
+        )
+        return Response(pedido, status=status.HTTP_201_CREATED)

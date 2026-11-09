@@ -14,6 +14,7 @@ from ..models import (
     Permissao,
     Usuario,
 )
+from ..servicos import titular
 
 # --------------------------------------------------------------------------- saídas
 
@@ -378,3 +379,54 @@ class MfaConfirmadoSerializer(serializers.Serializer):
     """Os códigos de recuperação só aparecem nesta resposta; o banco guarda apenas o hash."""
 
     codigos_recuperacao = serializers.ListField(child=serializers.CharField())
+
+
+# --------------------------------------------------------------------------- direitos do titular
+
+
+class SolicitacaoCriarSerializer(serializers.Serializer):
+    tipo = serializers.ChoiceField(choices=titular.TIPOS)
+    observacao = serializers.CharField(max_length=1000, required=False, allow_blank=True)
+
+
+class SolicitacaoTitularSerializer(serializers.Serializer):
+    id_solicitacao = serializers.IntegerField()
+    tipo = serializers.CharField()
+    status = serializers.CharField()
+    observacao = serializers.CharField(allow_null=True)
+    data_solicitacao = serializers.DateTimeField()
+    data_prazo = serializers.DateTimeField()
+    data_conclusao = serializers.DateTimeField(allow_null=True)
+    justificativa_negativa = serializers.CharField(allow_null=True)
+
+
+class SolicitacaoAdminSerializer(serializers.Serializer):
+    id_solicitacao = serializers.IntegerField()
+    id_usuario = serializers.IntegerField(allow_null=True)
+    nome_titular = serializers.CharField(allow_null=True)
+    email_contato = serializers.CharField()
+    tipo = serializers.CharField()
+    status = serializers.CharField()
+    observacao = serializers.CharField(allow_null=True)
+    data_solicitacao = serializers.DateTimeField()
+    data_prazo = serializers.DateTimeField()
+    data_conclusao = serializers.DateTimeField(allow_null=True)
+    id_responsavel = serializers.IntegerField(allow_null=True)
+    justificativa_negativa = serializers.CharField(allow_null=True)
+    atrasada = serializers.BooleanField()
+
+
+class NegarSolicitacaoSerializer(serializers.Serializer):
+    justificativa = serializers.CharField(max_length=2000)
+
+
+class DadosPessoaisSerializer(serializers.Serializer):
+    """Cópia dos dados pessoais que o módulo de acesso guarda do titular."""
+
+    formato = serializers.IntegerField()
+    exportado_em = serializers.DateTimeField()
+    conta = MeSerializer()
+    consentimento = serializers.DictField()
+    exclusao_solicitada_em = serializers.DateTimeField(allow_null=True)
+    dispositivos = DispositivoSerializer(many=True)
+    solicitacoes_lgpd = SolicitacaoTitularSerializer(many=True)
