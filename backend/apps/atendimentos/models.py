@@ -207,6 +207,31 @@ class AtendimentoProblema(models.Model):
         db_table = "atendimento_problema"
 
 
+class Cultura(models.Model):
+    """Espelho da tabela cultura: o catálogo de culturas (Café, Citrus...).
+    Aqui só é lido, para mostrar o nome das culturas no detalhe do atendimento.
+    Quem cadastra e altera é o Netafim Admin, pelas policies do banco.
+    """
+
+    # Identity do banco: o Django não envia esse valor, ele vem no retorno do INSERT.
+    id_cultura = models.AutoField(primary_key=True)
+    nome = models.CharField(max_length=50)
+
+    data_criacao = models.DateTimeField(db_default=Now())
+    data_atualizacao = models.DateTimeField(db_default=Now())
+
+    # Exclusão lógica. A tabela não tem coluna de situação (ativo/inativo):
+    # cultura fora de uso é a que tem deletado_em preenchido.
+    deletado_em = models.DateTimeField(null=True, blank=True)
+
+    # Preenchido por gatilho; aceita nulo aqui só para o INSERT poder seguir.
+    sync_seq = models.BigIntegerField(null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = "cultura"
+
+
 class AtendimentoCultura(models.Model):
     """Espelho da tabela atendimento_cultura: as culturas ligadas ao atendimento.
     A chave primária é o par (atendimento, cultura), sem coluna de id própria.

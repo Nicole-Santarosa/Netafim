@@ -2,6 +2,8 @@ from rest_framework import serializers
 
 from apps.atendimentos.models import (
     Atendimento,
+    AtendimentoCultura,
+    Cultura,
     DestinadoA,
     HistoricoAtendimento,
     Status,
@@ -142,6 +144,9 @@ class AtendimentoDetalheSerializer(serializers.ModelSerializer):
     deletado_em fica de fora: o atendimento excluído nem chega aqui.
     """
 
+    # Culturas ligadas ao atendimento, como lista de {id_cultura, nome}.
+    culturas = serializers.SerializerMethodField()
+
     class Meta:
         model = Atendimento
         fields = (
@@ -181,8 +186,25 @@ class AtendimentoDetalheSerializer(serializers.ModelSerializer):
             "versao",
             "data_criacao",
             "data_atualizacao",
+            "culturas",
         )
         read_only_fields = fields
+
+    def get_culturas(self, atendimento):
+        # Uma consulta só: os vínculos do atendimento entram como subconsulta
+        # (o values("id_cultura") dentro do __in não é executado à parte).
+        # O RLS já limita os vínculos a quem pode ver o atendimento, mas não
+        # esconde linhas excluídas logicamente; por isso o deletado_em é filtrado
+        # nas duas tabelas. Ordem por nome, com o id para desempatar. Sem
+        # cultura, a lista sai vazia.
+        vinculos = AtendimentoCultura.objects.filter(
+            id_atendimento=atendimento.id_atendimento, deletado_em__isnull=True
+        ).values("id_cultura")
+        return list(
+            Cultura.objects.filter(id_cultura__in=vinculos, deletado_em__isnull=True)
+            .order_by("nome", "id_cultura")
+            .values("id_cultura", "nome")
+        )
 
 
 class HistoricoAtendimentoSerializer(serializers.ModelSerializer):

@@ -672,6 +672,18 @@ components:
         data_atualizacao:
           type: string
           format: date-time
+        culturas:
+          type: array
+          description: |-
+            Culturas ligadas ao atendimento, em ordem de nome. Vínculos e culturas
+            excluídos logicamente não aparecem. Lista vazia quando não há cultura.
+          items:
+            type: object
+            properties:
+              id_cultura:
+                type: integer
+              nome:
+                type: string
         historico:
           type: array
           items:
