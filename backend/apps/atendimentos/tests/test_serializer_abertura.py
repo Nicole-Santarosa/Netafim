@@ -112,6 +112,8 @@ def test_id_distribuidor_origem_e_aceito_e_aparece_no_validated_data():
 def test_todo_campo_do_serializer_esta_nas_colunas_aceitas_do_servico():
     # Guarda: se alguém acrescentar um campo aqui que o serviço descarta, o
     # dado seria aceito na validação e perdido em silêncio na gravação.
+    # A única exceção é culturas, que não é coluna: o serviço lê essa chave à
+    # parte e grava em atendimento_cultura.
     campos = set(AberturaAtendimentoSerializer().fields)
 
-    assert campos <= set(COLUNAS_ACEITAS_NA_ABERTURA)
+    assert campos <= set(COLUNAS_ACEITAS_NA_ABERTURA) | {"culturas"}

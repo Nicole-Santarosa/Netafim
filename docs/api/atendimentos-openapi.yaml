@@ -135,7 +135,8 @@ paths:
           description: >-
             Campo obrigatório ausente, valor fora da lista, formato inválido, ou
             regra entre campos (cliente_final sem id_cliente, netafim sem
-            area_setor). Também vem como 400 "valor_invalido" quando o banco recusa
+            area_setor), ou culturas com id repetido, inexistente ou excluído (erro
+            no campo culturas). Também vem como 400 "valor_invalido" quando o banco recusa
             o formato ou o tamanho de um valor.
           content:
             application/json:
@@ -451,6 +452,15 @@ components:
           format: date-time
           description: >-
             Relógio do aparelho. Opcional; sem ele o servidor usa a hora atual.
+        culturas:
+          type: array
+          description: >-
+            Ids das culturas do atendimento (opcional; lista vazia é o mesmo que
+            não mandar). Cada id precisa existir e não estar excluído, sem
+            repetição. Os vínculos são gravados na mesma transação do atendimento
+            e aparecem no detalhe; a resposta 201 não muda.
+          items:
+            type: integer
     AtendimentoCriado:
       type: object
       properties:

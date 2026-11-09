@@ -1,3 +1,5 @@
+from collections import Counter
+
 from rest_framework import serializers
 
 from apps.atendimentos.models import (
@@ -21,12 +23,21 @@ from apps.atendimentos.servicos import COLUNAS_ALTERAVEIS
 # lista na tela. Não há validação extra aqui: se o id não existir, o banco recusa
 # com erro de chave estrangeira e o tradutor de erros responde 422.
 #
+# Além das colunas, aceita a lista opcional culturas (ids de cultura), que não é
+# coluna do atendimento: o serviço grava cada id em atendimento_cultura.
+#
 # Chaves que não estão em fields (status, numero_protocolo, id_solicitante,
 # snapshots etc.) são simplesmente ignoradas pelo DRF e não chegam ao
 # validated_data.
 
 
 class AberturaAtendimentoSerializer(serializers.ModelSerializer):
+    # Ids das culturas do atendimento. Opcional; lista vazia é o mesmo que não
+    # mandar. A validação de cada id fica em validate_culturas.
+    culturas = serializers.ListField(
+        child=serializers.IntegerField(), required=False, allow_empty=True
+    )
+
     class Meta:
         model = Atendimento
         fields = (
@@ -52,6 +63,7 @@ class AberturaAtendimentoSerializer(serializers.ModelSerializer):
             "necessidade",
             "qtd_participantes_prevista",
             "data_abertura",
+            "culturas",
         )
         # Os campos de lista fixa (origem, motivo, area_setor etc.) viram
         # ChoiceField sozinhos, porque o model usa TextChoices. Obrigatórios
@@ -68,6 +80,35 @@ class AberturaAtendimentoSerializer(serializers.ModelSerializer):
             # Mesma regra do CHECK ck_atend_qtd_participantes: maior que zero.
             "qtd_participantes_prevista": {"min_value": 1},
         }
+
+    def validate_culturas(self, ids):
+        """Recusa ids repetidos e ids de cultura inexistente ou excluída, com o
+        erro apontando o campo culturas."""
+        if not ids:
+            return ids
+
+        # Um id repetido violaria a chave composta (atendimento, cultura), e o
+        # banco responderia 409, que o aplicativo lê como atendimento
+        # duplicado. Por isso a repetição é barrada aqui.
+        repetidos = sorted(i for i, vezes in Counter(ids).items() if vezes > 1)
+        if repetidos:
+            raise serializers.ValidationError(
+                f"Culturas repetidas na lista: {', '.join(map(str, repetidos))}."
+            )
+
+        # A chave estrangeira só confere se o id existe; não barra cultura
+        # excluída logicamente. Uma consulta só para a lista inteira.
+        ativas = set(
+            Cultura.objects.filter(id_cultura__in=ids, deletado_em__isnull=True).values_list(
+                "id_cultura", flat=True
+            )
+        )
+        fora_de_uso = [i for i in ids if i not in ativas]
+        if fora_de_uso:
+            raise serializers.ValidationError(
+                f"Cultura inexistente ou fora de uso: {', '.join(map(str, fora_de_uso))}."
+            )
+        return ids
 
     def validate(self, dados):
         """Regras entre campos, iguais aos CHECKs do banco, só para o aplicativo

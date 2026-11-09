@@ -1,7 +1,8 @@
+from django.db import transaction
 from rest_framework.exceptions import NotFound
 
 from apps.atendimentos.excecoes import ConflitoDeVersao, SemPermissaoParaAlterar
-from apps.atendimentos.models import Atendimento
+from apps.atendimentos.models import Atendimento, AtendimentoCultura
 
 # Colunas que quem abre o atendimento pode informar. Qualquer chave fora desta
 # lista é descartada antes do INSERT. Ficam de fora, por grupo:
@@ -67,6 +68,9 @@ def abrir_atendimento(id_solicitante: int, dados: dict) -> Atendimento:
     os dados tragam outro. Esta função só filtra as chaves e insere. As regras de negócio (protocolo,
     status inicial, versão, histórico) ficam no banco, e os erros dele não são
     capturados aqui: o tradutor de apps/core/erros.py converte em HTTP.
+
+    A chave opcional "culturas" (lista de ids) não é coluna do atendimento:
+    cada id vira uma linha de atendimento_cultura, gravada junto com ele.
     """
     # Mantém só as colunas permitidas; o resto (status, numero_protocolo etc.)
     # é ignorado em silêncio.
@@ -77,9 +81,31 @@ def abrir_atendimento(id_solicitante: int, dados: dict) -> Atendimento:
     # que tenha escapado do filtro.
     campos["id_solicitante"] = id_solicitante
 
-    # create() faz o INSERT direto. O save() tentaria um UPDATE antes, porque o
-    # pk UUID não tem valor padrão e o Django não saberia que o registro é novo.
-    atendimento = Atendimento.objects.create(**campos)
+    # Os ids de cultura chegam separados das colunas (não estão em
+    # COLUNAS_ACEITAS_NA_ABERTURA). Sem a chave, nenhum vínculo é gravado.
+    ids_cultura = dados.get("culturas") or []
+
+    # O atendimento e os vínculos entram juntos: se algum vínculo falhar, o
+    # atomic desfaz também o INSERT do atendimento. Dentro de uma requisição
+    # (ATOMIC_REQUESTS) isto vira um savepoint; chamado fora dela, garante o
+    # mesmo tudo ou nada.
+    with transaction.atomic():
+        # create() faz o INSERT direto. O save() tentaria um UPDATE antes, porque o
+        # pk UUID não tem valor padrão e o Django não saberia que o registro é novo.
+        atendimento = Atendimento.objects.create(**campos)
+
+        # Um INSERT só para todos os vínculos. O RLS deixa o próprio
+        # solicitante gravar (app_atendimento_operavel), e o sync_seq vem do
+        # gatilho.
+        if ids_cultura:
+            AtendimentoCultura.objects.bulk_create(
+                [
+                    AtendimentoCultura(
+                        id_atendimento=atendimento.id_atendimento, id_cultura=id_cultura
+                    )
+                    for id_cultura in ids_cultura
+                ]
+            )
 
     # Relê a linha para trazer o que os gatilhos preencheram: numero_protocolo,
     # versao, sync_seq e status.

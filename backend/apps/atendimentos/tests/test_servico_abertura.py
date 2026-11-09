@@ -4,6 +4,7 @@ import uuid
 import pytest
 from django.db import IntegrityError, transaction
 
+from apps.atendimentos.models import Atendimento
 from apps.atendimentos.servicos import abrir_atendimento
 
 
@@ -89,3 +90,17 @@ def test_id_repetido_levanta_erro_do_banco(mundo, entrar_como):
     with pytest.raises(IntegrityError):
         with transaction.atomic():
             abrir_atendimento(mundo["id_usuario_cliente"], dados)
+
+
+@pytest.mark.django_db
+def test_falha_no_vinculo_de_cultura_desfaz_o_atendimento(mundo, entrar_como):
+    entrar_como(mundo["id_usuario_cliente"])
+    # Chama o serviço direto, sem o serializer, com um id de cultura que não
+    # existe: o INSERT do vínculo falha na chave estrangeira.
+    dados = dados_basicos(mundo, culturas=[2_000_000_000])
+
+    with pytest.raises(IntegrityError):
+        abrir_atendimento(mundo["id_usuario_cliente"], dados)
+
+    # O atomic do serviço desfez também o INSERT do atendimento.
+    assert not Atendimento.objects.filter(id_atendimento=dados["id_atendimento"]).exists()
