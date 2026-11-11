@@ -43,6 +43,7 @@ android {
 
 dependencies {
     implementation(project(":feature:acesso"))
+    implementation(project(":feature:atendimento"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
