@@ -58,4 +58,27 @@
     <string name="acesso_cancelar">Cancelar</string>
     <string name="acesso_voltar">Voltar</string>
     <string name="acesso_erro">Erro</string>
+
+    <!-- Aprovação de cadastro (Netafim Admin) -->
+    <string name="aprovacao_titulo">Aprovação de cadastro</string>
+    <string name="aprovacao_nome">Nome</string>
+    <string name="aprovacao_email">E-mail</string>
+    <string name="aprovacao_telefone">Telefone</string>
+    <string name="aprovacao_nao_informado">Não informado</string>
+    <string name="aprovacao_recusar">Recusar</string>
+    <string name="aprovacao_aprovar">Aprovar</string>
+    <string name="aprovacao_vazio_titulo">Nenhum cadastro aguardando aprovação</string>
+    <string name="aprovacao_vazio_detalhe">Quando alguém pedir acesso pelo aplicativo, o cadastro aparece aqui.</string>
+    <string name="aprovacao_folha_titulo">Aprovar cadastro</string>
+    <string name="aprovacao_tipo">Tipo de organização</string>
+    <string name="aprovacao_tipo_netafim">Netafim</string>
+    <string name="aprovacao_tipo_distribuidor">Distribuidor</string>
+    <string name="aprovacao_tipo_cliente">Cliente final</string>
+    <string name="aprovacao_organizacao_distribuidor">Distribuidor</string>
+    <string name="aprovacao_organizacao_cliente">Cliente</string>
+    <string name="aprovacao_perfil">Perfil de acesso</string>
+    <string name="aprovacao_sem_opcoes">Nenhuma opção ativa disponível.</string>
+    <string name="aprovacao_confirmar">Confirmar aprovação</string>
+    <string name="aprovacao_recusar_titulo">Recusar cadastro?</string>
+    <string name="aprovacao_recusar_texto">O cadastro de %1$s será recusado e a pessoa será avisada. Essa ação não pode ser desfeita.</string>
 </resources>

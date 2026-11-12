@@ -107,3 +107,33 @@ data class TermoResposta(@SerialName("versao_vigente") val versaoVigente: String
 
 @Serializable
 data class MensagemResposta(val detail: String)
+
+/** Lista paginada do DRF (PageNumberPagination): [next] é nulo na última página. */
+@Serializable
+data class PaginaDto<T>(
+    val next: String? = null,
+    val results: List<T> = emptyList(),
+)
+
+@Serializable
+data class DistribuidorDto(
+    @SerialName("id_distribuidor") val idDistribuidor: Int,
+    val nome: String,
+    val status: String = "ativo",
+)
+
+@Serializable
+data class ClienteDto(
+    @SerialName("id_cliente") val idCliente: Int,
+    val nome: String,
+    val status: String = "ativo",
+)
+
+/** Corpo de POST /usuarios/{id}/aprovar. */
+@Serializable
+data class AprovarRequisicao(
+    @SerialName("tipo_organizacao") val tipoOrganizacao: String,
+    @SerialName("id_distribuidor") val idDistribuidor: Int? = null,
+    @SerialName("id_cliente") val idCliente: Int? = null,
+    @SerialName("id_perfil") val idPerfil: Int,
+)

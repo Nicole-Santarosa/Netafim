@@ -8,7 +8,9 @@ import com.netafim.posvenda.acesso.dados.InfoAparelho
 import com.netafim.posvenda.acesso.dados.ProvedorTokens
 import com.netafim.posvenda.acesso.dados.Rede
 import com.netafim.posvenda.acesso.dados.RepositorioAcessoRemoto
+import com.netafim.posvenda.acesso.dados.RepositorioCadastrosRemoto
 import com.netafim.posvenda.acesso.dominio.RepositorioAcesso
+import com.netafim.posvenda.acesso.dominio.RepositorioCadastros
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 
@@ -30,8 +32,12 @@ object AcessoGrafo {
 
     private lateinit var rede: Rede
     private lateinit var repositorioRemoto: RepositorioAcessoRemoto
+    private lateinit var cadastrosRemoto: RepositorioCadastrosRemoto
 
     val repositorio: RepositorioAcesso get() = repositorioRemoto
+
+    /** Fila de cadastros pendentes (aprovar e recusar), para quem tem a permissão aprovar_cadastro. */
+    val repositorioCadastros: RepositorioCadastros get() = cadastrosRemoto
     val clienteAutenticado: OkHttpClient get() = rede.autenticado
     val retrofitAutenticado: Retrofit by lazy { rede.retrofit(rede.autenticado) }
 
@@ -51,6 +57,7 @@ object AcessoGrafo {
                 versaoApp = configuracao.versaoApp.take(20),
             ),
         )
+        cadastrosRemoto = RepositorioCadastrosRemoto(api = autenticada, json = rede.json)
         tokens.alvo = repositorioRemoto
     }
 

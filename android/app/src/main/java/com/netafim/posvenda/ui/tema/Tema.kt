@@ -37,6 +37,9 @@ private val Claro = lightColorScheme(
     onSurfaceVariant = Color(0xFF666661),
     surfaceVariant = Color(0xFFE9E9E4),
     outlineVariant = Color(0xFFC9C9C2),
+    // vermelho do Recusar no protótipo (C34121); também vale para os erros de campo
+    error = Color(0xFFC34121),
+    onError = Color.White,
 )
 
 private val Escuro = darkColorScheme(

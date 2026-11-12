@@ -36,6 +36,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -102,7 +103,7 @@ fun larguraConteudo(): Dp = esc(LarguraPrototipo)
 
 /** Estilo com a família do tema (Outfit); um TextStyle solto cairia na fonte padrão do sistema. */
 @Composable
-private fun estilo(tamanho: Int, peso: FontWeight = FontWeight.Normal): TextStyle =
+internal fun estilo(tamanho: Int, peso: FontWeight = FontWeight.Normal): TextStyle =
     MaterialTheme.typography.bodyMedium.copy(
         fontSize = escSp(tamanho),
         fontWeight = peso,
@@ -251,6 +252,7 @@ fun BotaoCheio(
     aoClicar: () -> Unit,
     modifier: Modifier = Modifier,
     carregando: Boolean = false,
+    habilitado: Boolean = true,
 ) {
     val cores = MaterialTheme.colorScheme
     val forma = raio()
@@ -259,9 +261,10 @@ fun BotaoCheio(
         modifier = modifier
             .fillMaxWidth()
             .height(esc(48))
+            .alpha(if (habilitado) 1f else 0.4f)
             .shadow(esc(12), forma, ambientColor = Color.Transparent, spotColor = SombraBotao)
             .background(cores.primary, forma)
-            .clickable(enabled = !carregando, role = Role.Button, onClick = aoClicar),
+            .clickable(enabled = habilitado && !carregando, role = Role.Button, onClick = aoClicar),
     ) {
         if (carregando) {
             CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(esc(22)), color = cores.onPrimary)
@@ -342,4 +345,58 @@ fun DetalheDeEstado(texto: String, modifier: Modifier = Modifier) {
         style = estilo(12),
         modifier = modifier.fillMaxWidth(),
     )
+}
+
+/**
+ * Botão de ação de 44 dp (Recusar / Aprovar do protótipo). Cheio: fundo na cor e texto em
+ * [corTexto]; vazado: borda de 1,5 dp e texto na cor.
+ */
+@Composable
+fun BotaoAcao(
+    texto: String,
+    aoClicar: () -> Unit,
+    cor: Color,
+    preenchido: Boolean,
+    modifier: Modifier = Modifier,
+    corTexto: Color = cor,
+) {
+    val forma = raio()
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .height(esc(44))
+            .then(if (preenchido) Modifier.background(cor, forma) else Modifier.border(BorderStroke(1.5.dp, cor), forma))
+            .clickable(role = Role.Button, onClick = aoClicar),
+    ) {
+        Text(texto, color = corTexto, textAlign = TextAlign.Center, style = estilo(13, FontWeight.Medium))
+    }
+}
+
+/** Opção de uma escolha (tipo, organização, perfil): destaca a selecionada com a cor primária. */
+@Composable
+fun OpcaoSelecionavel(
+    texto: String,
+    selecionada: Boolean,
+    aoClicar: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val cores = MaterialTheme.colorScheme
+    val forma = raio()
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(esc(44))
+            .background(if (selecionada) cores.primary else cores.surfaceVariant, forma)
+            .border(1.dp, if (selecionada) cores.primary else cores.outlineVariant, forma)
+            .clickable(role = Role.RadioButton, onClick = aoClicar),
+    ) {
+        Text(
+            texto,
+            color = if (selecionada) cores.onPrimary else cores.onSurface,
+            textAlign = TextAlign.Center,
+            style = estilo(13, FontWeight.Medium),
+            modifier = Modifier.padding(horizontal = esc(8)),
+        )
+    }
 }

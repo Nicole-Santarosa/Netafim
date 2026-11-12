@@ -10,6 +10,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -29,7 +30,9 @@ import com.netafim.posvenda.R
 import com.netafim.posvenda.acesso.AcessoGrafo
 import com.netafim.posvenda.acesso.ui.RotasAcesso
 import com.netafim.posvenda.acesso.ui.grafoAcesso
+import com.netafim.posvenda.acesso.ui.telaAprovacao
 import com.netafim.posvenda.acesso.ui.telaPerfil
+import com.netafim.posvenda.acesso.dominio.Permissoes
 
 /** Rotas do app. PROVISÓRIO: "inicio" deve ser substituída pela tela do módulo responsável. */
 object RotasApp {
@@ -44,7 +47,8 @@ fun NavegacaoRaiz(iniciarLogado: Boolean, navController: NavHostController = rem
     // Sessão expirou ou foi revogada com o app aberto: volta para o login.
     LaunchedEffect(sessao, entrada) {
         val rota = entrada?.destination?.route ?: return@LaunchedEffect
-        val emTelaDeAcesso = rota.startsWith(RotasAcesso.GRAFO + "/") && rota != RotasAcesso.PERFIL
+        val emTelaDeAcesso = rota.startsWith(RotasAcesso.GRAFO + "/") &&
+            rota != RotasAcesso.PERFIL && rota != RotasAcesso.APROVACAO
         if (sessao == null && !emTelaDeAcesso) {
             navController.navigate(RotasAcesso.GRAFO) {
                 popUpTo(0) { inclusive = true }
@@ -63,10 +67,13 @@ fun NavegacaoRaiz(iniciarLogado: Boolean, navController: NavHostController = rem
             }
         }
         telaPerfil(navController)
+        telaAprovacao()
         composable(RotasApp.INICIO) {
             InicioProvisorio(
                 nome = sessao?.usuario?.nome.orEmpty(),
+                podeAprovarCadastros = sessao?.usuario?.temPermissao(Permissoes.APROVAR_CADASTRO) == true,
                 aoAbrirPerfil = { navController.navigate(RotasAcesso.PERFIL) },
+                aoAbrirAprovacao = { navController.navigate(RotasAcesso.APROVACAO) },
             )
         }
     }
@@ -74,7 +81,12 @@ fun NavegacaoRaiz(iniciarLogado: Boolean, navController: NavHostController = rem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun InicioProvisorio(nome: String, aoAbrirPerfil: () -> Unit) {
+private fun InicioProvisorio(
+    nome: String,
+    podeAprovarCadastros: Boolean,
+    aoAbrirPerfil: () -> Unit,
+    aoAbrirAprovacao: () -> Unit,
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -96,6 +108,11 @@ private fun InicioProvisorio(nome: String, aoAbrirPerfil: () -> Unit) {
         ) {
             Text(stringResource(R.string.inicio_ola, nome), style = MaterialTheme.typography.headlineSmall)
             Text(stringResource(R.string.inicio_provisorio), style = MaterialTheme.typography.bodyMedium)
+            if (podeAprovarCadastros) {
+                OutlinedButton(onClick = aoAbrirAprovacao) {
+                    Text(stringResource(R.string.inicio_aprovar_cadastros))
+                }
+            }
         }
     }
 }
