@@ -81,4 +81,15 @@
     <string name="aprovacao_confirmar">Confirmar aprovação</string>
     <string name="aprovacao_recusar_titulo">Recusar cadastro?</string>
     <string name="aprovacao_recusar_texto">O cadastro de %1$s será recusado e a pessoa será avisada. Essa ação não pode ser desfeita.</string>
+
+    <!-- Gestão de usuários (admin de distribuidor ou de cliente) -->
+    <string name="usuarios_titulo">Gestão de usuários</string>
+    <string name="usuarios_admin">Admin</string>
+    <string name="usuarios_usuario">Usuário</string>
+    <string name="usuarios_adicionar">+ Adicionar usuário</string>
+    <string name="usuarios_vazio_titulo">Nenhum usuário por aqui</string>
+    <string name="usuarios_vazio_detalhe">Convide alguém da sua organização pelo botão abaixo.</string>
+    <string name="novo_usuario_titulo">Novo usuário</string>
+    <string name="novo_usuario_enviar">Enviar convite</string>
+    <string name="novo_usuario_explicacao">A pessoa recebe um convite por e-mail para criar a senha. O acesso é liberado depois da aprovação da Netafim.</string>
 </resources>
