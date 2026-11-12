@@ -19,7 +19,7 @@ import retrofit2.HttpException
  * - regra de negócio: {"detail": "...", "codigo": "conta_pendente"}
  * - validação do DRF: {"campo": ["mensagem", ...], ...}
  */
-internal object ErrosHttp {
+object ErrosHttp {
 
     fun mapear(erro: Throwable, json: Json): ErroAcesso = when (erro) {
         is HttpException -> mapearHttp(erro.code(), lerCorpo(erro), json)
