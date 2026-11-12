@@ -32,6 +32,8 @@ import com.netafim.posvenda.acesso.ui.RotasAcesso
 import com.netafim.posvenda.acesso.ui.grafoAcesso
 import com.netafim.posvenda.acesso.ui.telaAprovacao
 import com.netafim.posvenda.acesso.ui.telaPerfil
+import com.netafim.posvenda.acesso.ui.telasUsuarios
+import com.netafim.posvenda.acesso.ui.usuarios.podeGerenciarUsuarios
 import com.netafim.posvenda.acesso.dominio.Permissoes
 
 /** Rotas do app. PROVISÓRIO: "inicio" deve ser substituída pela tela do módulo responsável. */
@@ -47,9 +49,7 @@ fun NavegacaoRaiz(iniciarLogado: Boolean, navController: NavHostController = rem
     // Sessão expirou ou foi revogada com o app aberto: volta para o login.
     LaunchedEffect(sessao, entrada) {
         val rota = entrada?.destination?.route ?: return@LaunchedEffect
-        val emTelaDeAcesso = rota.startsWith(RotasAcesso.GRAFO + "/") &&
-            rota != RotasAcesso.PERFIL && rota != RotasAcesso.APROVACAO
-        if (sessao == null && !emTelaDeAcesso) {
+        if (sessao == null && RotasAcesso.exigeSessao(rota)) {
             navController.navigate(RotasAcesso.GRAFO) {
                 popUpTo(0) { inclusive = true }
                 launchSingleTop = true
@@ -68,12 +68,15 @@ fun NavegacaoRaiz(iniciarLogado: Boolean, navController: NavHostController = rem
         }
         telaPerfil(navController)
         telaAprovacao()
+        telasUsuarios(navController)
         composable(RotasApp.INICIO) {
             InicioProvisorio(
                 nome = sessao?.usuario?.nome.orEmpty(),
                 podeAprovarCadastros = sessao?.usuario?.temPermissao(Permissoes.APROVAR_CADASTRO) == true,
                 aoAbrirPerfil = { navController.navigate(RotasAcesso.PERFIL) },
                 aoAbrirAprovacao = { navController.navigate(RotasAcesso.APROVACAO) },
+                podeGerenciarUsuarios = sessao?.usuario?.podeGerenciarUsuarios() == true,
+                aoAbrirUsuarios = { navController.navigate(RotasAcesso.USUARIOS) },
             )
         }
     }
@@ -86,6 +89,8 @@ private fun InicioProvisorio(
     podeAprovarCadastros: Boolean,
     aoAbrirPerfil: () -> Unit,
     aoAbrirAprovacao: () -> Unit,
+    podeGerenciarUsuarios: Boolean,
+    aoAbrirUsuarios: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -108,6 +113,11 @@ private fun InicioProvisorio(
         ) {
             Text(stringResource(R.string.inicio_ola, nome), style = MaterialTheme.typography.headlineSmall)
             Text(stringResource(R.string.inicio_provisorio), style = MaterialTheme.typography.bodyMedium)
+            if (podeGerenciarUsuarios) {
+                OutlinedButton(onClick = aoAbrirUsuarios) {
+                    Text(stringResource(R.string.inicio_gestao_usuarios))
+                }
+            }
             if (podeAprovarCadastros) {
                 OutlinedButton(onClick = aoAbrirAprovacao) {
                     Text(stringResource(R.string.inicio_aprovar_cadastros))

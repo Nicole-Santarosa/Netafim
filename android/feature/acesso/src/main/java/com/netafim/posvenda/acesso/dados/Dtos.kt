@@ -187,3 +187,11 @@ data class AprovarRequisicao(
     @SerialName("id_cliente") val idCliente: Int? = null,
     @SerialName("id_perfil") val idPerfil: Int,
 )
+
+/** Corpo de POST /usuarios feito por admin de distribuidor ou cliente: organização e perfil vêm da sessão. */
+@Serializable
+data class CriarUsuarioRequisicao(
+    val nome: String,
+    val email: String,
+    val telefone: String? = null,
+)

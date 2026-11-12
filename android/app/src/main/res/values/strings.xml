@@ -6,4 +6,5 @@
     <string name="inicio_provisorio">Tela inicial provisória. Os módulos de atendimento vão ocupar este espaço.</string>
     <string name="inicio_meu_perfil">Meu perfil</string>
     <string name="inicio_aprovar_cadastros">Aprovar cadastros</string>
+    <string name="inicio_gestao_usuarios">Gestão de usuários</string>
 </resources>

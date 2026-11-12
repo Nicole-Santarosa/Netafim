@@ -54,9 +54,12 @@ interface AcessoApi {
 
     @GET("usuarios")
     suspend fun usuarios(
-        @Query("situacao") situacao: String,
+        @Query("situacao") situacao: String?,
         @Query("page") pagina: Int,
     ): PaginaDto<UsuarioDto>
+
+    @POST("usuarios")
+    suspend fun criarUsuario(@Body corpo: CriarUsuarioRequisicao): UsuarioDto
 
     @POST("usuarios/{id}/aprovar")
     suspend fun aprovarUsuario(@Path("id") id: Int, @Body corpo: AprovarRequisicao): UsuarioDto

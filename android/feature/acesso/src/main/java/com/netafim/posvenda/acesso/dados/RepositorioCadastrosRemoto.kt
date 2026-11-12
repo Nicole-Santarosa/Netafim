@@ -7,7 +7,6 @@ import com.netafim.posvenda.acesso.dominio.Perfil
 import com.netafim.posvenda.acesso.dominio.RepositorioCadastros
 import com.netafim.posvenda.acesso.dominio.Resultado
 import com.netafim.posvenda.acesso.dominio.Usuario
-import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.serialization.json.Json
 
 /** Cadastros pendentes pela API autenticada (o token da sessão e a renovação já vêm no cliente). */
@@ -16,11 +15,11 @@ class RepositorioCadastrosRemoto(
     private val json: Json,
 ) : RepositorioCadastros {
 
-    override suspend fun pendentes(): Resultado<List<Usuario>> = executar {
+    override suspend fun pendentes(): Resultado<List<Usuario>> = executarApi(json) {
         todasAsPaginas { pagina -> api.usuarios(SITUACAO_PENDENTE, pagina) }.map { it.paraDominio() }
     }
 
-    override suspend fun opcoes(): Resultado<OpcoesAprovacao> = executar {
+    override suspend fun opcoes(): Resultado<OpcoesAprovacao> = executarApi(json) {
         OpcoesAprovacao(
             perfis = api.perfis().map { Perfil(it.idPerfil, it.nomePerfil, it.tipoOrganizacao, it.nivel) },
             distribuidores = todasAsPaginas { api.distribuidores(it) }
@@ -32,7 +31,7 @@ class RepositorioCadastrosRemoto(
         )
     }
 
-    override suspend fun aprovar(idUsuario: Int, dados: DadosAprovacao): Resultado<Usuario> = executar {
+    override suspend fun aprovar(idUsuario: Int, dados: DadosAprovacao): Resultado<Usuario> = executarApi(json) {
         api.aprovarUsuario(
             idUsuario,
             AprovarRequisicao(
@@ -44,28 +43,8 @@ class RepositorioCadastrosRemoto(
         ).paraDominio()
     }
 
-    override suspend fun recusar(idUsuario: Int): Resultado<Usuario> = executar {
+    override suspend fun recusar(idUsuario: Int): Resultado<Usuario> = executarApi(json) {
         api.recusarUsuario(idUsuario).paraDominio()
-    }
-
-    /** Lê a lista paginada do DRF até a última página. */
-    private suspend inline fun <T> todasAsPaginas(buscar: (Int) -> PaginaDto<T>): List<T> {
-        val itens = mutableListOf<T>()
-        var pagina = 1
-        while (true) {
-            val resposta = buscar(pagina)
-            itens += resposta.results
-            if (resposta.next == null) return itens
-            pagina++
-        }
-    }
-
-    private suspend inline fun <T> executar(bloco: () -> T): Resultado<T> = try {
-        Resultado.Sucesso(bloco())
-    } catch (erro: CancellationException) {
-        throw erro
-    } catch (erro: Exception) {
-        Resultado.Falha(ErrosHttp.mapear(erro, json))
     }
 
     private companion object {

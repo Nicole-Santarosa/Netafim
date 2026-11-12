@@ -400,3 +400,9 @@ fun OpcaoSelecionavel(
         )
     }
 }
+
+/** Texto de apoio de formulário: 12 sp, cinza, alinhado à esquerda. */
+@Composable
+fun TextoApoio(texto: String, modifier: Modifier = Modifier) {
+    Text(texto, color = MaterialTheme.colorScheme.onSurfaceVariant, style = estilo(12), modifier = modifier.fillMaxWidth())
+}
