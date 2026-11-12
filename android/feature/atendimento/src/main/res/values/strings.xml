@@ -4,4 +4,32 @@
         Os textos deste módulo usam o prefixo atendimento_ e ficam agrupados por tela,
         cada grupo com um comentário de seção, como no módulo de acesso.
     -->
+
+    <!-- Meus atendimentos -->
+    <string name="atendimento_meus_titulo">Meus atendimentos</string>
+    <string name="atendimento_meus_novo">Abrir novo atendimento</string>
+    <string name="atendimento_meus_vazio_titulo">Nenhum atendimento por aqui</string>
+    <string name="atendimento_meus_vazio_texto">Toque no botão + para abrir sua primeira solicitação.</string>
+
+    <!-- Cartão de atendimento -->
+    <string name="atendimento_aberto_hoje">Aberto hoje</string>
+    <plurals name="atendimento_aberto_ha_dias">
+        <item quantity="one">Aberto há %d dia</item>
+        <item quantity="other">Aberto há %d dias</item>
+    </plurals>
+    <string name="atendimento_aberto_em">Aberto em %s</string>
+
+    <!-- Selo de status -->
+    <string name="atendimento_selo_aberto">Aberto</string>
+    <string name="atendimento_selo_em_atendimento">Em atendimento</string>
+    <string name="atendimento_selo_concluido">Concluído</string>
+    <string name="atendimento_selo_cancelado">Cancelado</string>
+
+    <!-- Motivo do atendimento -->
+    <string name="atendimento_motivo_digital_farming">Digital Farming</string>
+    <string name="atendimento_motivo_duvidas">Dúvidas</string>
+    <string name="atendimento_motivo_entrega_tecnica">Entrega técnica</string>
+    <string name="atendimento_motivo_pos_venda">Pós-venda</string>
+    <string name="atendimento_motivo_programacao_feiras">Programação de feiras</string>
+    <string name="atendimento_motivo_treinamento">Treinamento</string>
 </resources>
