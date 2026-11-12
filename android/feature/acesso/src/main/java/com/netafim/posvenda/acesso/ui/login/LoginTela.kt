@@ -1,12 +1,13 @@
 package com.netafim.posvenda.acesso.ui.login
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -81,12 +82,13 @@ fun LoginTela(
                 .imePadding(),
         ) {
             CabecalhoTela(stringResource(R.string.acesso_login_titulo))
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            BoxWithConstraints(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
                 Column(
                     modifier = Modifier
                         .widthIn(max = larguraConteudo())
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
+                        .heightIn(min = maxHeight)
                         .navigationBarsPadding()
                         .padding(start = esc(20), end = esc(20), top = esc(36), bottom = esc(32)),
                 ) {
@@ -124,8 +126,11 @@ fun LoginTela(
                     )
                     Spacer(Modifier.height(esc(3)))
                     LinkTexto(stringResource(R.string.acesso_esqueci_senha), aoEsquecerSenha)
-                    // No quadro o "Criar conta" fica 224 dp abaixo do link.
-                    Spacer(Modifier.height(esc(212)))
+                    // No quadro o "Criar conta" fica 224 dp abaixo do link. Esse espaço encolhe quando
+                    // a altura é curta (tablet em paisagem), para o botão não sair da tela, e nunca passa
+                    // do valor do protótipo.
+                    Spacer(Modifier.height(esc(24)))
+                    Spacer(Modifier.weight(1f, fill = false).height(esc(188)))
                     BotaoContorno(
                         texto = stringResource(R.string.acesso_criar_conta),
                         aoClicar = aoSolicitarAcesso,
