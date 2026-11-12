@@ -37,6 +37,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -120,6 +121,8 @@ private fun raio() = RoundedCornerShape(esc(8))
 /** Barra azul do topo, atrás da barra de status (edge-to-edge) e com o título à esquerda. */
 @Composable
 fun CabecalhoTela(titulo: String, modifier: Modifier = Modifier) {
+    // O azul passa por baixo da barra de status: ícones claros (e os da navegação, escuros).
+    BarraDeStatusSobreImagem()
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -241,7 +244,11 @@ fun CampoSenhaDoPrototipo(
         fundo = fundo,
         corDoRotulo = corDoRotulo,
         acaoFinal = {
-            IconButton(onClick = aoAlternarVisibilidade, modifier = Modifier.size(esc(36))) {
+            // Fora da ordem do teclado: o "Próximo" do campo Senha vai para o campo seguinte, não para o olho.
+            IconButton(
+                onClick = aoAlternarVisibilidade,
+                modifier = Modifier.size(esc(36)).focusProperties { canFocus = false },
+            ) {
                 Icon(
                     if (visivel) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                     contentDescription = if (visivel) descricaoOcultar else descricaoMostrar,
