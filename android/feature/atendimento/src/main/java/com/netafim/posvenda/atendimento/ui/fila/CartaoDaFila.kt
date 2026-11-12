@@ -19,6 +19,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Card
@@ -38,6 +40,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.netafim.posvenda.atendimento.dominio.ItemDaFila
 import com.netafim.posvenda.atendimento.dominio.MotivoAtendimento
+import com.netafim.posvenda.atendimento.dominio.SeloStatus
 import com.netafim.posvenda.atendimento.dominio.StatusAtendimento
 import com.netafim.posvenda.atendimento.ui.comum.TemaDePreview
 import com.netafim.posvenda.atendimento.ui.comum.coresDoSelo
@@ -48,12 +51,15 @@ import java.time.Instant
 // pelo leitor de tela; ícones, pino e seta são decorativos.
 // O parâmetro "selo" existe para o estado de sincronização (offline, sincronizado), que é de outra parte
 // do grupo: quando informado, o conteúdo passado aparece no lugar do selo de status do atendimento.
+// rotuloDoStatus escolhe o texto do selo: a fila do técnico usa o padrão ("Novo" para destinado e
+// agendado) e a lista da região do distribuidor passa o rótulo normal do selo.
 @Composable
 fun CartaoDaFila(
     item: ItemDaFila,
     aoClicar: () -> Unit,
     modifier: Modifier = Modifier,
     selo: (@Composable () -> Unit)? = null,
+    rotuloDoStatus: (StatusAtendimento) -> Int = ::rotuloNaFila,
 ) {
     Card(
         onClick = aoClicar,
@@ -91,18 +97,23 @@ fun CartaoDaFila(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 EtiquetaDoMotivo(item.motivo)
-                if (selo != null) selo() else SeloDaFila(item.status)
+                if (selo != null) selo() else SeloDaFila(item.status, rotuloDoStatus = rotuloDoStatus)
             }
         }
     }
 }
 
-// Círculo de 44dp com o ícone do estado: relógio para "Novo" e chave para "Em atendimento". Fundo e
-// ícone usam as cores do selo do status.
+// Círculo de 44dp com o ícone do selo do status: relógio para aberto, chave para em atendimento, visto
+// para concluído e X para cancelado. Fundo e ícone usam as cores do selo.
 @Composable
 private fun CirculoDoStatus(status: StatusAtendimento) {
     val cores = coresDoSelo(status.selo)
-    val icone = if (status == StatusAtendimento.EM_ATENDIMENTO) Icons.Filled.Build else Icons.Filled.Schedule
+    val icone = when (status.selo) {
+        SeloStatus.ABERTO -> Icons.Filled.Schedule
+        SeloStatus.EM_ATENDIMENTO -> Icons.Filled.Build
+        SeloStatus.CONCLUIDO -> Icons.Filled.Check
+        SeloStatus.CANCELADO -> Icons.Filled.Close
+    }
     Box(
         modifier = Modifier
             .size(44.dp)

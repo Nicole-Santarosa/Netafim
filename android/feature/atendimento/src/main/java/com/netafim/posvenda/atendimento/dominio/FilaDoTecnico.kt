@@ -40,7 +40,8 @@ fun FiltroDaFila.aceita(status: StatusAtendimento): Boolean {
     }
 }
 
-// Aplica o filtro e a busca e devolve o resultado já ordenado por ordenarFila.
+// Aplica o filtro e a busca e devolve o resultado já ordenado por ordenarFila. O item serve também à
+// lista da região do distribuidor (ver RegiaoDoDistribuidor.kt).
 // A busca apara os espaços das pontas, ignora maiúsculas e acentos e procura no protocolo, no nome do
 // cliente e no local. Busca vazia ou só de espaços não filtra nada. Itens fora da fila nunca entram.
 fun filtrarFila(itens: List<ItemDaFila>, filtro: FiltroDaFila, busca: String): List<ItemDaFila> {
@@ -51,13 +52,13 @@ fun filtrarFila(itens: List<ItemDaFila>, filtro: FiltroDaFila, busca: String): L
     return ordenarFila(encontrados)
 }
 
-private fun combinaComABusca(item: ItemDaFila, termo: String): Boolean =
+internal fun combinaComABusca(item: ItemDaFila, termo: String): Boolean =
     listOfNotNull(item.protocolo, item.nomeCliente, item.local)
         .any { normalizarParaBusca(it).contains(termo) }
 
 // Minúsculas, sem acentos e sem espaços nas pontas: "Ribeirão" e "ribeirao" ficam iguais.
 // A forma NFD separa a letra do acento, e o replace tira só as marcas de acento.
-private fun normalizarParaBusca(texto: String): String =
+internal fun normalizarParaBusca(texto: String): String =
     Normalizer.normalize(texto.trim(), Normalizer.Form.NFD)
         .replace(Regex("\\p{Mn}+"), "")
         .lowercase()

@@ -23,8 +23,13 @@ import com.netafim.posvenda.atendimento.ui.comum.coresDoSelo
 // Selo de status da fila: pílula de 22dp com ponto de 5dp e o texto. É próprio da fila porque o texto
 // vem de rotuloNaFila ("Novo" para destinado e agendado) e as medidas são menores que as do
 // SeloStatusChip. As cores são as do selo do status. O ponto é decorativo; quem informa o estado é o texto.
+// rotuloDoStatus permite que outra lista (a da região do distribuidor) use o rótulo normal do selo.
 @Composable
-fun SeloDaFila(status: StatusAtendimento, modifier: Modifier = Modifier) {
+fun SeloDaFila(
+    status: StatusAtendimento,
+    modifier: Modifier = Modifier,
+    rotuloDoStatus: (StatusAtendimento) -> Int = ::rotuloNaFila,
+) {
     val cores = coresDoSelo(status.selo)
     Row(
         modifier = modifier
@@ -40,7 +45,7 @@ fun SeloDaFila(status: StatusAtendimento, modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.width(6.dp))
         Text(
-            text = stringResource(rotuloNaFila(status)),
+            text = stringResource(rotuloDoStatus(status)),
             style = MaterialTheme.typography.labelMedium,
             color = Color(cores.texto),
         )
