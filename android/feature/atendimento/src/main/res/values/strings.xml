@@ -89,4 +89,13 @@
     <string name="atendimento_tecnico_motivo">Motivo relatado</string>
     <string name="atendimento_tecnico_iniciar">Iniciar atendimento</string>
     <string name="atendimento_tecnico_nao_informado">Não informado</string>
+
+    <!-- Detalhe do distribuidor -->
+    <string name="atendimento_distribuidor_titulo">Detalhe do atendimento</string>
+    <string name="atendimento_distribuidor_somente_leitura">Somente leitura</string>
+    <string name="atendimento_distribuidor_produtor">Produtor</string>
+    <string name="atendimento_distribuidor_local">Fazenda / localidade</string>
+    <string name="atendimento_distribuidor_motivo">Motivo</string>
+    <string name="atendimento_distribuidor_status">Status</string>
+    <string name="atendimento_distribuidor_nao_informado">Não informado</string>
 </resources>

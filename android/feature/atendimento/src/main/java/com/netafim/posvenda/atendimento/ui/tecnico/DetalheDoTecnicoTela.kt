@@ -14,13 +14,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -31,6 +29,7 @@ import com.netafim.posvenda.atendimento.dominio.StatusAtendimento
 import com.netafim.posvenda.atendimento.dominio.culturasEmTexto
 import com.netafim.posvenda.atendimento.dominio.podeIniciar
 import com.netafim.posvenda.atendimento.ui.comum.BarraDoAtendimento
+import com.netafim.posvenda.atendimento.ui.comum.CampoDeLeitura
 import com.netafim.posvenda.atendimento.ui.comum.TemaDePreview
 import com.netafim.posvenda.atendimento.ui.comum.rotulo
 
@@ -83,29 +82,6 @@ fun DetalheDoTecnicoTela(
             Spacer(Modifier.height(24.dp))
         }
     }
-}
-
-// Um campo: rótulo, valor e divisória. Rótulo e valor são lidos juntos, como um item só, pelo leitor
-// de tela. A divisória fica fora do agrupamento, pois não tem nada para ser lido.
-@Composable
-private fun CampoDeLeitura(rotulo: String, valor: String) {
-    Column(modifier = Modifier.semantics(mergeDescendants = true) {}) {
-        Text(
-            text = rotulo,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(
-            text = valor,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.Medium,
-        )
-    }
-    Spacer(Modifier.height(12.dp))
-    HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
-    Spacer(Modifier.height(14.dp))
 }
 
 // Mesmo padrão do botão de enviar da abertura: cor primária, versão mais clara quando desabilitado e
