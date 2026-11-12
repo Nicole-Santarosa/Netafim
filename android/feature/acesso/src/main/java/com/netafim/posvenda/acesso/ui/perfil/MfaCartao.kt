@@ -3,16 +3,13 @@ package com.netafim.posvenda.acesso.ui.perfil
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -28,13 +25,20 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.netafim.posvenda.acesso.R
-import com.netafim.posvenda.acesso.ui.comum.CampoSenha
-import com.netafim.posvenda.acesso.ui.comum.CampoTexto
+import com.netafim.posvenda.acesso.ui.comum.BotaoCheio
+import com.netafim.posvenda.acesso.ui.comum.BotaoContorno
+import com.netafim.posvenda.acesso.ui.comum.CampoDoPrototipo
+import com.netafim.posvenda.acesso.ui.comum.CampoSenhaDoPrototipo
+import com.netafim.posvenda.acesso.ui.comum.CartaoNoVidro
 import com.netafim.posvenda.acesso.ui.comum.MensagemErro
+import com.netafim.posvenda.acesso.ui.comum.esc
+import com.netafim.posvenda.acesso.ui.comum.estilo
+import com.netafim.posvenda.acesso.ui.comum.textoSuaveNoVidro
 
 /** Cartão "Verificação em duas etapas" do perfil. Não aparece enquanto o estado não chegou. */
 @Composable
@@ -50,11 +54,12 @@ fun MfaCartao(
     aoFechar: () -> Unit,
 ) {
     val situacao = estado.estado ?: return
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    CartaoNoVidro {
+        Column(verticalArrangement = Arrangement.spacedBy(esc(8))) {
             Text(
                 stringResource(R.string.acesso_mfa_titulo),
-                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                style = estilo(15, FontWeight.SemiBold),
                 modifier = Modifier.semantics { heading() },
             )
             Text(
@@ -63,19 +68,19 @@ fun MfaCartao(
                 } else {
                     stringResource(R.string.acesso_mfa_inativa)
                 },
-                style = MaterialTheme.typography.bodyMedium,
+                color = textoSuaveNoVidro(),
+                style = estilo(13),
             )
             if (estado.etapa == EtapaMfa.Nenhuma) estado.erro?.let { MensagemErro(it) }
+            Spacer(Modifier.height(esc(4)))
             if (situacao.ativo) {
-                OutlinedButton(onClick = aoDesativar, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.acesso_mfa_desativar))
-                }
+                BotaoContorno(stringResource(R.string.acesso_mfa_desativar), aoDesativar)
             } else {
-                Button(
-                    onClick = aoAtivar,
-                    enabled = !estado.carregando,
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text(stringResource(R.string.acesso_mfa_ativar)) }
+                BotaoCheio(
+                    texto = stringResource(R.string.acesso_mfa_ativar),
+                    aoClicar = aoAtivar,
+                    habilitado = !estado.carregando,
+                )
             }
         }
     }
@@ -102,6 +107,7 @@ private fun DialogoAtivacao(
     var semApp by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = aoFechar,
+        containerColor = MaterialTheme.colorScheme.background,
         title = { Text(stringResource(R.string.acesso_mfa_ativar_titulo)) },
         text = {
             Column(
@@ -134,7 +140,7 @@ private fun DialogoAtivacao(
                 if (semApp) Text(stringResource(R.string.acesso_mfa_sem_app), style = MaterialTheme.typography.bodySmall)
                 Text(stringResource(R.string.acesso_mfa_ativar_passo2), style = MaterialTheme.typography.bodyMedium)
                 estado.erro?.let { MensagemErro(it) }
-                CampoTexto(
+                CampoDoPrototipo(
                     valor = estado.codigo,
                     aoMudar = aoMudarCodigo,
                     rotulo = stringResource(R.string.acesso_mfa_codigo),
@@ -163,6 +169,7 @@ private fun DialogoCodigos(codigos: List<String>, aoFechar: () -> Unit) {
     // Sem onDismissRequest útil: tocar fora não pode perder códigos que não voltam a aparecer.
     AlertDialog(
         onDismissRequest = {},
+        containerColor = MaterialTheme.colorScheme.background,
         title = { Text(stringResource(R.string.acesso_mfa_recuperacao_titulo)) },
         text = {
             Column(
@@ -202,6 +209,7 @@ private fun DialogoDesativacao(
 ) {
     AlertDialog(
         onDismissRequest = aoFechar,
+        containerColor = MaterialTheme.colorScheme.background,
         title = { Text(stringResource(R.string.acesso_mfa_desativar_titulo)) },
         text = {
             Column(
@@ -213,16 +221,18 @@ private fun DialogoDesativacao(
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 estado.erro?.let { MensagemErro(it) }
-                CampoSenha(
+                CampoSenhaDoPrototipo(
                     valor = estado.senha,
                     aoMudar = aoMudarSenha,
                     rotulo = stringResource(R.string.acesso_senha),
                     visivel = estado.senhaVisivel,
                     aoAlternarVisibilidade = aoAlternarSenha,
+                    descricaoMostrar = stringResource(R.string.acesso_mostrar_senha),
+                    descricaoOcultar = stringResource(R.string.acesso_ocultar_senha),
                     acaoIme = ImeAction.Next,
                     habilitado = !estado.carregando,
                 )
-                CampoTexto(
+                CampoDoPrototipo(
                     valor = estado.codigo,
                     aoMudar = aoMudarCodigo,
                     rotulo = stringResource(R.string.acesso_mfa_codigo),
