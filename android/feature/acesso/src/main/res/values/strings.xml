@@ -24,7 +24,9 @@
     <string name="acesso_aceite_termo">Li e aceito o aviso de privacidade (versão %1$s).</string>
     <string name="acesso_aceite_termo_carregando">Li e aceito o aviso de privacidade.</string>
     <string name="acesso_enviar_cadastro">Enviar cadastro</string>
-    <string name="acesso_cadastro_enviado_titulo">Solicitação enviada</string>
+    <string name="acesso_aguardando_titulo">Aguardando validação</string>
+    <string name="acesso_aguardando_mensagem">Seu cadastro está em análise pela Netafim</string>
+    <string name="acesso_aguardando_detalhe">Você receberá um aviso assim que o acesso for liberado.</string>
     <string name="acesso_voltar_login">Voltar para o login</string>
     <string name="acesso_tentar_novamente">Tentar novamente</string>
 
