@@ -68,4 +68,15 @@
     <string name="atendimento_etapa_estado_feita">Etapa concluída</string>
     <string name="atendimento_etapa_estado_atual">Etapa atual</string>
     <string name="atendimento_etapa_estado_pendente">Etapa pendente</string>
+
+    <!-- Fila do técnico -->
+    <string name="atendimento_fila_titulo">Fila de atendimentos</string>
+    <string name="atendimento_fila_busca">Buscar OS, cliente ou fazenda</string>
+    <string name="atendimento_fila_filtro_todos">Todos</string>
+    <string name="atendimento_fila_filtro_novo">Novo</string>
+    <string name="atendimento_fila_filtro_em_atendimento">Em atendimento</string>
+    <string name="atendimento_fila_selo_novo">Novo</string>
+    <string name="atendimento_fila_selo_em_atendimento">Em atendimento</string>
+    <string name="atendimento_fila_vazio">Nenhum atendimento na fila</string>
+    <string name="atendimento_fila_vazio_busca">Nenhum atendimento encontrado</string>
 </resources>
