@@ -1,6 +1,7 @@
 package com.netafim.posvenda.atendimento.ui.comum
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -20,6 +21,9 @@ internal fun TemaDePreview(conteudo: @Composable () -> Unit) {
             onSurface = Color(0xFF21211F),
             outlineVariant = Color(0xFFC9C9C2),
         ),
-        content = conteudo,
-    )
+    ) {
+        // O Surface garante o fundo branco do protótipo nos previews, mesmo quando o preview
+        // não preenche a tela inteira com o fundo do tema.
+        Surface(color = MaterialTheme.colorScheme.background, content = conteudo)
+    }
 }
