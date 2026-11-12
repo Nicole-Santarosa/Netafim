@@ -1,5 +1,6 @@
 package com.netafim.posvenda.atendimento.ui.comum
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -17,11 +18,25 @@ import com.netafim.posvenda.atendimento.R
 
 // Barra de topo das telas de atendimento: fundo primary, título em negrito na cor onPrimary.
 // A seta de voltar só aparece quando a tela recebe aoVoltar; a tela inicial da lista não passa.
+// O subtítulo é opcional: quando existe, aparece abaixo do título em fonte menor.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BarraDoAtendimento(titulo: String, aoVoltar: (() -> Unit)? = null) {
+fun BarraDoAtendimento(titulo: String, aoVoltar: (() -> Unit)? = null, subtitulo: String? = null) {
     TopAppBar(
-        title = { Text(text = titulo, fontWeight = FontWeight.Bold) },
+        title = {
+            if (subtitulo == null) {
+                Text(text = titulo, fontWeight = FontWeight.Bold)
+            } else {
+                Column {
+                    Text(text = titulo, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = subtitulo,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
+                    )
+                }
+            }
+        },
         navigationIcon = {
             if (aoVoltar != null) {
                 IconButton(onClick = aoVoltar) {
@@ -43,5 +58,10 @@ fun BarraDoAtendimento(titulo: String, aoVoltar: (() -> Unit)? = null) {
 @Preview(showBackground = true)
 @Composable
 private fun BarraDoAtendimentoPreview() {
-    TemaDePreview { BarraDoAtendimento(titulo = "Abrir novo atendimento", aoVoltar = {}) }
+    TemaDePreview {
+        Column {
+            BarraDoAtendimento(titulo = "Abrir novo atendimento", aoVoltar = {})
+            BarraDoAtendimento(titulo = "Atendimento OS-0498", aoVoltar = {}, subtitulo = "Dúvidas · Concluído")
+        }
+    }
 }

@@ -52,4 +52,20 @@
     <string name="atendimento_abrir_erro_localidade">Informe a localidade da fazenda</string>
     <string name="atendimento_abrir_erro_contato">Informe um telefone para contato</string>
     <string name="atendimento_abrir_erro_muito_longo">Use no máximo %d caracteres</string>
+
+    <!-- Detalhe do atendimento -->
+    <string name="atendimento_detalhe_titulo">Atendimento %s</string>
+    <string name="atendimento_detalhe_subtitulo">%1$s · %2$s</string>
+    <string name="atendimento_detalhe_motivo">Motivo: %s</string>
+    <string name="atendimento_etapa_aberto_titulo">Aberto</string>
+    <string name="atendimento_etapa_aberto_descricao">Solicitação enviada por você</string>
+    <string name="atendimento_etapa_em_atendimento_titulo">Em atendimento</string>
+    <string name="atendimento_etapa_em_atendimento_descricao">Técnico Netafim a caminho</string>
+    <string name="atendimento_etapa_concluido_titulo">Concluído</string>
+    <string name="atendimento_etapa_concluido_descricao">Relatório disponível para consulta</string>
+    <string name="atendimento_etapa_cancelado_titulo">Atendimento cancelado</string>
+    <string name="atendimento_etapa_cancelado_descricao">Este atendimento foi cancelado</string>
+    <string name="atendimento_etapa_estado_feita">Etapa concluída</string>
+    <string name="atendimento_etapa_estado_atual">Etapa atual</string>
+    <string name="atendimento_etapa_estado_pendente">Etapa pendente</string>
 </resources>
