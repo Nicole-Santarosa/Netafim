@@ -155,19 +155,23 @@ fun CampoDoPrototipo(
     habilitado: Boolean = true,
     transformacao: VisualTransformation = VisualTransformation.None,
     acaoFinal: (@Composable () -> Unit)? = null,
+    /** Fundo do campo; o padrão é o cinza do protótipo (E9E9E4). Em superfícies translúcidas, uma versão translúcida dele. */
+    fundo: Color? = null,
+    /** Cor do rótulo; o padrão é o cinza do protótipo (666661). */
+    corDoRotulo: Color? = null,
 ) {
     val cores = MaterialTheme.colorScheme
     val corBorda = if (erro != null) cores.error else cores.outlineVariant
     val forma = raio()
     Column(modifier = modifier.fillMaxWidth()) {
-        Text(rotulo, color = cores.onSurfaceVariant, style = estilo(12))
+        Text(rotulo, color = corDoRotulo ?: cores.onSurfaceVariant, style = estilo(12))
         Spacer(Modifier.height(esc(3)))
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(esc(44))
-                .background(cores.surfaceVariant, forma)
+                .background(fundo ?: cores.surfaceVariant, forma)
                 .border(1.dp, corBorda, forma)
                 .padding(start = esc(12), end = if (acaoFinal != null) esc(4) else esc(12)),
         ) {
@@ -219,6 +223,8 @@ fun CampoSenhaDoPrototipo(
     acaoIme: ImeAction = ImeAction.Done,
     aoConcluir: (() -> Unit)? = null,
     habilitado: Boolean = true,
+    fundo: Color? = null,
+    corDoRotulo: Color? = null,
 ) {
     CampoDoPrototipo(
         valor = valor,
@@ -232,6 +238,8 @@ fun CampoSenhaDoPrototipo(
         aoConcluir = aoConcluir,
         habilitado = habilitado,
         transformacao = if (visivel) VisualTransformation.None else PasswordVisualTransformation(),
+        fundo = fundo,
+        corDoRotulo = corDoRotulo,
         acaoFinal = {
             IconButton(onClick = aoAlternarVisibilidade, modifier = Modifier.size(esc(36))) {
                 Icon(

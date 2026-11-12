@@ -1,7 +1,9 @@
 package com.netafim.posvenda.acesso.ui.login
 
+import android.os.Build
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -11,24 +13,35 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -39,6 +52,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.netafim.posvenda.acesso.R
@@ -53,6 +67,7 @@ import com.netafim.posvenda.acesso.ui.comum.TelaResponsiva
 import com.netafim.posvenda.acesso.ui.comum.esc
 import com.netafim.posvenda.acesso.ui.comum.estilo
 import com.netafim.posvenda.acesso.ui.comum.larguraConteudo
+import kotlin.math.roundToInt
 
 @Composable
 fun LoginRota(
@@ -80,13 +95,15 @@ fun LoginRota(
 }
 
 /**
- * Login com o wallpaper da marca. O wallpaper já traz o logo desenhado (a 22 a 29% da altura), então
- * o formulário fica numa superfície branca que nunca cobre essa faixa:
- * - celular: o wallpaper ocupa a tela e o formulário sobe de baixo, como uma folha;
- * - tablet em retrato: o formulário é um cartão centralizado, na parte de baixo;
- * - tablet em paisagem: wallpaper à esquerda e, à direita, o cartão sobre o azul da marca.
- * O formulário mantém os campos e botões do protótipo (cinza E9E9E4, azul 181F4E); o branco da
- * superfície garante o contraste do texto, que não depende da foto.
+ * Login com o wallpaper da marca e o formulário em vidro fosco. O wallpaper já traz o logo desenhado
+ * (a 22 a 29% da altura), então o formulário nunca cobre essa faixa:
+ * - celular: o wallpaper ocupa a tela e o formulário sobe de baixo, como uma folha de vidro;
+ * - tablet em retrato: o formulário é um cartão de vidro centralizado, na parte de baixo;
+ * - paisagem: wallpaper à esquerda e, à direita, o cartão sobre o mesmo wallpaper desfocado.
+ *
+ * Vidro = branco translúcido sobre o wallpaper desfocado (Android 12 ou mais; antes disso, um
+ * branco mais firme). Os campos e botões mantêm o estilo do protótipo; os textos pequenos ficam mais
+ * escuros dentro do vidro para o contraste não depender do que está atrás.
  */
 @Composable
 fun LoginTela(
@@ -112,21 +129,29 @@ fun LoginTela(
     }
     TelaResponsiva(Modifier.fillMaxSize()) {
         BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary)) {
-            if (maxWidth >= LARGURA_TABLET && maxWidth > maxHeight) {
+            val largura = maxWidth
+            val altura = maxHeight
+            if (largura >= LARGURA_TABLET && largura > altura) {
                 EmDuasColunas(formulario)
             } else {
-                SobreAImagem(compacto = maxWidth < LARGURA_TABLET, formulario = formulario)
+                SobreAImagem(compacto = largura < LARGURA_TABLET, largura = largura, altura = altura, formulario = formulario)
             }
         }
     }
 }
 
-/** Até aqui é celular em retrato; a partir daqui, tablet ou celular em paisagem. */
 /**
  * A partir daqui é tablet (ou celular em paisagem). Em retrato o formulário vira um cartão flutuante
  * em vez de folha de borda a borda; em paisagem, wallpaper e formulário ficam lado a lado.
  */
 private val LARGURA_TABLET: Dp = 600.dp
+
+/** O desfoque de fundo precisa do Android 12 (API 31). */
+private val DESFOQUE_SUPORTADO = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
+private val VIDRO_COM_DESFOQUE = Color.White.copy(alpha = 0.70f)
+private val VIDRO_SEM_DESFOQUE = Color.White.copy(alpha = 0.92f)
+private val BORDA_DO_VIDRO = Color.White.copy(alpha = 0.60f)
 
 /** O wallpaper, ancorado no topo para o logo desenhado nele ficar sempre na mesma faixa. */
 @Composable
@@ -141,8 +166,55 @@ private fun FundoLogin(modifier: Modifier = Modifier) {
     )
 }
 
+/**
+ * Vidro fosco sobre o wallpaper: por baixo do formulário, uma cópia desfocada do mesmo wallpaper,
+ * alinhada com a tela (por isso a posição do vidro é lida e a cópia é deslocada no sentido contrário),
+ * e por cima um branco translúcido com uma borda clara.
+ */
 @Composable
-private fun SobreAImagem(compacto: Boolean, formulario: @Composable () -> Unit) {
+private fun Vidro(
+    forma: Shape,
+    larguraDaTela: Dp,
+    alturaDaTela: Dp,
+    modifier: Modifier = Modifier,
+    conteudo: @Composable () -> Unit,
+) {
+    var posicao by remember { mutableStateOf(IntOffset.Zero) }
+    Box(
+        modifier
+            .clip(forma)
+            .onGloballyPositioned { coordenadas ->
+                val p = coordenadas.positionInRoot()
+                posicao = IntOffset(p.x.roundToInt(), p.y.roundToInt())
+            },
+    ) {
+        if (DESFOQUE_SUPORTADO) {
+            Box(Modifier.matchParentSize()) {
+                Image(
+                    painter = painterResource(R.drawable.login_fundo),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.TopCenter,
+                    modifier = Modifier
+                        .wrapContentSize(Alignment.TopStart, unbounded = true)
+                        .size(larguraDaTela, alturaDaTela)
+                        .offset { IntOffset(-posicao.x, -posicao.y) }
+                        .blur(28.dp, BlurredEdgeTreatment.Unbounded),
+                )
+            }
+        }
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(if (DESFOQUE_SUPORTADO) VIDRO_COM_DESFOQUE else VIDRO_SEM_DESFOQUE)
+                .border(1.dp, BORDA_DO_VIDRO, forma),
+        )
+        conteudo()
+    }
+}
+
+@Composable
+private fun SobreAImagem(compacto: Boolean, largura: Dp, altura: Dp, formulario: @Composable () -> Unit) {
     BarraDeStatusSobreImagem(navegacaoSobreImagem = false)
     Box(Modifier.fillMaxSize()) {
         FundoLogin(Modifier.fillMaxSize())
@@ -151,10 +223,10 @@ private fun SobreAImagem(compacto: Boolean, formulario: @Composable () -> Unit) 
         } else {
             RoundedCornerShape(esc(28))
         }
-        Surface(
-            color = MaterialTheme.colorScheme.background,
-            shape = forma,
-            shadowElevation = 16.dp,
+        Vidro(
+            forma = forma,
+            larguraDaTela = largura,
+            alturaDaTela = altura,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .then(
@@ -184,22 +256,36 @@ private fun EmDuasColunas(formulario: @Composable () -> Unit) {
     BarraDeStatusSobreImagem(navegacaoSobreImagem = true)
     Row(Modifier.fillMaxSize()) {
         FundoLogin(Modifier.weight(1f).fillMaxHeight())
-        // A escala do cartão vem da largura do painel, não da tela inteira.
-        TelaResponsiva(Modifier.weight(1f).fillMaxHeight()) {
-            BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Surface(
-                    color = MaterialTheme.colorScheme.background,
-                    shape = RoundedCornerShape(esc(28)),
-                    shadowElevation = 8.dp,
-                    modifier = Modifier
-                        .statusBarsPadding()
-                        .navigationBarsPadding()
-                        .imePadding()
-                        .padding(esc(24))
-                        .widthIn(max = larguraConteudo() + esc(48))
-                        .heightIn(max = maxHeight),
-                ) {
-                    Column(Modifier.verticalScroll(rememberScrollState())) { formulario() }
+        // O painel da direita repete o wallpaper, desfocado e escurecido com o azul da marca; sem
+        // desfoque (antes do Android 12), fica só o azul. A escala do cartão vem da largura do painel.
+        Box(Modifier.weight(1f).fillMaxHeight()) {
+            if (DESFOQUE_SUPORTADO) {
+                Image(
+                    painter = painterResource(R.drawable.login_fundo),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    // Parte de baixo do wallpaper (campo e pôr do sol): sem o logo desfocado no alto.
+                    alignment = Alignment.BottomCenter,
+                    modifier = Modifier.fillMaxSize().blur(32.dp, BlurredEdgeTreatment.Unbounded),
+                )
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)))
+            }
+            TelaResponsiva(Modifier.fillMaxSize()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    val forma = RoundedCornerShape(esc(28))
+                    Box(
+                        Modifier
+                            .statusBarsPadding()
+                            .navigationBarsPadding()
+                            .imePadding()
+                            .padding(esc(24))
+                            .widthIn(max = larguraConteudo() + esc(48))
+                            .clip(forma)
+                            .background(if (DESFOQUE_SUPORTADO) VIDRO_COM_DESFOQUE else VIDRO_SEM_DESFOQUE)
+                            .border(1.dp, BORDA_DO_VIDRO, forma),
+                    ) {
+                        Column(Modifier.verticalScroll(rememberScrollState())) { formulario() }
+                    }
                 }
             }
         }
@@ -222,6 +308,11 @@ private fun FormularioLogin(
     aoEsquecerSenha: () -> Unit,
 ) {
     val cores = MaterialTheme.colorScheme
+    // Sobre o vidro, o cinza do protótipo (666661) perde contraste: o texto pequeno usa o preto
+    // do tema um pouco suavizado.
+    val textoSuave = cores.onSurface.copy(alpha = 0.78f)
+    // Campos do protótipo (E9E9E4), um pouco translúcidos para combinar com o vidro.
+    val fundoDoCampo = cores.surfaceVariant.copy(alpha = 0.78f)
     Column(Modifier.padding(start = esc(24), end = esc(24), top = esc(28), bottom = esc(24))) {
         Text(
             stringResource(R.string.acesso_login_titulo),
@@ -230,7 +321,7 @@ private fun FormularioLogin(
             modifier = Modifier.semantics { heading() },
         )
         Spacer(Modifier.height(esc(4)))
-        Text(stringResource(R.string.acesso_login_subtitulo), color = cores.onSurfaceVariant, style = estilo(13))
+        Text(stringResource(R.string.acesso_login_subtitulo), color = textoSuave, style = estilo(13))
         Spacer(Modifier.height(esc(20)))
         estado.erroGeral?.let {
             MensagemErro(it)
@@ -243,6 +334,8 @@ private fun FormularioLogin(
             erro = estado.erroEmail,
             tipoTeclado = KeyboardType.Email,
             habilitado = !estado.carregando,
+            fundo = fundoDoCampo,
+            corDoRotulo = textoSuave,
         )
         Spacer(Modifier.height(esc(16)))
         CampoSenhaDoPrototipo(
@@ -257,6 +350,8 @@ private fun FormularioLogin(
             acaoIme = ImeAction.Done,
             aoConcluir = aoEntrar,
             habilitado = !estado.carregando,
+            fundo = fundoDoCampo,
+            corDoRotulo = textoSuave,
         )
         Spacer(Modifier.height(esc(24)))
         BotaoCheio(
@@ -268,7 +363,7 @@ private fun FormularioLogin(
         Spacer(Modifier.height(esc(12)))
         Text(
             stringResource(R.string.acesso_ainda_sem_conta),
-            color = cores.onSurfaceVariant,
+            color = textoSuave,
             textAlign = TextAlign.Center,
             style = estilo(12),
             modifier = Modifier.fillMaxWidth(),
