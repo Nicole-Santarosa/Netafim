@@ -14,6 +14,7 @@ internal fun TemaDePreview(conteudo: @Composable () -> Unit) {
         colorScheme = lightColorScheme(
             primary = Color(0xFF181F4E),
             onPrimary = Color.White,
+            background = Color.White,
             surface = Color.White,
             surfaceVariant = Color(0xFFE9E9E4),
             onSurface = Color(0xFF21211F),

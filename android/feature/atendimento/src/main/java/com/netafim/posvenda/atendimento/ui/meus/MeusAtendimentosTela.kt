@@ -11,14 +11,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +27,7 @@ import com.netafim.posvenda.atendimento.R
 import com.netafim.posvenda.atendimento.dominio.MotivoAtendimento
 import com.netafim.posvenda.atendimento.dominio.ResumoAtendimento
 import com.netafim.posvenda.atendimento.dominio.StatusAtendimento
+import com.netafim.posvenda.atendimento.ui.comum.BarraDoAtendimento
 import com.netafim.posvenda.atendimento.ui.comum.TemaDePreview
 import java.time.Instant
 import java.time.ZoneId
@@ -37,7 +35,6 @@ import java.time.ZoneId
 // Lista dos atendimentos do cliente, com botão para abrir um novo. Tela sem estado: recebe a lista
 // pronta e avisa por lambdas o que o usuário fez. "agora" e "zona" entram como parâmetro para o
 // texto de apoio dos cartões ser previsível nos testes e nos previews.
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MeusAtendimentosTela(
     atendimentos: List<ResumoAtendimento>,
@@ -50,13 +47,8 @@ fun MeusAtendimentosTela(
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.atendimento_meus_titulo)) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            )
+            // Barra comum do módulo, sem seta de voltar: esta é a tela inicial do cliente.
+            BarraDoAtendimento(titulo = stringResource(R.string.atendimento_meus_titulo))
         },
         floatingActionButton = {
             FloatingActionButton(

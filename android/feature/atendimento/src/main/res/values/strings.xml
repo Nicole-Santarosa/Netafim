@@ -32,4 +32,24 @@
     <string name="atendimento_motivo_pos_venda">Pós-venda</string>
     <string name="atendimento_motivo_programacao_feiras">Programação de feiras</string>
     <string name="atendimento_motivo_treinamento">Treinamento</string>
+
+    <!-- Barra do atendimento -->
+    <string name="atendimento_voltar">Voltar</string>
+
+    <!-- Abrir novo atendimento -->
+    <string name="atendimento_abrir_titulo">Abrir novo atendimento</string>
+    <string name="atendimento_abrir_motivo">Motivo do atendimento</string>
+    <string name="atendimento_abrir_cultura">Cultura (selecione uma ou mais)</string>
+    <string name="atendimento_abrir_localidade">Localidade da fazenda</string>
+    <string name="atendimento_abrir_contato">Seu contato (telefone / WhatsApp)</string>
+    <string name="atendimento_abrir_distribuidor">Distribuidor / revenda que te atende</string>
+    <string name="atendimento_abrir_distribuidor_nenhum">Nenhum</string>
+    <string name="atendimento_abrir_tipo_venda">Tipo de venda</string>
+    <string name="atendimento_abrir_tipo_venda_projeto">Projeto</string>
+    <string name="atendimento_abrir_tipo_venda_regular">Venda regular</string>
+    <string name="atendimento_abrir_enviar">Enviar solicitação</string>
+    <string name="atendimento_abrir_erro_motivo">Escolha o motivo do atendimento</string>
+    <string name="atendimento_abrir_erro_localidade">Informe a localidade da fazenda</string>
+    <string name="atendimento_abrir_erro_contato">Informe um telefone para contato</string>
+    <string name="atendimento_abrir_erro_muito_longo">Use no máximo %d caracteres</string>
 </resources>

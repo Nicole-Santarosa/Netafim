@@ -64,3 +64,15 @@ private fun validarTexto(texto: String, limite: Int, obrigatorio: Boolean): Erro
         else -> null
     }
 }
+
+// Troca o motivo mantendo o tipo de venda coerente com ele. Tipo de venda só existe em Digital Farming:
+// ao entrar nesse motivo sem tipo escolhido vale PROJETO (o mesmo padrão de tipoVendaEfetivo), e ao
+// sair dele o tipo é zerado, para não sobrar um valor escondido que seria enviado por engano.
+fun FormularioAbertura.comMotivo(motivo: MotivoAtendimento): FormularioAbertura {
+    val tipo = if (motivo == MotivoAtendimento.DIGITAL_FARMING) tipoVenda ?: TipoVenda.PROJETO else null
+    return copy(motivo = motivo, tipoVenda = tipo)
+}
+
+// Marca a cultura se ainda não estava no conjunto e desmarca se já estava (chip de seleção múltipla).
+fun FormularioAbertura.comCulturaAlternada(idCultura: Int): FormularioAbertura =
+    copy(culturas = if (idCultura in culturas) culturas - idCultura else culturas + idCultura)
