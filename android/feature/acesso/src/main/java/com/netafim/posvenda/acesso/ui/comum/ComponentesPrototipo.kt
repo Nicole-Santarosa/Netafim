@@ -290,3 +290,9 @@ fun LinkTexto(texto: String, aoClicar: () -> Unit, modifier: Modifier = Modifier
         Text(texto, color = MaterialTheme.colorScheme.primary, style = estilo(13))
     }
 }
+
+/** Texto corrido (mensagens de confirmação etc.): 14 sp na cor de texto do tema. */
+@Composable
+fun TextoCorpo(texto: String, modifier: Modifier = Modifier) {
+    Text(texto, color = MaterialTheme.colorScheme.onSurface, style = estilo(14), modifier = modifier)
+}
