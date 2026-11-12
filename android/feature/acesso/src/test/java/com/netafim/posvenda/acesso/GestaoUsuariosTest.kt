@@ -14,6 +14,8 @@ import com.netafim.posvenda.acesso.dominio.Usuario
 import com.netafim.posvenda.acesso.ui.usuarios.CampoNovoUsuario
 import com.netafim.posvenda.acesso.ui.usuarios.NovoUsuarioViewModel
 import com.netafim.posvenda.acesso.ui.usuarios.UsuariosViewModel
+import com.netafim.posvenda.acesso.ui.usuarios.filtrarPor
+import com.netafim.posvenda.acesso.ui.usuarios.iniciaisDe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -67,6 +69,12 @@ class UsuariosViewModelTest {
 
     private fun logarComo(usuario: Usuario) {
         acesso.sessao.value = Sessao("a", "r", usuario)
+    }
+
+    @Test
+    fun `guarda o nome da organizacao de quem esta logado para o resumo`() {
+        logarComo(pessoa(1, "Marcos", nivel = "admin").copy(organizacao = com.netafim.posvenda.acesso.dominio.Organizacao("distribuidor", 1, "Agro Irriga Ltda")))
+        assertEquals("Agro Irriga Ltda", UsuariosViewModel(repositorio, acesso).estado.value.organizacao)
     }
 
     @Test
@@ -264,5 +272,44 @@ class RepositorioUsuariosRemotoTest {
         val r = repositorio.criar(DadosNovoUsuario("Ana", "ana@x.com", null))
 
         assertEquals("email_em_uso", ((r as Resultado.Falha).erro as ErroAcesso.Api).codigo)
+    }
+}
+
+class FormatacaoUsuariosTest {
+
+    private fun u(id: Int, nome: String, email: String) = pessoa(id, nome).copy(email = email)
+
+    private val lista = listOf(
+        u(1, "José Álvares", "jose@agroirriga.com.br"),
+        u(2, "Ana Paula Reis", "ana.reis@agroirriga.com.br"),
+        u(3, "Fernando Costa", "fcosta@outro.com"),
+    )
+
+    @Test
+    fun `busca ignora acentos e maiusculas`() {
+        assertEquals(listOf(1), lista.filtrarPor("JOSE").map { it.id })
+        assertEquals(listOf(1), lista.filtrarPor("álvares").map { it.id })
+    }
+
+    @Test
+    fun `busca tambem acha pelo e-mail`() {
+        assertEquals(listOf(1, 2), lista.filtrarPor("agroirriga").map { it.id })
+        assertEquals(listOf(3), lista.filtrarPor("outro.com").map { it.id })
+    }
+
+    @Test
+    fun `busca vazia ou so com espacos devolve a lista inteira e sem achado devolve vazia`() {
+        assertEquals(3, lista.filtrarPor("").size)
+        assertEquals(3, lista.filtrarPor("   ").size)
+        assertTrue(lista.filtrarPor("zzz").isEmpty())
+    }
+
+    @Test
+    fun `iniciais usam o primeiro e o ultimo nome`() {
+        assertEquals("AR", iniciaisDe("Ana Paula Reis"))
+        assertEquals("FC", iniciaisDe("fernando costa"))
+        assertEquals("M", iniciaisDe("Marcos"))
+        assertEquals("ED", iniciaisDe("[E2E] Cadastro C Distribuidor"))
+        assertEquals("?", iniciaisDe("   "))
     }
 }

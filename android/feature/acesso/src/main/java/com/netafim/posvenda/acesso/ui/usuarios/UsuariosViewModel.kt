@@ -32,6 +32,8 @@ data class UsuariosEstado(
     val usuarios: List<Usuario> = emptyList(),
     val erro: String? = null,
     val podeAdicionar: Boolean = false,
+    /** Nome da organização de quem está logado (distribuidor ou cliente), para o resumo da tela. */
+    val organizacao: String? = null,
 )
 
 class UsuariosViewModel(
@@ -40,7 +42,10 @@ class UsuariosViewModel(
 ) : ViewModel() {
 
     private val _estado = MutableStateFlow(
-        UsuariosEstado(podeAdicionar = acesso.sessao.value?.usuario?.podeConvidarUsuarios() == true),
+        UsuariosEstado(
+            podeAdicionar = acesso.sessao.value?.usuario?.podeConvidarUsuarios() == true,
+            organizacao = acesso.sessao.value?.usuario?.organizacao?.nome?.takeIf { it.isNotBlank() },
+        ),
     )
     val estado: StateFlow<UsuariosEstado> = _estado.asStateFlow()
 
