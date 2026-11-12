@@ -61,7 +61,7 @@ import androidx.compose.ui.unit.sp
 // (azul 3B98FF a 35%, que o protótipo usa só nele).
 //
 // RESPONSIVO: o protótipo é de 360 dp (celular). Em telas mais largas tudo cresce na mesma
-// proporção (fator de escala por faixa de largura) e o conteúdo fica centralizado, em vez de
+// proporção (fator de escala contínuo, pela largura) e o conteúdo fica centralizado, em vez de
 // esticar os campos pela tela inteira. Os números abaixo são os do protótipo, em escala 1.
 
 /** Largura do quadro do protótipo; é a largura do conteúdo em escala 1. */
@@ -70,12 +70,13 @@ private const val LarguraPrototipo = 360
 /** Fator de escala da tela atual; 1 = celular (protótipo). Ver [TelaResponsiva]. */
 val LocalEscala = compositionLocalOf { 1f }
 
-/** Faixas de largura (as do Material 3): até 600 dp celular, até 840 dp tablet, acima tablet grande. */
-private fun escalaPara(largura: Dp): Float = when {
-    largura < 600.dp -> 1f
-    largura < 840.dp -> 1.25f
-    else -> 1.4f
-}
+/**
+ * Escala contínua: até 600 dp (celular) vale 1; acima disso o conteúdo ocupa cerca de 70% da
+ * largura da tela (tablet 823 dp -> 1,6; paisagem 1316 dp -> 2,0, que é o teto). Campos, botões,
+ * textos e espaços crescem na mesma proporção, então a tela se ajusta a qualquer tamanho.
+ */
+private fun escalaPara(largura: Dp): Float =
+    if (largura < 600.dp) 1f else (largura.value * 0.7f / LarguraPrototipo).coerceIn(1f, 2f)
 
 /** Mede a largura disponível e entrega a escala para tudo o que estiver dentro. */
 @Composable
