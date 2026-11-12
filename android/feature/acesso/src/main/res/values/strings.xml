@@ -134,4 +134,23 @@
     <string name="novo_usuario_titulo">Novo usuário</string>
     <string name="novo_usuario_enviar">Enviar convite</string>
     <string name="novo_usuario_explicacao">A pessoa recebe um convite por e-mail para criar a senha. O acesso é liberado depois da aprovação da Netafim.</string>
+
+    <!-- Telas com wallpaper -->
+    <string name="esqueci_subtitulo">Informe o e-mail cadastrado e enviaremos um link para você criar uma nova senha.</string>
+    <string name="esqueci_enviado_titulo">Verifique seu e-mail</string>
+    <string name="cadastro_titulo">Criar conta</string>
+    <string name="cadastro_subtitulo">Preencha seus dados. A Netafim valida o cadastro antes de liberar o acesso.</string>
+    <string name="cadastro_grupo_dados">Seus dados</string>
+    <string name="cadastro_grupo_propriedade">Sua propriedade</string>
+    <string name="cadastro_grupo_acesso">Acesso</string>
+    <string name="aguardando_passo_enviado">Cadastro enviado</string>
+    <string name="aguardando_passo_analise">Análise pela Netafim</string>
+    <string name="aguardando_passo_liberado">Acesso liberado</string>
+    <string name="aguardando_passo_enviado_detalhe">Recebemos os seus dados.</string>
+    <string name="aguardando_passo_analise_detalhe">Em andamento.</string>
+    <string name="aguardando_passo_liberado_detalhe">Você recebe um aviso.</string>
+    <plurals name="aprovacao_quantidade">
+        <item quantity="one">%d cadastro aguardando análise</item>
+        <item quantity="other">%d cadastros aguardando análise</item>
+    </plurals>
 </resources>

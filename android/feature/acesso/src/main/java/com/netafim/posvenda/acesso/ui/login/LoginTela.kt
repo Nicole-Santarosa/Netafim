@@ -57,6 +57,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.netafim.posvenda.acesso.R
 import com.netafim.posvenda.acesso.ui.comum.BarraDeStatusSobreImagem
+import com.netafim.posvenda.acesso.ui.comum.BORDA_DO_VIDRO
+import com.netafim.posvenda.acesso.ui.comum.DESFOQUE_SUPORTADO
+import com.netafim.posvenda.acesso.ui.comum.VIDRO_COM_DESFOQUE
+import com.netafim.posvenda.acesso.ui.comum.VIDRO_SEM_DESFOQUE
+import com.netafim.posvenda.acesso.ui.comum.Vidro
 import com.netafim.posvenda.acesso.ui.comum.BotaoCheio
 import com.netafim.posvenda.acesso.ui.comum.BotaoContorno
 import com.netafim.posvenda.acesso.ui.comum.CampoDoPrototipo
@@ -146,13 +151,6 @@ fun LoginTela(
  */
 private val LARGURA_TABLET: Dp = 600.dp
 
-/** O desfoque de fundo precisa do Android 12 (API 31). */
-private val DESFOQUE_SUPORTADO = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-
-private val VIDRO_COM_DESFOQUE = Color.White.copy(alpha = 0.70f)
-private val VIDRO_SEM_DESFOQUE = Color.White.copy(alpha = 0.92f)
-private val BORDA_DO_VIDRO = Color.White.copy(alpha = 0.60f)
-
 /** O wallpaper, ancorado no topo para o logo desenhado nele ficar sempre na mesma faixa. */
 @Composable
 private fun FundoLogin(modifier: Modifier = Modifier) {
@@ -164,53 +162,6 @@ private fun FundoLogin(modifier: Modifier = Modifier) {
         alignment = Alignment.TopCenter,
         modifier = modifier,
     )
-}
-
-/**
- * Vidro fosco sobre o wallpaper: por baixo do formulário, uma cópia desfocada do mesmo wallpaper,
- * alinhada com a tela (por isso a posição do vidro é lida e a cópia é deslocada no sentido contrário),
- * e por cima um branco translúcido com uma borda clara.
- */
-@Composable
-private fun Vidro(
-    forma: Shape,
-    larguraDaTela: Dp,
-    alturaDaTela: Dp,
-    modifier: Modifier = Modifier,
-    conteudo: @Composable () -> Unit,
-) {
-    var posicao by remember { mutableStateOf(IntOffset.Zero) }
-    Box(
-        modifier
-            .clip(forma)
-            .onGloballyPositioned { coordenadas ->
-                val p = coordenadas.positionInRoot()
-                posicao = IntOffset(p.x.roundToInt(), p.y.roundToInt())
-            },
-    ) {
-        if (DESFOQUE_SUPORTADO) {
-            Box(Modifier.matchParentSize()) {
-                Image(
-                    painter = painterResource(R.drawable.login_fundo),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    alignment = Alignment.TopCenter,
-                    modifier = Modifier
-                        .wrapContentSize(Alignment.TopStart, unbounded = true)
-                        .size(larguraDaTela, alturaDaTela)
-                        .offset { IntOffset(-posicao.x, -posicao.y) }
-                        .blur(28.dp, BlurredEdgeTreatment.Unbounded),
-                )
-            }
-        }
-        Box(
-            Modifier
-                .matchParentSize()
-                .background(if (DESFOQUE_SUPORTADO) VIDRO_COM_DESFOQUE else VIDRO_SEM_DESFOQUE)
-                .border(1.dp, BORDA_DO_VIDRO, forma),
-        )
-        conteudo()
-    }
 }
 
 @Composable
@@ -225,6 +176,7 @@ private fun SobreAImagem(compacto: Boolean, largura: Dp, altura: Dp, formulario:
         }
         Vidro(
             forma = forma,
+            wallpaper = R.drawable.login_fundo,
             larguraDaTela = largura,
             alturaDaTela = altura,
             modifier = Modifier

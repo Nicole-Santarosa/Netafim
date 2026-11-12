@@ -120,9 +120,9 @@ fun NavGraphBuilder.telaPerfil(navController: NavHostController) {
 }
 
 /** Tela "Aprovação de cadastro", para quem tem a permissão aprovar_cadastro (a tela inicial só mostra a entrada para elas). */
-fun NavGraphBuilder.telaAprovacao() {
+fun NavGraphBuilder.telaAprovacao(navController: NavHostController) {
     composable(RotasAcesso.APROVACAO) {
-        AprovacaoRota(viewModel = viewModel(factory = fabrica))
+        AprovacaoRota(viewModel = viewModel(factory = fabrica), aoVoltar = { navController.popBackStack() })
     }
 }
 
@@ -135,6 +135,10 @@ fun NavGraphBuilder.telasUsuarios(navController: NavHostController) {
         )
     }
     composable(RotasAcesso.NOVO_USUARIO) {
-        NovoUsuarioRota(viewModel = viewModel(factory = fabrica), aoCriar = { navController.popBackStack() })
+        NovoUsuarioRota(
+            viewModel = viewModel(factory = fabrica),
+            aoCriar = { navController.popBackStack() },
+            aoVoltar = { navController.popBackStack() },
+        )
     }
 }

@@ -104,7 +104,7 @@ fun larguraConteudo(): Dp = esc(LarguraPrototipo)
 
 /** Estilo com a família do tema (Outfit); um TextStyle solto cairia na fonte padrão do sistema. */
 @Composable
-internal fun estilo(tamanho: Int, peso: FontWeight = FontWeight.Normal): TextStyle =
+fun estilo(tamanho: Int, peso: FontWeight = FontWeight.Normal): TextStyle =
     MaterialTheme.typography.bodyMedium.copy(
         fontSize = escSp(tamanho),
         fontWeight = peso,
@@ -418,6 +418,6 @@ fun OpcaoSelecionavel(
 
 /** Texto de apoio de formulário: 12 sp, cinza, alinhado à esquerda. */
 @Composable
-fun TextoApoio(texto: String, modifier: Modifier = Modifier) {
-    Text(texto, color = MaterialTheme.colorScheme.onSurfaceVariant, style = estilo(12), modifier = modifier.fillMaxWidth())
+fun TextoApoio(texto: String, modifier: Modifier = Modifier, cor: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
+    Text(texto, color = cor, style = estilo(12), modifier = modifier.fillMaxWidth())
 }
