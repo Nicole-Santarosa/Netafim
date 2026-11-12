@@ -107,4 +107,13 @@
     <string name="atendimento_regiao_filtro_concluidos">Concluídos</string>
     <string name="atendimento_regiao_vazio">Nenhum atendimento na região</string>
     <string name="atendimento_regiao_vazio_busca">Nenhum atendimento encontrado</string>
+
+    <!-- Lista do admin -->
+    <string name="atendimento_admin_titulo">Lista de atendimentos</string>
+    <string name="atendimento_admin_filtro_todos">Todos</string>
+    <string name="atendimento_admin_filtro_netafim">Netafim</string>
+    <string name="atendimento_admin_filtro_distribuidor">Distribuidor</string>
+    <string name="atendimento_admin_filtro_cliente_final">Cliente final</string>
+    <string name="atendimento_admin_vazio">Nenhum atendimento</string>
+    <string name="atendimento_admin_vazio_filtro">Nenhum atendimento encontrado</string>
 </resources>
