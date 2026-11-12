@@ -51,6 +51,7 @@ import com.netafim.posvenda.acesso.ui.comum.TituloDeEstado
 import com.netafim.posvenda.acesso.ui.comum.estilo
 import com.netafim.posvenda.acesso.ui.comum.esc
 import com.netafim.posvenda.acesso.ui.comum.larguraConteudo
+import com.netafim.posvenda.acesso.ui.perfil.formatarTelefone
 
 @Composable
 fun AprovacaoRota(viewModel: AprovacaoViewModel) {
@@ -172,7 +173,8 @@ private fun CadastroPendente(usuario: Usuario, aoAprovar: () -> Unit, aoRecusar:
             Dado(stringResource(R.string.aprovacao_email), usuario.email)
             Dado(
                 stringResource(R.string.aprovacao_telefone),
-                usuario.telefone?.takeIf { it.isNotBlank() } ?: stringResource(R.string.aprovacao_nao_informado),
+                usuario.telefone?.takeIf { it.isNotBlank() }?.let(::formatarTelefone)
+                    ?: stringResource(R.string.aprovacao_nao_informado),
             )
         }
         Spacer(Modifier.height(esc(20)))
