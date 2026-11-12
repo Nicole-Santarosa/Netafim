@@ -1,32 +1,14 @@
 package com.netafim.posvenda.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.netafim.posvenda.R
 import com.netafim.posvenda.acesso.AcessoGrafo
 import com.netafim.posvenda.acesso.ui.RotasAcesso
 import com.netafim.posvenda.acesso.ui.grafoAcesso
@@ -67,62 +49,20 @@ fun NavegacaoRaiz(iniciarLogado: Boolean, navController: NavHostController = rem
             }
         }
         telaPerfil(navController)
-        telaAprovacao()
+        telaAprovacao(navController)
         telasUsuarios(navController)
         composable(RotasApp.INICIO) {
-            InicioProvisorio(
-                nome = sessao?.usuario?.nome.orEmpty(),
-                podeAprovarCadastros = sessao?.usuario?.temPermissao(Permissoes.APROVAR_CADASTRO) == true,
+            val usuario = sessao?.usuario
+            InicioTela(
+                nome = usuario?.nome.orEmpty(),
+                perfil = usuario?.perfil?.nome,
+                organizacao = usuario?.organizacao?.nome,
+                podeGerenciarUsuarios = usuario?.podeGerenciarUsuarios() == true,
+                podeAprovarCadastros = usuario?.temPermissao(Permissoes.APROVAR_CADASTRO) == true,
                 aoAbrirPerfil = { navController.navigate(RotasAcesso.PERFIL) },
-                aoAbrirAprovacao = { navController.navigate(RotasAcesso.APROVACAO) },
-                podeGerenciarUsuarios = sessao?.usuario?.podeGerenciarUsuarios() == true,
                 aoAbrirUsuarios = { navController.navigate(RotasAcesso.USUARIOS) },
+                aoAbrirAprovacao = { navController.navigate(RotasAcesso.APROVACAO) },
             )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun InicioProvisorio(
-    nome: String,
-    podeAprovarCadastros: Boolean,
-    aoAbrirPerfil: () -> Unit,
-    aoAbrirAprovacao: () -> Unit,
-    podeGerenciarUsuarios: Boolean,
-    aoAbrirUsuarios: () -> Unit,
-) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.inicio_titulo)) },
-                actions = {
-                    IconButton(onClick = aoAbrirPerfil) {
-                        Icon(Icons.Outlined.AccountCircle, stringResource(R.string.inicio_meu_perfil))
-                    }
-                },
-            )
-        },
-    ) { margens ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(margens)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(stringResource(R.string.inicio_ola, nome), style = MaterialTheme.typography.headlineSmall)
-            Text(stringResource(R.string.inicio_provisorio), style = MaterialTheme.typography.bodyMedium)
-            if (podeGerenciarUsuarios) {
-                OutlinedButton(onClick = aoAbrirUsuarios) {
-                    Text(stringResource(R.string.inicio_gestao_usuarios))
-                }
-            }
-            if (podeAprovarCadastros) {
-                OutlinedButton(onClick = aoAbrirAprovacao) {
-                    Text(stringResource(R.string.inicio_aprovar_cadastros))
-                }
-            }
         }
     }
 }

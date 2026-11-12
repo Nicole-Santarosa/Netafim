@@ -7,4 +7,11 @@
     <string name="inicio_meu_perfil">Meu perfil</string>
     <string name="inicio_aprovar_cadastros">Aprovar cadastros</string>
     <string name="inicio_gestao_usuarios">Gestão de usuários</string>
+    <string name="inicio_marca">NETAFIM</string>
+    <string name="inicio_atalhos_titulo">O que você pode fazer</string>
+    <string name="inicio_gestao_usuarios_descricao">Veja e convide as pessoas da sua organização.</string>
+    <string name="inicio_aprovar_cadastros_descricao">Aprove ou recuse quem pediu acesso pelo aplicativo.</string>
+    <string name="inicio_perfil_e_organizacao">%1$s · %2$s</string>
+    <string name="inicio_atendimentos_titulo">Atendimentos</string>
+    <string name="inicio_atendimentos_descricao">Os módulos de atendimento vão ocupar este espaço.</string>
 </resources>
