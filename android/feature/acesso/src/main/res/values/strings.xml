@@ -14,15 +14,16 @@
     <string name="acesso_ocultar_senha">Ocultar senha</string>
 
     <!-- Cadastro -->
-    <string name="acesso_cadastro_titulo">Solicitar acesso</string>
-    <string name="acesso_cadastro_explicacao">Preencha seus dados. A Netafim vai validar o cadastro e definir o seu perfil de acesso. Você receberá um e-mail quando o acesso for liberado.</string>
+    <string name="acesso_cadastro_titulo">Cadastro</string>
     <string name="acesso_nome">Nome completo</string>
-    <string name="acesso_telefone">Telefone com DDD (opcional)</string>
+    <string name="acesso_telefone">Telefone / WhatsApp</string>
+    <string name="acesso_propriedade">Nome da propriedade</string>
+    <string name="acesso_distribuidor">Distribuidor / revenda que atende você</string>
     <string name="acesso_confirmar_senha">Confirmar senha</string>
     <string name="acesso_dica_senha">Mínimo de 8 caracteres, sem ser só números.</string>
     <string name="acesso_aceite_termo">Li e aceito o aviso de privacidade (versão %1$s).</string>
     <string name="acesso_aceite_termo_carregando">Li e aceito o aviso de privacidade.</string>
-    <string name="acesso_enviar_solicitacao">Enviar solicitação</string>
+    <string name="acesso_enviar_cadastro">Enviar cadastro</string>
     <string name="acesso_cadastro_enviado_titulo">Solicitação enviada</string>
     <string name="acesso_voltar_login">Voltar para o login</string>
     <string name="acesso_tentar_novamente">Tentar novamente</string>

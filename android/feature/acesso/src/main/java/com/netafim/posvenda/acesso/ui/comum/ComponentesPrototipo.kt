@@ -142,6 +142,7 @@ fun CampoDoPrototipo(
     rotulo: String,
     modifier: Modifier = Modifier,
     erro: String? = null,
+    dica: String? = null,
     tipoTeclado: KeyboardType = KeyboardType.Text,
     acaoIme: ImeAction = ImeAction.Next,
     aoConcluir: (() -> Unit)? = null,
@@ -190,6 +191,8 @@ fun CampoDoPrototipo(
                 Icon(Icons.Outlined.ErrorOutline, contentDescription = null, tint = cores.error, modifier = Modifier.size(esc(14)))
                 Text(erro, color = cores.error, style = estilo(12))
             }
+        } else if (dica != null) {
+            Text(dica, color = cores.onSurfaceVariant, style = estilo(12), modifier = Modifier.padding(top = esc(4)))
         }
     }
 }
@@ -206,6 +209,7 @@ fun CampoSenhaDoPrototipo(
     descricaoOcultar: String,
     modifier: Modifier = Modifier,
     erro: String? = null,
+    dica: String? = null,
     acaoIme: ImeAction = ImeAction.Done,
     aoConcluir: (() -> Unit)? = null,
     habilitado: Boolean = true,
@@ -216,6 +220,7 @@ fun CampoSenhaDoPrototipo(
         rotulo = rotulo,
         modifier = modifier,
         erro = erro,
+        dica = dica,
         tipoTeclado = KeyboardType.Password,
         acaoIme = acaoIme,
         aoConcluir = aoConcluir,
