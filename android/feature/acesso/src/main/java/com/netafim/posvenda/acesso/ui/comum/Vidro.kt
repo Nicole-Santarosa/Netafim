@@ -37,9 +37,9 @@ import kotlin.math.roundToInt
 /** O desfoque de fundo precisa do Android 12 (API 31). */
 internal val DESFOQUE_SUPORTADO = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
-internal val VIDRO_COM_DESFOQUE = Color.White.copy(alpha = 0.70f)
-internal val VIDRO_SEM_DESFOQUE = Color.White.copy(alpha = 0.92f)
-internal val BORDA_DO_VIDRO = Color.White.copy(alpha = 0.60f)
+internal val VIDRO_COM_DESFOQUE = Color.White.copy(alpha = 0.42f)
+internal val VIDRO_SEM_DESFOQUE = Color.White.copy(alpha = 0.80f)
+internal val BORDA_DO_VIDRO = Color.White.copy(alpha = 0.55f)
 
 /**
  * Vidro fosco: por baixo do conteúdo, uma cópia desfocada do mesmo wallpaper, alinhada com a tela
@@ -76,7 +76,7 @@ fun Vidro(
                         .wrapContentSize(Alignment.TopStart, unbounded = true)
                         .size(larguraDaTela, alturaDaTela)
                         .offset { IntOffset(-posicao.x, -posicao.y) }
-                        .blur(28.dp, BlurredEdgeTreatment.Unbounded),
+                        .blur(14.dp, BlurredEdgeTreatment.Unbounded),
                 )
             }
         }
@@ -99,8 +99,8 @@ fun textoSuaveNoVidro(): Color = MaterialTheme.colorScheme.onSurface.copy(alpha 
 
 /** Campos do protótipo (E9E9E4) um pouco translúcidos, para combinar com o vidro. */
 @Composable
-fun fundoDeCampoNoVidro(): Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f)
+fun fundoDeCampoNoVidro(): Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f)
 
 /** Cartão interno sobre o vidro (ex.: um cadastro pendente): branco quase opaco, para ler bem. */
 @Composable
-fun fundoDeCartaoNoVidro(): Color = Color.White.copy(alpha = 0.88f)
+fun fundoDeCartaoNoVidro(): Color = Color.White.copy(alpha = 0.72f)

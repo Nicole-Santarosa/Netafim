@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import com.netafim.posvenda.acesso.dados.AcessoApi
 import com.netafim.posvenda.acesso.dados.ArmazenamentoSessaoSeguro
+import com.netafim.posvenda.acesso.dados.FotosDePerfil
 import com.netafim.posvenda.acesso.dados.InfoAparelho
 import com.netafim.posvenda.acesso.dados.ProvedorTokens
 import com.netafim.posvenda.acesso.dados.Rede
@@ -37,7 +38,12 @@ object AcessoGrafo {
     private lateinit var cadastrosRemoto: RepositorioCadastrosRemoto
     private lateinit var usuariosRemoto: RepositorioUsuariosRemoto
 
+    private lateinit var fotosDePerfil: FotosDePerfil
+
     val repositorio: RepositorioAcesso get() = repositorioRemoto
+
+    /** Foto de perfil de cada usuário, guardada no aparelho. */
+    val fotos: FotosDePerfil get() = fotosDePerfil
 
     /** Fila de cadastros pendentes (aprovar e recusar), para quem tem a permissão aprovar_cadastro. */
     val repositorioCadastros: RepositorioCadastros get() = cadastrosRemoto
@@ -49,6 +55,7 @@ object AcessoGrafo {
 
     fun inicializar(contexto: Context, configuracao: Configuracao) {
         if (::repositorioRemoto.isInitialized) return
+        fotosDePerfil = FotosDePerfil(contexto.applicationContext)
         val tokens = ProvedorTokensTardio()
         rede = Rede(configuracao.urlApi, tokens, configuracao.depuracao)
         val publica = rede.retrofit(rede.publico).create(AcessoApi::class.java)

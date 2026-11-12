@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -232,7 +233,7 @@ private fun BotoesDoTopo(aoVoltar: (() -> Unit)?, acaoNoTopo: (@Composable () ->
  * quanto sobre a folha branca que sobe por baixo dele ao rolar.
  */
 @Composable
-private fun BotaoDeVoltar(aoVoltar: () -> Unit) {
+fun BotaoCircularSobreImagem(icone: ImageVector, descricao: String, aoClicar: () -> Unit, habilitado: Boolean = true) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -240,13 +241,18 @@ private fun BotaoDeVoltar(aoVoltar: () -> Unit) {
             .clip(CircleShape)
             .background(Color(0x99011147))
             .border(1.dp, Color.White.copy(alpha = 0.35f), CircleShape)
-            .clickable(role = Role.Button, onClick = aoVoltar),
+            .clickable(enabled = habilitado, role = Role.Button, onClick = aoClicar),
     ) {
         Icon(
-            Icons.AutoMirrored.Outlined.ArrowBack,
-            contentDescription = stringResource(R.string.acesso_voltar),
-            tint = Color.White,
+            icone,
+            contentDescription = descricao,
+            tint = Color.White.copy(alpha = if (habilitado) 1f else 0.5f),
             modifier = Modifier.size(esc(22)),
         )
     }
+}
+
+@Composable
+private fun BotaoDeVoltar(aoVoltar: () -> Unit) {
+    BotaoCircularSobreImagem(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.acesso_voltar), aoVoltar)
 }

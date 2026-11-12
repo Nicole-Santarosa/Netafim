@@ -254,7 +254,7 @@ private fun FormularioLogin(
     // do tema um pouco suavizado.
     val textoSuave = cores.onSurface.copy(alpha = 0.78f)
     // Campos do protótipo (E9E9E4), um pouco translúcidos para combinar com o vidro.
-    val fundoDoCampo = cores.surfaceVariant.copy(alpha = 0.78f)
+    val fundoDoCampo = cores.surfaceVariant.copy(alpha = 0.62f)
     Column(Modifier.padding(start = esc(24), end = esc(24), top = esc(28), bottom = esc(24))) {
         Text(
             stringResource(R.string.acesso_login_titulo),
