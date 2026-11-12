@@ -336,6 +336,7 @@ private fun ConfirmarRecusa(
 ) {
     AlertDialog(
         onDismissRequest = { if (!processando) aoCancelar() },
+        containerColor = MaterialTheme.colorScheme.background,
         title = { Text(stringResource(R.string.aprovacao_recusar_titulo)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
