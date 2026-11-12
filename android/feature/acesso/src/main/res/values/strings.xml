@@ -4,7 +4,9 @@
     <string name="acesso_slogan">Mais com cada gota</string>
 
     <!-- Login -->
-    <string name="acesso_login_titulo">Login</string>
+    <string name="acesso_login_titulo">Bem-vindo</string>
+    <string name="acesso_login_subtitulo">Entre com seu e-mail e senha.</string>
+    <string name="acesso_ainda_sem_conta">Ainda não tem conta?</string>
     <string name="acesso_email">E-mail</string>
     <string name="acesso_senha">Senha</string>
     <string name="acesso_entrar">Entrar</string>

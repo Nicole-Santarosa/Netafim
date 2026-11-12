@@ -298,7 +298,7 @@ fun LinkTexto(texto: String, aoClicar: () -> Unit, modifier: Modifier = Modifier
         modifier = modifier
             .fillMaxWidth()
             .clickable(role = Role.Button, onClick = aoClicar)
-            .padding(vertical = esc(12)),
+            .padding(vertical = esc(16)), // 48 dp no total: alvo de toque mínimo
     ) {
         Text(texto, color = MaterialTheme.colorScheme.primary, style = estilo(13))
     }
