@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -44,6 +45,7 @@ fun InicioTela(
     nome: String,
     perfil: String?,
     organizacao: String?,
+    foto: ImageBitmap?,
     podeGerenciarUsuarios: Boolean,
     podeAprovarCadastros: Boolean,
     aoAbrirPerfil: () -> Unit,
@@ -61,6 +63,7 @@ fun InicioTela(
             AvatarDeIniciais(
                 nome = nome,
                 tamanho = 44,
+                foto = foto,
                 modifier = Modifier
                     .clip(CircleShape)
                     .background(Color.White)

@@ -153,4 +153,14 @@
         <item quantity="one">%d cadastro aguardando análise</item>
         <item quantity="other">%d cadastros aguardando análise</item>
     </plurals>
+    <string name="perfil_foto_alterar">Alterar foto de perfil</string>
+    <string name="perfil_foto_descricao">Foto de perfil de %1$s. Toque para alterar.</string>
+    <string name="perfil_foto_titulo">Foto de perfil</string>
+    <string name="perfil_foto_galeria">Escolher da galeria</string>
+    <string name="perfil_foto_camera">Tirar uma foto</string>
+    <string name="perfil_foto_remover">Remover foto</string>
+    <string name="perfil_foto_erro">Não foi possível usar essa imagem. Tente outra.</string>
+    <string name="perfil_foto_so_aparelho">A foto fica salva só neste aparelho.</string>
+    <string name="perfil_dados_titulo">Seus dados</string>
+    <string name="perfil_nome_e_perfil">%1$s · %2$s</string>
 </resources>

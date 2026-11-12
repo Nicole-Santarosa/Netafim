@@ -3,6 +3,9 @@ package com.netafim.posvenda.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -53,10 +56,15 @@ fun NavegacaoRaiz(iniciarLogado: Boolean, navController: NavHostController = rem
         telasUsuarios(navController)
         composable(RotasApp.INICIO) {
             val usuario = sessao?.usuario
+            val alteracoesDeFoto by AcessoGrafo.fotos.alteracoes.collectAsStateWithLifecycle()
+            val foto by produceState<ImageBitmap?>(null, usuario?.id, alteracoesDeFoto) {
+                value = usuario?.id?.let { AcessoGrafo.fotos.carregar(it) }?.asImageBitmap()
+            }
             InicioTela(
                 nome = usuario?.nome.orEmpty(),
                 perfil = usuario?.perfil?.nome,
                 organizacao = usuario?.organizacao?.nome,
+                foto = foto,
                 podeGerenciarUsuarios = usuario?.podeGerenciarUsuarios() == true,
                 podeAprovarCadastros = usuario?.temPermissao(Permissoes.APROVAR_CADASTRO) == true,
                 aoAbrirPerfil = { navController.navigate(RotasAcesso.PERFIL) },

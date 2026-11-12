@@ -1,5 +1,6 @@
 package com.netafim.posvenda.acesso.ui.comum
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -23,7 +25,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -67,15 +71,24 @@ fun TituloDeGrupo(texto: String) {
     )
 }
 
-/** Círculo com as iniciais do nome ("Ana Paula Reis" vira "AR"). */
+/** Círculo com a foto da pessoa ou, sem foto, com as iniciais do nome ("Ana Paula Reis" vira "AR"). */
 @Composable
-fun AvatarDeIniciais(nome: String, tamanho: Int = 40, modifier: Modifier = Modifier) {
+fun AvatarDeIniciais(nome: String, tamanho: Int = 40, modifier: Modifier = Modifier, foto: ImageBitmap? = null) {
     val cores = MaterialTheme.colorScheme
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier.size(esc(tamanho)).clip(CircleShape).background(cores.primary.copy(alpha = 0.12f)),
     ) {
-        Text(iniciaisDe(nome), color = cores.primary, style = estilo(tamanho * 14 / 40, FontWeight.SemiBold))
+        if (foto != null) {
+            Image(
+                bitmap = foto,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Text(iniciaisDe(nome), color = cores.primary, style = estilo(tamanho * 14 / 40, FontWeight.SemiBold))
+        }
     }
 }
 
