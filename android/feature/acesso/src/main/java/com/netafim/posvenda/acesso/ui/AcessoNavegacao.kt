@@ -11,6 +11,8 @@ import androidx.navigation.navDeepLink
 import androidx.navigation.compose.composable
 import androidx.navigation.navigation
 import com.netafim.posvenda.acesso.AcessoGrafo
+import com.netafim.posvenda.acesso.ui.admin.AprovacaoRota
+import com.netafim.posvenda.acesso.ui.admin.AprovacaoViewModel
 import com.netafim.posvenda.acesso.ui.cadastro.CadastroRota
 import com.netafim.posvenda.acesso.ui.cadastro.CadastroViewModel
 import com.netafim.posvenda.acesso.ui.link.LinkRota
@@ -23,7 +25,7 @@ import com.netafim.posvenda.acesso.ui.perfil.PerfilViewModel
 import com.netafim.posvenda.acesso.ui.senha.EsqueciSenhaRota
 import com.netafim.posvenda.acesso.ui.senha.EsqueciSenhaViewModel
 
-/** Rotas do módulo de acesso. O app só precisa conhecer [GRAFO] e [PERFIL] (o link do e-mail entra sozinho). */
+/** Rotas do módulo de acesso. O app só precisa conhecer [GRAFO], [PERFIL] e [APROVACAO] (o link do e-mail entra sozinho). */
 object RotasAcesso {
     const val GRAFO = "acesso"
     const val LOGIN = "acesso/login"
@@ -31,6 +33,7 @@ object RotasAcesso {
     const val ESQUECI_SENHA = "acesso/esqueci-senha"
     const val PERFIL = "acesso/perfil"
     const val LINK = "acesso/link"
+    const val APROVACAO = "acesso/aprovacao"
 }
 
 private val fabrica = viewModelFactory {
@@ -40,6 +43,7 @@ private val fabrica = viewModelFactory {
     initializer { MfaViewModel(AcessoGrafo.repositorio) }
     initializer { EsqueciSenhaViewModel(AcessoGrafo.repositorio) }
     initializer { LinkViewModel(AcessoGrafo.repositorio) }
+    initializer { AprovacaoViewModel(AcessoGrafo.repositorioCadastros) }
 }
 
 /**
@@ -100,5 +104,12 @@ fun NavGraphBuilder.telaPerfil(navController: NavHostController) {
                 }
             },
         )
+    }
+}
+
+/** Tela "Aprovação de cadastro", para quem tem a permissão aprovar_cadastro (a tela inicial só mostra a entrada para elas). */
+fun NavGraphBuilder.telaAprovacao() {
+    composable(RotasAcesso.APROVACAO) {
+        AprovacaoRota(viewModel = viewModel(factory = fabrica))
     }
 }

@@ -3,6 +3,8 @@ package com.netafim.posvenda.acesso.dados
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Path
+import retrofit2.http.Query
 
 /** Endpoints do módulo de acesso (prefixo /api/v1/). */
 interface AcessoApi {
@@ -47,4 +49,28 @@ interface AcessoApi {
 
     @GET("me")
     suspend fun me(): UsuarioDto
+
+    // ---- Cadastros pendentes (Netafim Admin; permissão aprovar_cadastro)
+
+    @GET("usuarios")
+    suspend fun usuarios(
+        @Query("situacao") situacao: String,
+        @Query("page") pagina: Int,
+    ): PaginaDto<UsuarioDto>
+
+    @POST("usuarios/{id}/aprovar")
+    suspend fun aprovarUsuario(@Path("id") id: Int, @Body corpo: AprovarRequisicao): UsuarioDto
+
+    @POST("usuarios/{id}/recusar")
+    suspend fun recusarUsuario(@Path("id") id: Int): UsuarioDto
+
+    /** Sem paginação na API. */
+    @GET("perfis")
+    suspend fun perfis(): List<PerfilDto>
+
+    @GET("distribuidores")
+    suspend fun distribuidores(@Query("page") pagina: Int): PaginaDto<DistribuidorDto>
+
+    @GET("clientes")
+    suspend fun clientes(@Query("page") pagina: Int): PaginaDto<ClienteDto>
 }
