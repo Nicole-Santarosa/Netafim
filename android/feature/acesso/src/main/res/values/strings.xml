@@ -117,6 +117,20 @@
     <string name="usuarios_adicionar">+ Adicionar usuário</string>
     <string name="usuarios_vazio_titulo">Nenhum usuário por aqui</string>
     <string name="usuarios_vazio_detalhe">Convide alguém da sua organização pelo botão abaixo.</string>
+    <string name="usuarios_buscar">Buscar por nome ou e-mail</string>
+    <string name="usuarios_sem_resultado">Nenhum usuário encontrado para “%1$s”.</string>
+    <string name="usuarios_situacao_pendente">Pendente</string>
+    <string name="usuarios_situacao_recusado">Recusado</string>
+    <string name="usuarios_situacao_inativo">Inativo</string>
+    <string name="usuarios_situacao_bloqueado">Bloqueado</string>
+    <plurals name="usuarios_quantidade">
+        <item quantity="one">%d usuário</item>
+        <item quantity="other">%d usuários</item>
+    </plurals>
+    <plurals name="usuarios_pendentes_quantidade">
+        <item quantity="one">%d pendente</item>
+        <item quantity="other">%d pendentes</item>
+    </plurals>
     <string name="novo_usuario_titulo">Novo usuário</string>
     <string name="novo_usuario_enviar">Enviar convite</string>
     <string name="novo_usuario_explicacao">A pessoa recebe um convite por e-mail para criar a senha. O acesso é liberado depois da aprovação da Netafim.</string>

@@ -12,12 +12,13 @@ import androidx.core.view.WindowCompat
  * Enquanto a tela está visível, os ícones da barra de status ficam claros (a tela tem uma imagem
  * escura no topo). Com [navegacaoSobreImagem], os da barra de navegação também ficam claros (ela
  * passa sobre a imagem ou sobre o azul da marca); sem ele, ficam escuros (passa sobre o branco).
- * Ao sair, volta ao que estava, para as telas de fundo branco.
+ * Ao sair, volta ao que estava, para as telas de fundo branco. Com [ativa] falso não faz nada
+ * (a imagem não passa por baixo da barra de status neste arranjo).
  */
 @Composable
-fun BarraDeStatusSobreImagem(navegacaoSobreImagem: Boolean = false) {
+fun BarraDeStatusSobreImagem(navegacaoSobreImagem: Boolean = false, ativa: Boolean = true) {
     val view = LocalView.current
-    if (view.isInEditMode) return
+    if (!ativa || view.isInEditMode) return
     DisposableEffect(view, navegacaoSobreImagem) {
         val janela = view.context.encontrarAtividade()?.window
         if (janela == null) {
