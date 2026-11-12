@@ -1,6 +1,5 @@
 package com.netafim.posvenda.ui.tema
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -70,8 +69,13 @@ private fun Typography.comFamilia(familia: FontFamily): Typography {
     )
 }
 
+/**
+ * O protótipo do Figma só tem o tema claro, então o app fica sempre claro, mesmo com o aparelho em
+ * modo escuro. O parâmetro [escuro] continua aqui para quando houver um design escuro: nesse caso o
+ * padrão volta a ser `isSystemInDarkTheme()`.
+ */
 @Composable
-fun TemaNetafim(escuro: Boolean = isSystemInDarkTheme(), conteudo: @Composable () -> Unit) {
+fun TemaNetafim(escuro: Boolean = false, conteudo: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = if (escuro) Escuro else Claro,
         typography = Typography().comFamilia(FamiliaOutfit),
