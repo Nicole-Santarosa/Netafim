@@ -54,9 +54,8 @@
     <string name="acesso_tentar_novamente">Tentar novamente</string>
 
     <!-- Esqueci a senha -->
-    <string name="acesso_esqueci_titulo">Redefinir senha</string>
-    <string name="acesso_esqueci_explicacao">Informe o e-mail cadastrado. Se ele estiver ativo, você receberá um link para criar uma nova senha.</string>
-    <string name="acesso_enviar_link">Enviar link</string>
+    <string name="acesso_esqueci_titulo">Recuperar senha</string>
+    <string name="acesso_enviar_link">Enviar link de recuperação</string>
 
     <!-- Link do e-mail: convite e redefinição de senha -->
     <string name="acesso_link_titulo_convite">Definir senha de acesso</string>
