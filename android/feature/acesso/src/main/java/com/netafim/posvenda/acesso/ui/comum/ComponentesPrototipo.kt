@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -35,6 +36,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -104,6 +106,8 @@ private fun estilo(tamanho: Int, peso: FontWeight = FontWeight.Normal): TextStyl
         fontSize = escSp(tamanho),
         fontWeight = peso,
         lineHeight = TextUnit.Unspecified,
+        // o Material soma espaçamento entre letras; o protótipo não tem
+        letterSpacing = 0.sp,
     )
 
 private val SombraBotao = Color(0x593B98FF)
@@ -300,4 +304,41 @@ fun LinkTexto(texto: String, aoClicar: () -> Unit, modifier: Modifier = Modifier
 @Composable
 fun TextoCorpo(texto: String, modifier: Modifier = Modifier) {
     Text(texto, color = MaterialTheme.colorScheme.onSurface, style = estilo(14), modifier = modifier)
+}
+
+/** Círculo de 72 dp do protótipo (preenchimento e borda vêm do tema: surfaceVariant e outlineVariant). */
+@Composable
+fun CirculoDoPrototipo(modifier: Modifier = Modifier) {
+    val cores = MaterialTheme.colorScheme
+    Box(
+        modifier = modifier
+            .size(esc(72))
+            .clip(CircleShape)
+            .background(cores.surfaceVariant)
+            .border(1.dp, cores.outlineVariant, CircleShape),
+    )
+}
+
+/** Título de uma tela de estado (ex.: "Seu cadastro está em análise"): 15 sp medium, centralizado. */
+@Composable
+fun TituloDeEstado(texto: String, modifier: Modifier = Modifier) {
+    Text(
+        texto,
+        color = MaterialTheme.colorScheme.onSurface,
+        textAlign = TextAlign.Center,
+        style = estilo(15, FontWeight.Medium),
+        modifier = modifier.fillMaxWidth(),
+    )
+}
+
+/** Detalhe de uma tela de estado: 12 sp, cinza, centralizado. */
+@Composable
+fun DetalheDeEstado(texto: String, modifier: Modifier = Modifier) {
+    Text(
+        texto,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        style = estilo(12),
+        modifier = modifier.fillMaxWidth(),
+    )
 }

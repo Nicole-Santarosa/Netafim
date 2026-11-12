@@ -35,13 +35,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.netafim.posvenda.acesso.R
 import com.netafim.posvenda.acesso.ui.comum.BotaoCheio
-import com.netafim.posvenda.acesso.ui.comum.BotaoContorno
 import com.netafim.posvenda.acesso.ui.comum.CabecalhoTela
 import com.netafim.posvenda.acesso.ui.comum.CampoDoPrototipo
 import com.netafim.posvenda.acesso.ui.comum.CampoSenhaDoPrototipo
 import com.netafim.posvenda.acesso.ui.comum.MensagemErro
 import com.netafim.posvenda.acesso.ui.comum.TelaResponsiva
-import com.netafim.posvenda.acesso.ui.comum.TextoCorpo
 import com.netafim.posvenda.acesso.ui.comum.esc
 import com.netafim.posvenda.acesso.ui.comum.larguraConteudo
 
@@ -74,6 +72,10 @@ fun CadastroTela(
     aoEnviar: () -> Unit,
     aoVoltar: () -> Unit,
 ) {
+    if (estado.enviado != null) {
+        AguardandoValidacaoTela(aoVoltar)
+        return
+    }
     TelaResponsiva(Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -91,11 +93,7 @@ fun CadastroTela(
                         .navigationBarsPadding()
                         .padding(start = esc(20), end = esc(20), top = esc(36), bottom = esc(32)),
                 ) {
-                    if (estado.enviado != null) {
-                        CadastroEnviado(estado.enviado, aoVoltar)
-                    } else {
-                        Formulario(estado, aoMudar, aoMudarAceite, aoEnviar)
-                    }
+                    Formulario(estado, aoMudar, aoMudarAceite, aoEnviar)
                 }
             }
         }
@@ -232,14 +230,6 @@ internal fun AceiteTermo(
         }
         erro?.let { MensagemErro(it) }
     }
-}
-
-@Composable
-private fun CadastroEnviado(mensagem: String, aoVoltar: () -> Unit) {
-    // Provisório: a tela "04 Aguardando validação" do protótipo substitui este bloco.
-    TextoCorpo(mensagem)
-    Spacer(Modifier.height(esc(26)))
-    BotaoContorno(stringResource(R.string.acesso_voltar_login), aoVoltar)
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 828)
