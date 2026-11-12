@@ -4,14 +4,12 @@
     <string name="acesso_slogan">Mais com cada gota</string>
 
     <!-- Login -->
-    <string name="acesso_login_titulo">Entrar</string>
-    <string name="acesso_login_subtitulo">Use o e-mail e a senha cadastrados.</string>
+    <string name="acesso_login_titulo">Login</string>
     <string name="acesso_email">E-mail</string>
     <string name="acesso_senha">Senha</string>
     <string name="acesso_entrar">Entrar</string>
     <string name="acesso_esqueci_senha">Esqueci minha senha</string>
-    <string name="acesso_sem_conta">Ainda não tem acesso?</string>
-    <string name="acesso_solicitar_acesso">Solicitar acesso</string>
+    <string name="acesso_criar_conta">Criar conta</string>
     <string name="acesso_mostrar_senha">Mostrar senha</string>
     <string name="acesso_ocultar_senha">Ocultar senha</string>
 
