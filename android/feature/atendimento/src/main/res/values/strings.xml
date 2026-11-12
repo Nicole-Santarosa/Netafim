@@ -79,4 +79,14 @@
     <string name="atendimento_fila_selo_em_atendimento">Em atendimento</string>
     <string name="atendimento_fila_vazio">Nenhum atendimento na fila</string>
     <string name="atendimento_fila_vazio_busca">Nenhum atendimento encontrado</string>
+
+    <!-- Detalhe do técnico -->
+    <string name="atendimento_tecnico_titulo">Detalhe do atendimento</string>
+    <string name="atendimento_tecnico_numero">Número</string>
+    <string name="atendimento_tecnico_produtor">Produtor</string>
+    <string name="atendimento_tecnico_local">Fazenda / localidade</string>
+    <string name="atendimento_tecnico_cultura">Cultura</string>
+    <string name="atendimento_tecnico_motivo">Motivo relatado</string>
+    <string name="atendimento_tecnico_iniciar">Iniciar atendimento</string>
+    <string name="atendimento_tecnico_nao_informado">Não informado</string>
 </resources>
