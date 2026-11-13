@@ -13,7 +13,6 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -26,19 +25,17 @@ import androidx.compose.ui.text.font.FontWeight
 import com.netafim.posvenda.R
 import com.netafim.posvenda.acesso.ui.comum.AtalhoEmCartao
 import com.netafim.posvenda.acesso.ui.comum.AvatarDeIniciais
-import com.netafim.posvenda.acesso.ui.comum.CartaoNoVidro
-import com.netafim.posvenda.acesso.ui.comum.PaginaComWallpaper
-import com.netafim.posvenda.acesso.ui.comum.TituloDaFolha
+import com.netafim.posvenda.acesso.ui.comum.CartaoDoPrototipo
+import com.netafim.posvenda.acesso.ui.comum.PaginaComCabecalho
 import com.netafim.posvenda.acesso.ui.comum.TituloDeGrupo
 import com.netafim.posvenda.acesso.ui.comum.esc
 import com.netafim.posvenda.acesso.ui.comum.estilo
-import com.netafim.posvenda.acesso.ui.comum.margensDaFolha
-import com.netafim.posvenda.acesso.ui.comum.textoSuaveNoVidro
 
 /**
- * Início sobre o wallpaper da marca. O avatar de iniciais no canto abre o perfil; a folha traz a
- * saudação, os atalhos que a pessoa pode usar (só aparecem os permitidos) e um espaço reservado
- * para os atendimentos, que ainda não existem neste app.
+ * Início. Não existe no Figma (os desenhos de início são de cada área, de outras pessoas do grupo);
+ * usa a base do protótipo: barra azul com a saudação e, à direita, o avatar que abre o perfil. O
+ * corpo traz o perfil e a organização, os atalhos que a pessoa pode usar (só aparecem os
+ * permitidos) e um espaço reservado para os atendimentos, que ainda não existem neste app.
  */
 @Composable
 fun InicioTela(
@@ -53,16 +50,13 @@ fun InicioTela(
     aoAbrirAprovacao: () -> Unit,
 ) {
     val descricaoPerfil = stringResource(R.string.inicio_meu_perfil)
-    PaginaComWallpaper(
-        wallpaper = R.drawable.fundo_inicio,
-        descricaoDoWallpaper = stringResource(R.string.inicio_marca),
-        alturaDoHero = 0.36f,
-        // O logo e a frase da marca ficam à direita da arte; em telas estreitas o corte tira o lado esquerdo.
-        alinhamentoDoWallpaper = Alignment.TopEnd,
+    val primeiroNome = nome.trim().substringBefore(' ')
+    PaginaComCabecalho(
+        titulo = stringResource(R.string.inicio_ola, primeiroNome),
         acaoNoTopo = {
             AvatarDeIniciais(
                 nome = nome,
-                tamanho = 44,
+                tamanho = 40,
                 foto = foto,
                 modifier = Modifier
                     .clip(CircleShape)
@@ -72,57 +66,56 @@ fun InicioTela(
             )
         },
     ) {
-        Column(Modifier.margensDaFolha()) {
-            val primeiroNome = nome.trim().substringBefore(' ')
-            val temPerfil = !perfil.isNullOrBlank()
-            val temOrganizacao = !organizacao.isNullOrBlank()
-            val subtitulo = when {
-                temPerfil && temOrganizacao -> stringResource(R.string.inicio_perfil_e_organizacao, perfil.orEmpty(), organizacao.orEmpty())
-                temPerfil -> perfil
-                temOrganizacao -> organizacao
-                else -> null
-            }
-            TituloDaFolha(stringResource(R.string.inicio_ola, primeiroNome), subtitulo)
+        val temPerfil = !perfil.isNullOrBlank()
+        val temOrganizacao = !organizacao.isNullOrBlank()
+        val subtitulo = when {
+            temPerfil && temOrganizacao -> stringResource(R.string.inicio_perfil_e_organizacao, perfil.orEmpty(), organizacao.orEmpty())
+            temPerfil -> perfil
+            temOrganizacao -> organizacao
+            else -> null
+        }
+        subtitulo?.let {
+            Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = estilo(13))
             Spacer(Modifier.height(esc(24)))
+        }
 
-            if (podeGerenciarUsuarios || podeAprovarCadastros) {
-                TituloDeGrupo(stringResource(R.string.inicio_atalhos_titulo))
-                Spacer(Modifier.height(esc(8)))
-                Column(verticalArrangement = Arrangement.spacedBy(esc(12))) {
-                    if (podeGerenciarUsuarios) {
-                        AtalhoEmCartao(
-                            icone = Icons.Outlined.Person,
-                            titulo = stringResource(R.string.inicio_gestao_usuarios),
-                            descricao = stringResource(R.string.inicio_gestao_usuarios_descricao),
-                            aoClicar = aoAbrirUsuarios,
-                        )
-                    }
-                    if (podeAprovarCadastros) {
-                        AtalhoEmCartao(
-                            icone = Icons.Outlined.CheckCircle,
-                            titulo = stringResource(R.string.inicio_aprovar_cadastros),
-                            descricao = stringResource(R.string.inicio_aprovar_cadastros_descricao),
-                            aoClicar = aoAbrirAprovacao,
-                        )
-                    }
+        if (podeGerenciarUsuarios || podeAprovarCadastros) {
+            TituloDeGrupo(stringResource(R.string.inicio_atalhos_titulo))
+            Spacer(Modifier.height(esc(8)))
+            Column(verticalArrangement = Arrangement.spacedBy(esc(12))) {
+                if (podeGerenciarUsuarios) {
+                    AtalhoEmCartao(
+                        icone = Icons.Outlined.Person,
+                        titulo = stringResource(R.string.inicio_gestao_usuarios),
+                        descricao = stringResource(R.string.inicio_gestao_usuarios_descricao),
+                        aoClicar = aoAbrirUsuarios,
+                    )
                 }
-                Spacer(Modifier.height(esc(24)))
+                if (podeAprovarCadastros) {
+                    AtalhoEmCartao(
+                        icone = Icons.Outlined.CheckCircle,
+                        titulo = stringResource(R.string.inicio_aprovar_cadastros),
+                        descricao = stringResource(R.string.inicio_aprovar_cadastros_descricao),
+                        aoClicar = aoAbrirAprovacao,
+                    )
+                }
             }
+            Spacer(Modifier.height(esc(24)))
+        }
 
-            CartaoNoVidro {
-                Column {
-                    Text(
-                        stringResource(R.string.inicio_atendimentos_titulo),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        style = estilo(15, FontWeight.SemiBold),
-                    )
-                    Spacer(Modifier.height(esc(4)))
-                    Text(
-                        stringResource(R.string.inicio_atendimentos_descricao),
-                        color = textoSuaveNoVidro(),
-                        style = estilo(12),
-                    )
-                }
+        CartaoDoPrototipo {
+            Column {
+                Text(
+                    stringResource(R.string.inicio_atendimentos_titulo),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = estilo(15, FontWeight.SemiBold),
+                )
+                Spacer(Modifier.height(esc(4)))
+                Text(
+                    stringResource(R.string.inicio_atendimentos_descricao),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = estilo(12),
+                )
             }
         }
     }

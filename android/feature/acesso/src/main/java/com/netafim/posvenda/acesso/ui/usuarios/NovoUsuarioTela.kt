@@ -1,6 +1,5 @@
 package com.netafim.posvenda.acesso.ui.usuarios
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
@@ -17,12 +16,9 @@ import com.netafim.posvenda.acesso.R
 import com.netafim.posvenda.acesso.ui.comum.BotaoCheio
 import com.netafim.posvenda.acesso.ui.comum.CampoDoPrototipo
 import com.netafim.posvenda.acesso.ui.comum.MensagemErro
-import com.netafim.posvenda.acesso.ui.comum.PaginaComWallpaper
-import com.netafim.posvenda.acesso.ui.comum.TituloDaFolha
+import com.netafim.posvenda.acesso.ui.comum.PaginaComCabecalho
+import com.netafim.posvenda.acesso.ui.comum.TextoApoio
 import com.netafim.posvenda.acesso.ui.comum.esc
-import com.netafim.posvenda.acesso.ui.comum.fundoDeCampoNoVidro
-import com.netafim.posvenda.acesso.ui.comum.margensDaFolha
-import com.netafim.posvenda.acesso.ui.comum.textoSuaveNoVidro
 
 @Composable
 fun NovoUsuarioRota(viewModel: NovoUsuarioViewModel, aoCriar: () -> Unit, aoVoltar: () -> Unit) {
@@ -34,9 +30,10 @@ fun NovoUsuarioRota(viewModel: NovoUsuarioViewModel, aoCriar: () -> Unit, aoVolt
 }
 
 /**
- * Novo usuário sobre o wallpaper da tela. O protótipo só desenha o botão "+ Adicionar usuário", não o
- * formulário: este usa o mesmo vidro das outras telas e pede só o que a API recebe. O texto explica o
- * que acontece depois (convite por e-mail e aprovação da Netafim).
+ * Novo usuário. O protótipo (Figma, "03 Gestão de usuários") só desenha o botão "+ Adicionar
+ * usuário", não o formulário: este usa a mesma base das telas de formulário do protótipo (barra azul
+ * com o título, campos e botão iguais ao Cadastro) e pede só o que a API recebe. O texto explica o
+ * que acontece depois (convite por e-mail e aprovação da Netafim). O voltar do sistema fecha a tela.
  */
 @Composable
 fun NovoUsuarioTela(
@@ -45,59 +42,46 @@ fun NovoUsuarioTela(
     aoEnviar: () -> Unit,
     aoVoltar: () -> Unit,
 ) {
-    PaginaComWallpaper(
-        wallpaper = R.drawable.fundo_novo_usuario,
-        descricaoDoWallpaper = stringResource(R.string.acesso_marca),
-        alturaDoHero = 0.30f,
-        aoVoltar = aoVoltar,
-    ) {
-        Column(Modifier.margensDaFolha()) {
-            TituloDaFolha(stringResource(R.string.novo_usuario_titulo), stringResource(R.string.novo_usuario_explicacao))
-            Spacer(Modifier.height(esc(20)))
-            estado.erroGeral?.let {
-                MensagemErro(it)
-                Spacer(Modifier.height(esc(16)))
-            }
-            CampoDoPrototipo(
-                valor = estado.nome,
-                aoMudar = { aoMudar(CampoNovoUsuario.NOME, it) },
-                rotulo = stringResource(R.string.acesso_nome),
-                erro = estado.erros[CampoNovoUsuario.NOME],
-                habilitado = !estado.carregando,
-                fundo = fundoDeCampoNoVidro(),
-                corDoRotulo = textoSuaveNoVidro(),
-            )
+    PaginaComCabecalho(stringResource(R.string.novo_usuario_titulo)) {
+        TextoApoio(stringResource(R.string.novo_usuario_explicacao))
+        Spacer(Modifier.height(esc(20)))
+        estado.erroGeral?.let {
+            MensagemErro(it)
             Spacer(Modifier.height(esc(16)))
-            CampoDoPrototipo(
-                valor = estado.email,
-                aoMudar = { aoMudar(CampoNovoUsuario.EMAIL, it) },
-                rotulo = stringResource(R.string.acesso_email),
-                erro = estado.erros[CampoNovoUsuario.EMAIL],
-                tipoTeclado = KeyboardType.Email,
-                habilitado = !estado.carregando,
-                fundo = fundoDeCampoNoVidro(),
-                corDoRotulo = textoSuaveNoVidro(),
-            )
-            Spacer(Modifier.height(esc(16)))
-            CampoDoPrototipo(
-                valor = estado.telefone,
-                aoMudar = { aoMudar(CampoNovoUsuario.TELEFONE, it) },
-                rotulo = stringResource(R.string.acesso_telefone),
-                erro = estado.erros[CampoNovoUsuario.TELEFONE],
-                tipoTeclado = KeyboardType.Phone,
-                acaoIme = ImeAction.Done,
-                aoConcluir = aoEnviar,
-                habilitado = !estado.carregando,
-                fundo = fundoDeCampoNoVidro(),
-                corDoRotulo = textoSuaveNoVidro(),
-            )
-            Spacer(Modifier.height(esc(24)))
-            BotaoCheio(
-                texto = stringResource(R.string.novo_usuario_enviar),
-                aoClicar = aoEnviar,
-                carregando = estado.carregando,
-            )
         }
+        CampoDoPrototipo(
+            valor = estado.nome,
+            aoMudar = { aoMudar(CampoNovoUsuario.NOME, it) },
+            rotulo = stringResource(R.string.acesso_nome),
+            erro = estado.erros[CampoNovoUsuario.NOME],
+            habilitado = !estado.carregando,
+        )
+        Spacer(Modifier.height(esc(16)))
+        CampoDoPrototipo(
+            valor = estado.email,
+            aoMudar = { aoMudar(CampoNovoUsuario.EMAIL, it) },
+            rotulo = stringResource(R.string.acesso_email),
+            erro = estado.erros[CampoNovoUsuario.EMAIL],
+            tipoTeclado = KeyboardType.Email,
+            habilitado = !estado.carregando,
+        )
+        Spacer(Modifier.height(esc(16)))
+        CampoDoPrototipo(
+            valor = estado.telefone,
+            aoMudar = { aoMudar(CampoNovoUsuario.TELEFONE, it) },
+            rotulo = stringResource(R.string.acesso_telefone),
+            erro = estado.erros[CampoNovoUsuario.TELEFONE],
+            tipoTeclado = KeyboardType.Phone,
+            acaoIme = ImeAction.Done,
+            aoConcluir = aoEnviar,
+            habilitado = !estado.carregando,
+        )
+        Spacer(Modifier.height(esc(26)))
+        BotaoCheio(
+            texto = stringResource(R.string.novo_usuario_enviar),
+            aoClicar = aoEnviar,
+            carregando = estado.carregando,
+        )
     }
 }
 

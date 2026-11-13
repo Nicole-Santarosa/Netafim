@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -66,22 +67,18 @@ import com.netafim.posvenda.acesso.dominio.Organizacao
 import com.netafim.posvenda.acesso.dominio.Perfil
 import com.netafim.posvenda.acesso.dominio.Usuario
 import com.netafim.posvenda.acesso.ui.comum.AvatarDeIniciais
-import com.netafim.posvenda.acesso.ui.comum.BotaoCircularSobreImagem
 import com.netafim.posvenda.acesso.ui.comum.BotaoContorno
-import com.netafim.posvenda.acesso.ui.comum.CartaoNoVidro
-import com.netafim.posvenda.acesso.ui.comum.PaginaComWallpaper
+import com.netafim.posvenda.acesso.ui.comum.CartaoDoPrototipo
+import com.netafim.posvenda.acesso.ui.comum.PaginaComCabecalho
 import com.netafim.posvenda.acesso.ui.comum.TituloDeGrupo
 import com.netafim.posvenda.acesso.ui.comum.esc
 import com.netafim.posvenda.acesso.ui.comum.estilo
-import com.netafim.posvenda.acesso.ui.comum.margensDaFolha
-import com.netafim.posvenda.acesso.ui.comum.textoSuaveNoVidro
 import kotlinx.coroutines.launch
 
 @Composable
 fun PerfilRota(
     viewModel: PerfilViewModel,
     mfaViewModel: MfaViewModel,
-    aoVoltar: (() -> Unit)?,
     aoSair: () -> Unit,
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
@@ -112,7 +109,6 @@ fun PerfilRota(
         erroFoto = erroFoto,
         aoAtualizar = viewModel::atualizar,
         aoSair = viewModel::sair,
-        aoVoltar = aoVoltar,
         aoEscolherDaGaleria = {
             erroFoto = false
             galeria.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -135,9 +131,9 @@ fun PerfilRota(
 }
 
 /**
- * Meu perfil sobre o wallpaper da tela (gota com usuário e engrenagem): a foto e o nome abrem a
- * folha de vidro; abaixo vêm os dados da conta, o que a pessoa pode fazer e o botão Sair. A seta de
- * voltar e o atualizar ficam sobre a imagem.
+ * Meu perfil. Não existe no Figma; usa a base do protótipo (barra azul com o título e, à direita,
+ * o botão de atualizar): a foto e o nome no alto, o cartão com os dados da conta, a verificação em
+ * duas etapas, o que a pessoa pode fazer e o botão Sair. O voltar do sistema fecha a tela.
  */
 @Composable
 fun PerfilTela(
@@ -146,7 +142,6 @@ fun PerfilTela(
     erroFoto: Boolean,
     aoAtualizar: () -> Unit,
     aoSair: () -> Unit,
-    aoVoltar: (() -> Unit)?,
     aoEscolherDaGaleria: () -> Unit,
     aoTirarFoto: () -> Unit,
     aoRemoverFoto: () -> Unit,
@@ -162,22 +157,20 @@ fun PerfilTela(
 ) {
     var confirmarSaida by rememberSaveable { mutableStateOf(false) }
     var escolhendoFoto by rememberSaveable { mutableStateOf(false) }
-    PaginaComWallpaper(
-        wallpaper = R.drawable.fundo_meu_perfil,
-        descricaoDoWallpaper = stringResource(R.string.acesso_marca),
-        alturaDoHero = 0.26f,
-        aoVoltar = aoVoltar,
+    PaginaComCabecalho(
+        titulo = stringResource(R.string.acesso_perfil_titulo),
         acaoNoTopo = {
-            BotaoCircularSobreImagem(
-                Icons.Outlined.Refresh,
-                stringResource(R.string.acesso_atualizar),
-                aoAtualizar,
-                habilitado = !estado.atualizando,
-            )
+            IconButton(onClick = aoAtualizar, enabled = !estado.atualizando) {
+                Icon(
+                    Icons.Outlined.Refresh,
+                    contentDescription = stringResource(R.string.acesso_atualizar),
+                    tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = if (estado.atualizando) 0.5f else 1f),
+                )
+            }
         },
     ) {
         val usuario = estado.usuario
-        Column(Modifier.margensDaFolha()) {
+        Column(Modifier.fillMaxWidth()) {
             if (estado.atualizando) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
                 Spacer(Modifier.height(esc(12)))
@@ -189,7 +182,7 @@ fun PerfilTela(
             }
             Cabecalho(usuario, foto, erroFoto, aoTocarNaFoto = { escolhendoFoto = true })
             Spacer(Modifier.height(esc(24)))
-            CartaoNoVidro {
+            CartaoDoPrototipo {
                 Column(verticalArrangement = Arrangement.spacedBy(esc(12))) {
                     Item(stringResource(R.string.acesso_perfil_organizacao), usuario.organizacao?.nome)
                     Item(stringResource(R.string.acesso_perfil_perfil), usuario.perfil?.nome)
@@ -310,7 +303,7 @@ private fun Cabecalho(usuario: Usuario, foto: ImageBitmap?, erroFoto: Boolean, a
             modifier = Modifier.semantics { heading() },
         )
         usuario.perfil?.let {
-            Text(it.nome, color = textoSuaveNoVidro(), style = estilo(13), textAlign = TextAlign.Center)
+            Text(it.nome, color = MaterialTheme.colorScheme.onSurfaceVariant, style = estilo(13), textAlign = TextAlign.Center)
         }
     }
 }
@@ -378,7 +371,7 @@ private fun OpcaoDaFoto(icone: ImageVector, texto: String, aoClicar: () -> Unit,
 @Composable
 private fun Item(rotulo: String, valor: String?) {
     Column {
-        Text(rotulo, color = textoSuaveNoVidro(), style = estilo(12))
+        Text(rotulo, color = MaterialTheme.colorScheme.onSurfaceVariant, style = estilo(12))
         Text(valor ?: "—", color = MaterialTheme.colorScheme.onSurface, style = estilo(15, FontWeight.Medium))
     }
 }
@@ -408,8 +401,8 @@ private fun Permissoes(codigos: Set<String>) {
 @Composable
 private fun Aviso(texto: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(esc(8))) {
-        Icon(Icons.Outlined.CloudOff, contentDescription = null, tint = textoSuaveNoVidro(), modifier = Modifier.size(esc(18)))
-        Text(texto, color = textoSuaveNoVidro(), style = estilo(12))
+        Icon(Icons.Outlined.CloudOff, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(esc(18)))
+        Text(texto, color = MaterialTheme.colorScheme.onSurfaceVariant, style = estilo(12))
     }
 }
 
@@ -444,7 +437,6 @@ private fun PerfilTelaPreview() {
             erroFoto = false,
             aoAtualizar = {},
             aoSair = {},
-            aoVoltar = {},
             aoEscolherDaGaleria = {},
             aoTirarFoto = {},
             aoRemoverFoto = {},

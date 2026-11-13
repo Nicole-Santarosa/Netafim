@@ -1,21 +1,12 @@
 package com.netafim.posvenda.acesso.ui.cadastro
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -35,19 +26,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.netafim.posvenda.acesso.R
 import com.netafim.posvenda.acesso.ui.comum.BotaoCheio
-import com.netafim.posvenda.acesso.ui.comum.CabecalhoTela
 import com.netafim.posvenda.acesso.ui.comum.CampoDoPrototipo
 import com.netafim.posvenda.acesso.ui.comum.CampoSenhaDoPrototipo
 import com.netafim.posvenda.acesso.ui.comum.MensagemErro
-import com.netafim.posvenda.acesso.ui.comum.PaginaComWallpaper
-import com.netafim.posvenda.acesso.ui.comum.TituloDaFolha
-import com.netafim.posvenda.acesso.ui.comum.TituloDeGrupo
-import com.netafim.posvenda.acesso.ui.comum.fundoDeCampoNoVidro
-import com.netafim.posvenda.acesso.ui.comum.margensDaFolha
-import com.netafim.posvenda.acesso.ui.comum.textoSuaveNoVidro
-import com.netafim.posvenda.acesso.ui.comum.TelaResponsiva
+import com.netafim.posvenda.acesso.ui.comum.PaginaComCabecalho
 import com.netafim.posvenda.acesso.ui.comum.esc
-import com.netafim.posvenda.acesso.ui.comum.larguraConteudo
 
 @Composable
 fun CadastroRota(viewModel: CadastroViewModel, aoVoltar: () -> Unit) {
@@ -62,11 +45,13 @@ fun CadastroRota(viewModel: CadastroViewModel, aoVoltar: () -> Unit) {
 }
 
 /**
- * Cadastro sobre o wallpaper da tela (gota com usuário e +): o ícone fica livre no alto e o
- * formulário sobe numa folha de vidro que rola com a página. Os campos ficam em três grupos (seus
- * dados, sua propriedade, acesso), para o formulário longo não parecer uma lista só.
+ * Cadastro conforme o protótipo (Figma, "03 Cadastro — cliente final"): barra azul com o título e os
+ * campos na ordem do desenho (Nome completo, Nome da propriedade, Telefone / WhatsApp, E-mail e
+ * Distribuidor / revenda), 16 dp entre eles, e o botão "Enviar cadastro" 26 dp abaixo do último.
  *
- * Propriedade e distribuidor ainda não são enviados: a API de cadastro não os recebe.
+ * Fora do protótipo, mas exigidos pela API e pela LGPD: senha, confirmação e o aceite do aviso de
+ * privacidade (no mesmo estilo, entre o último campo e o botão). Propriedade e distribuidor ainda
+ * não são enviados: a API de cadastro não os recebe.
  */
 @Composable
 fun CadastroTela(
@@ -80,15 +65,8 @@ fun CadastroTela(
         AguardandoValidacaoTela(aoVoltar)
         return
     }
-    PaginaComWallpaper(
-        wallpaper = R.drawable.fundo_cadastro,
-        descricaoDoWallpaper = stringResource(R.string.acesso_marca),
-        alturaDoHero = 0.44f,
-        aoVoltar = aoVoltar,
-    ) {
-        Column(Modifier.margensDaFolha()) {
-            Formulario(estado, aoMudar, aoMudarAceite, aoEnviar)
-        }
+    PaginaComCabecalho(stringResource(R.string.acesso_cadastro_titulo)) {
+        Formulario(estado, aoMudar, aoMudarAceite, aoEnviar)
     }
 }
 
@@ -103,26 +81,24 @@ private fun Formulario(
     val bloqueado = estado.carregando
     val descricaoMostrar = stringResource(R.string.acesso_mostrar_senha)
     val descricaoOcultar = stringResource(R.string.acesso_ocultar_senha)
-    val fundo = fundoDeCampoNoVidro()
-    val rotulo = textoSuaveNoVidro()
 
-    TituloDaFolha(stringResource(R.string.cadastro_titulo), stringResource(R.string.cadastro_subtitulo))
-    Spacer(Modifier.height(esc(20)))
     estado.erroGeral?.let {
         MensagemErro(it)
         Spacer(Modifier.height(esc(16)))
     }
-
-    TituloDeGrupo(stringResource(R.string.cadastro_grupo_dados))
-    Spacer(Modifier.height(esc(8)))
     CampoDoPrototipo(
         valor = estado.nome,
         aoMudar = { aoMudar(CampoCadastro.NOME, it) },
         rotulo = stringResource(R.string.acesso_nome),
         erro = estado.erros[CampoCadastro.NOME],
         habilitado = !bloqueado,
-        fundo = fundo,
-        corDoRotulo = rotulo,
+    )
+    Spacer(Modifier.height(esc(16)))
+    CampoDoPrototipo(
+        valor = estado.propriedade,
+        aoMudar = { aoMudar(CampoCadastro.PROPRIEDADE, it) },
+        rotulo = stringResource(R.string.acesso_propriedade),
+        habilitado = !bloqueado,
     )
     Spacer(Modifier.height(esc(16)))
     CampoDoPrototipo(
@@ -132,8 +108,6 @@ private fun Formulario(
         erro = estado.erros[CampoCadastro.TELEFONE],
         tipoTeclado = KeyboardType.Phone,
         habilitado = !bloqueado,
-        fundo = fundo,
-        corDoRotulo = rotulo,
     )
     Spacer(Modifier.height(esc(16)))
     CampoDoPrototipo(
@@ -143,20 +117,6 @@ private fun Formulario(
         erro = estado.erros[CampoCadastro.EMAIL],
         tipoTeclado = KeyboardType.Email,
         habilitado = !bloqueado,
-        fundo = fundo,
-        corDoRotulo = rotulo,
-    )
-
-    Spacer(Modifier.height(esc(24)))
-    TituloDeGrupo(stringResource(R.string.cadastro_grupo_propriedade))
-    Spacer(Modifier.height(esc(8)))
-    CampoDoPrototipo(
-        valor = estado.propriedade,
-        aoMudar = { aoMudar(CampoCadastro.PROPRIEDADE, it) },
-        rotulo = stringResource(R.string.acesso_propriedade),
-        habilitado = !bloqueado,
-        fundo = fundo,
-        corDoRotulo = rotulo,
     )
     Spacer(Modifier.height(esc(16)))
     CampoDoPrototipo(
@@ -164,13 +124,8 @@ private fun Formulario(
         aoMudar = { aoMudar(CampoCadastro.DISTRIBUIDOR, it) },
         rotulo = stringResource(R.string.acesso_distribuidor),
         habilitado = !bloqueado,
-        fundo = fundo,
-        corDoRotulo = rotulo,
     )
-
-    Spacer(Modifier.height(esc(24)))
-    TituloDeGrupo(stringResource(R.string.cadastro_grupo_acesso))
-    Spacer(Modifier.height(esc(8)))
+    Spacer(Modifier.height(esc(16)))
     CampoSenhaDoPrototipo(
         valor = estado.senha,
         aoMudar = { aoMudar(CampoCadastro.SENHA, it) },
@@ -183,8 +138,6 @@ private fun Formulario(
         dica = stringResource(R.string.acesso_dica_senha),
         acaoIme = ImeAction.Next,
         habilitado = !bloqueado,
-        fundo = fundo,
-        corDoRotulo = rotulo,
     )
     Spacer(Modifier.height(esc(16)))
     CampoSenhaDoPrototipo(
@@ -197,8 +150,6 @@ private fun Formulario(
         descricaoOcultar = descricaoOcultar,
         erro = estado.erros[CampoCadastro.CONFIRMACAO],
         habilitado = !bloqueado,
-        fundo = fundo,
-        corDoRotulo = rotulo,
     )
     Spacer(Modifier.height(esc(12)))
     AceiteTermo(
@@ -208,7 +159,7 @@ private fun Formulario(
         aoMudar = aoMudarAceite,
         habilitado = !bloqueado,
     )
-    Spacer(Modifier.height(esc(24)))
+    Spacer(Modifier.height(esc(26)))
     BotaoCheio(
         texto = stringResource(R.string.acesso_enviar_cadastro),
         aoClicar = aoEnviar,

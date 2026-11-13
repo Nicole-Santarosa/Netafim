@@ -4,9 +4,12 @@
     <string name="acesso_slogan">Mais com cada gota</string>
 
     <!-- Login -->
-    <string name="acesso_login_titulo">Bem-vindo</string>
-    <string name="acesso_login_subtitulo">Entre com seu e-mail e senha.</string>
-    <string name="acesso_ainda_sem_conta">Ainda não tem conta?</string>
+    <string name="acesso_login_titulo">Acessar sua conta</string>
+    <string name="acesso_login_subtitulo">Entre com seu e-mail corporativo Netafim</string>
+    <string name="acesso_email_corporativo">E-mail corporativo</string>
+    <string name="acesso_email_dica">seunome@netafim.com</string>
+    <string name="acesso_senha_dica">••••••••</string>
+    <string name="acesso_ou">ou</string>
     <string name="acesso_email">E-mail</string>
     <string name="acesso_senha">Senha</string>
     <string name="acesso_entrar">Entrar</string>
@@ -117,42 +120,16 @@
     <string name="usuarios_adicionar">+ Adicionar usuário</string>
     <string name="usuarios_vazio_titulo">Nenhum usuário por aqui</string>
     <string name="usuarios_vazio_detalhe">Convide alguém da sua organização pelo botão abaixo.</string>
-    <string name="usuarios_buscar">Buscar por nome ou e-mail</string>
-    <string name="usuarios_sem_resultado">Nenhum usuário encontrado para “%1$s”.</string>
     <string name="usuarios_situacao_pendente">Pendente</string>
     <string name="usuarios_situacao_recusado">Recusado</string>
     <string name="usuarios_situacao_inativo">Inativo</string>
     <string name="usuarios_situacao_bloqueado">Bloqueado</string>
-    <plurals name="usuarios_quantidade">
-        <item quantity="one">%d usuário</item>
-        <item quantity="other">%d usuários</item>
-    </plurals>
-    <plurals name="usuarios_pendentes_quantidade">
-        <item quantity="one">%d pendente</item>
-        <item quantity="other">%d pendentes</item>
-    </plurals>
     <string name="novo_usuario_titulo">Novo usuário</string>
     <string name="novo_usuario_enviar">Enviar convite</string>
     <string name="novo_usuario_explicacao">A pessoa recebe um convite por e-mail para criar a senha. O acesso é liberado depois da aprovação da Netafim.</string>
 
-    <!-- Telas com wallpaper -->
-    <string name="esqueci_subtitulo">Informe o e-mail cadastrado e enviaremos um link para você criar uma nova senha.</string>
+    <!-- Recuperar senha, perfil e outras telas -->
     <string name="esqueci_enviado_titulo">Verifique seu e-mail</string>
-    <string name="cadastro_titulo">Criar conta</string>
-    <string name="cadastro_subtitulo">Preencha seus dados. A Netafim valida o cadastro antes de liberar o acesso.</string>
-    <string name="cadastro_grupo_dados">Seus dados</string>
-    <string name="cadastro_grupo_propriedade">Sua propriedade</string>
-    <string name="cadastro_grupo_acesso">Acesso</string>
-    <string name="aguardando_passo_enviado">Cadastro enviado</string>
-    <string name="aguardando_passo_analise">Análise pela Netafim</string>
-    <string name="aguardando_passo_liberado">Acesso liberado</string>
-    <string name="aguardando_passo_enviado_detalhe">Recebemos os seus dados.</string>
-    <string name="aguardando_passo_analise_detalhe">Em andamento.</string>
-    <string name="aguardando_passo_liberado_detalhe">Você recebe um aviso.</string>
-    <plurals name="aprovacao_quantidade">
-        <item quantity="one">%d cadastro aguardando análise</item>
-        <item quantity="other">%d cadastros aguardando análise</item>
-    </plurals>
     <string name="perfil_foto_alterar">Alterar foto de perfil</string>
     <string name="perfil_foto_descricao">Foto de perfil de %1$s. Toque para alterar.</string>
     <string name="perfil_foto_titulo">Foto de perfil</string>
@@ -161,6 +138,4 @@
     <string name="perfil_foto_remover">Remover foto</string>
     <string name="perfil_foto_erro">Não foi possível usar essa imagem. Tente outra.</string>
     <string name="perfil_foto_so_aparelho">A foto fica salva só neste aparelho.</string>
-    <string name="perfil_dados_titulo">Seus dados</string>
-    <string name="perfil_nome_e_perfil">%1$s · %2$s</string>
 </resources>

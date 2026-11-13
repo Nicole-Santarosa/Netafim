@@ -39,13 +39,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.netafim.posvenda.acesso.R
 import com.netafim.posvenda.acesso.dominio.TiposOrganizacao
 import com.netafim.posvenda.acesso.dominio.Usuario
-import androidx.compose.ui.platform.LocalContext
-import com.netafim.posvenda.acesso.ui.comum.AvatarDeIniciais
-import com.netafim.posvenda.acesso.ui.comum.CartaoNoVidro
-import com.netafim.posvenda.acesso.ui.comum.PaginaComWallpaper
-import com.netafim.posvenda.acesso.ui.comum.TituloDaFolha
-import com.netafim.posvenda.acesso.ui.comum.margensDaFolha
-import com.netafim.posvenda.acesso.ui.comum.textoSuaveNoVidro
 import com.netafim.posvenda.acesso.ui.comum.BotaoAcao
 import com.netafim.posvenda.acesso.ui.comum.BotaoCheio
 import com.netafim.posvenda.acesso.ui.comum.BotaoContorno
@@ -61,11 +54,10 @@ import com.netafim.posvenda.acesso.ui.comum.larguraConteudo
 import com.netafim.posvenda.acesso.ui.perfil.formatarTelefone
 
 @Composable
-fun AprovacaoRota(viewModel: AprovacaoViewModel, aoVoltar: () -> Unit) {
+fun AprovacaoRota(viewModel: AprovacaoViewModel) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     AprovacaoCadastroTela(
         estado = estado,
-        aoVoltar = aoVoltar,
         aoRecarregar = viewModel::carregar,
         aoAprovar = viewModel::aoAprovar,
         aoRecusar = viewModel::aoRecusar,
@@ -81,15 +73,13 @@ fun AprovacaoRota(viewModel: AprovacaoViewModel, aoVoltar: () -> Unit) {
 }
 
 /**
- * Aprovação de cadastro sobre o wallpaper da tela (gota com documento e check). Com cadastros na
- * fila, só o logo e o alto da gota ficam à mostra e a lista sobe numa folha de vidro; sem nenhum,
- * o wallpaper aparece inteiro e a folha é só a mensagem. Cada pessoa é um cartão com avatar, dados
- * e os dois botões dentro dele (Recusar e Aprovar), para ficar claro a quem a ação se refere.
+ * Aprovação de cadastro conforme o protótipo (Figma, "04 Aprovação de cadastro"): um cartão por
+ * pessoa, com Recusar e Aprovar embaixo. O protótipo mostra Nome, Fazenda, Telefone e "Indicado
+ * por"; a API só tem nome, e-mail e telefone, então o cartão mostra esses três.
  */
 @Composable
 fun AprovacaoCadastroTela(
     estado: AprovacaoEstado,
-    aoVoltar: () -> Unit,
     aoRecarregar: () -> Unit,
     aoAprovar: (Usuario) -> Unit,
     aoRecusar: (Usuario) -> Unit,
@@ -102,108 +92,118 @@ fun AprovacaoCadastroTela(
     aoConfirmarRecusa: () -> Unit,
     aoCancelarRecusa: () -> Unit,
 ) {
-    val vazio = !estado.carregando && estado.erro == null && estado.pendentes.isEmpty()
-    val recursos = LocalContext.current.resources
-    PaginaComWallpaper(
-        wallpaper = R.drawable.fundo_aprovacao,
-        descricaoDoWallpaper = stringResource(R.string.acesso_marca),
-        alturaDoHero = if (vazio) 0.62f else 0.36f,
-        aoVoltar = aoVoltar,
-    ) {
-        Column(Modifier.margensDaFolha()) {
-            val total = estado.pendentes.size
-            TituloDaFolha(
-                titulo = stringResource(R.string.aprovacao_titulo),
-                subtitulo = if (!estado.carregando && estado.erro == null && total > 0) {
-                    recursos.getQuantityString(R.plurals.aprovacao_quantidade, total, total)
-                } else {
-                    null
-                },
-            )
-            Spacer(Modifier.height(esc(20)))
-            when {
-                estado.carregando -> Box(Modifier.fillMaxWidth().padding(vertical = esc(32)), Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-                estado.erro != null -> Column {
-                    MensagemErro(estado.erro)
-                    Spacer(Modifier.height(esc(20)))
-                    BotaoContorno(stringResource(R.string.acesso_tentar_novamente), aoRecarregar)
-                }
-                vazio -> Column {
-                    Text(
-                        stringResource(R.string.aprovacao_vazio_titulo),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        style = estilo(15, FontWeight.Medium),
-                    )
-                    Spacer(Modifier.height(esc(6)))
-                    Text(stringResource(R.string.aprovacao_vazio_detalhe), color = textoSuaveNoVidro(), style = estilo(13))
-                }
-                else -> Column(verticalArrangement = Arrangement.spacedBy(esc(12))) {
-                    estado.pendentes.forEach { usuario ->
-                        CadastroPendente(usuario, aoAprovar = { aoAprovar(usuario) }, aoRecusar = { aoRecusar(usuario) })
+    TelaResponsiva(Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+        ) {
+            CabecalhoTela(stringResource(R.string.aprovacao_titulo))
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = larguraConteudo())
+                        .fillMaxWidth()
+                        .padding(horizontal = esc(20)),
+                ) {
+                    when {
+                        estado.carregando -> Box(Modifier.fillMaxWidth().padding(top = esc(76)), Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                        estado.erro != null -> Column(Modifier.padding(top = esc(26))) {
+                            MensagemErro(estado.erro)
+                            Spacer(Modifier.height(esc(20)))
+                            BotaoContorno(stringResource(R.string.acesso_tentar_novamente), aoRecarregar)
+                        }
+                        estado.pendentes.isEmpty() -> Column(Modifier.padding(top = esc(76))) {
+                            TituloDeEstado(stringResource(R.string.aprovacao_vazio_titulo))
+                            Spacer(Modifier.height(esc(21)))
+                            DetalheDeEstado(stringResource(R.string.aprovacao_vazio_detalhe))
+                        }
+                        else -> LazyColumn(
+                            modifier = Modifier.fillMaxSize().navigationBarsPadding(),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                top = esc(26), bottom = esc(32),
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(esc(28)),
+                        ) {
+                            items(estado.pendentes, key = { it.id }) { usuario ->
+                                CadastroPendente(usuario, aoAprovar = { aoAprovar(usuario) }, aoRecusar = { aoRecusar(usuario) })
+                            }
+                        }
                     }
                 }
             }
         }
-    }
 
-    estado.escolha?.let { escolha ->
-        FolhaDeAprovacao(
-            escolha = escolha,
-            erro = estado.erroAcao,
-            processando = estado.processando,
-            aoEscolherTipo = aoEscolherTipo,
-            aoEscolherOrganizacao = aoEscolherOrganizacao,
-            aoEscolherPerfil = aoEscolherPerfil,
-            aoRecarregarOpcoes = aoRecarregarOpcoes,
-            aoConfirmar = aoConfirmarAprovacao,
-            aoCancelar = aoCancelarAprovacao,
-        )
-    }
-    estado.recusando?.let { usuario ->
-        ConfirmarRecusa(usuario, estado.erroAcao, estado.processando, aoConfirmarRecusa, aoCancelarRecusa)
+        estado.escolha?.let { escolha ->
+            FolhaDeAprovacao(
+                escolha = escolha,
+                erro = estado.erroAcao,
+                processando = estado.processando,
+                aoEscolherTipo = aoEscolherTipo,
+                aoEscolherOrganizacao = aoEscolherOrganizacao,
+                aoEscolherPerfil = aoEscolherPerfil,
+                aoRecarregarOpcoes = aoRecarregarOpcoes,
+                aoConfirmar = aoConfirmarAprovacao,
+                aoCancelar = aoCancelarAprovacao,
+            )
+        }
+        estado.recusando?.let { usuario ->
+            ConfirmarRecusa(usuario, estado.erroAcao, estado.processando, aoConfirmarRecusa, aoCancelarRecusa)
+        }
     }
 }
 
-/** Cartão de um cadastro pendente: avatar, nome, e-mail e telefone, e Recusar e Aprovar embaixo. */
+/** Cartão do protótipo (borda C9C9C2, raio 10) e os dois botões de 44 dp lado a lado. */
 @Composable
 private fun CadastroPendente(usuario: Usuario, aoAprovar: () -> Unit, aoRecusar: () -> Unit) {
     val cores = MaterialTheme.colorScheme
-    CartaoNoVidro {
-        Column(verticalArrangement = Arrangement.spacedBy(esc(14))) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(esc(12))) {
-                AvatarDeIniciais(usuario.nome, tamanho = 44)
-                Column(Modifier.weight(1f)) {
-                    Text(usuario.nome, color = cores.onSurface, style = estilo(15, FontWeight.SemiBold))
-                    Text(usuario.email, color = textoSuaveNoVidro(), style = estilo(12))
-                    Text(
-                        usuario.telefone?.takeIf { it.isNotBlank() }?.let(::formatarTelefone)
-                            ?: stringResource(R.string.aprovacao_nao_informado),
-                        color = textoSuaveNoVidro(),
-                        style = estilo(12),
-                    )
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(esc(12))) {
-                BotaoAcao(
-                    texto = stringResource(R.string.aprovacao_recusar),
-                    aoClicar = aoRecusar,
-                    cor = cores.error,
-                    preenchido = false,
-                    modifier = Modifier.weight(1f),
-                )
-                // O protótipo usa texto branco sobre o verde; o contraste é baixo (ver o PR).
-                BotaoAcao(
-                    texto = stringResource(R.string.aprovacao_aprovar),
-                    aoClicar = aoAprovar,
-                    cor = cores.secondary,
-                    preenchido = true,
-                    corTexto = Color.White,
-                    modifier = Modifier.weight(1f),
-                )
-            }
+    val forma = RoundedCornerShape(esc(10))
+    Column {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(cores.background, forma)
+                .border(1.dp, cores.outlineVariant, forma)
+                .padding(esc(16)),
+            verticalArrangement = Arrangement.spacedBy(esc(10)),
+        ) {
+            Dado(stringResource(R.string.aprovacao_nome), usuario.nome)
+            Dado(stringResource(R.string.aprovacao_email), usuario.email)
+            Dado(
+                stringResource(R.string.aprovacao_telefone),
+                usuario.telefone?.takeIf { it.isNotBlank() }?.let(::formatarTelefone)
+                    ?: stringResource(R.string.aprovacao_nao_informado),
+            )
         }
+        Spacer(Modifier.height(esc(20)))
+        Row(horizontalArrangement = Arrangement.spacedBy(esc(16))) {
+            BotaoAcao(
+                texto = stringResource(R.string.aprovacao_recusar),
+                aoClicar = aoRecusar,
+                cor = cores.error,
+                preenchido = false,
+                modifier = Modifier.weight(1f),
+            )
+            // O protótipo usa texto branco sobre o verde; o contraste é baixo (ver o PR).
+            BotaoAcao(
+                texto = stringResource(R.string.aprovacao_aprovar),
+                aoClicar = aoAprovar,
+                cor = cores.secondary,
+                preenchido = true,
+                corTexto = Color.White,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun Dado(rotulo: String, valor: String) {
+    Column {
+        Text(rotulo, color = MaterialTheme.colorScheme.onSurfaceVariant, style = estilo(10))
+        Text(valor, color = MaterialTheme.colorScheme.onSurface, style = estilo(13, FontWeight.Medium))
     }
 }
 
@@ -360,21 +360,20 @@ private fun ConfirmarRecusa(
 }
 
 private val PENDENTE_EXEMPLO = Usuario(
-    id = 1, nome = "Vanderlei Zucchi Rodas", email = "vanderlei@exemplo.com", telefone = "16997389535",
+    id = 1, nome = "Vanderlei Zucchi Rodas", email = "vanderlei@exemplo.com", telefone = "(16) 99738-9535",
     situacao = "pendente", perfil = null, organizacao = null, permissoes = emptySet(), exigeTrocaSenha = false,
 )
 
-@Preview(showBackground = true, widthDp = 360, heightDp = 800)
+@Preview(showBackground = true, widthDp = 360, heightDp = 828)
 @Preview(showBackground = true, widthDp = 800, heightDp = 1280)
-@Preview(showBackground = true, widthDp = 1280, heightDp = 800)
 @Composable
 private fun AprovacaoCadastroTelaPreview() {
     MaterialTheme {
         AprovacaoCadastroTela(
             estado = AprovacaoEstado(carregando = false, pendentes = listOf(PENDENTE_EXEMPLO)),
-            aoVoltar = {}, aoRecarregar = {}, aoAprovar = {}, aoRecusar = {}, aoEscolherTipo = {},
-            aoEscolherOrganizacao = {}, aoEscolherPerfil = {}, aoRecarregarOpcoes = {},
-            aoConfirmarAprovacao = {}, aoCancelarAprovacao = {}, aoConfirmarRecusa = {}, aoCancelarRecusa = {},
+            aoRecarregar = {}, aoAprovar = {}, aoRecusar = {}, aoEscolherTipo = {}, aoEscolherOrganizacao = {},
+            aoEscolherPerfil = {}, aoRecarregarOpcoes = {}, aoConfirmarAprovacao = {}, aoCancelarAprovacao = {},
+            aoConfirmarRecusa = {}, aoCancelarRecusa = {},
         )
     }
 }
