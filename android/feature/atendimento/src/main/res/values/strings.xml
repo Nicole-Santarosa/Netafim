@@ -121,7 +121,7 @@
     <string name="atendimento_edicao_titulo">Edição de atendimento</string>
     <string name="atendimento_edicao_atendimento">Atendimento</string>
     <string name="atendimento_edicao_situacao">Situação do projeto</string>
-    <string name="atendimento_edicao_situacao_garantia">Em garantia</string>
+    <string name="atendimento_edicao_situacao_garantia">Garantia</string>
     <string name="atendimento_edicao_situacao_fora_garantia">Fora da garantia</string>
     <string name="atendimento_edicao_situacao_instalacao">Instalação</string>
     <string name="atendimento_edicao_salvar">Salvar alterações</string>

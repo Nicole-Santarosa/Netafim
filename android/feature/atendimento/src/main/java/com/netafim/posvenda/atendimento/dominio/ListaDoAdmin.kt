@@ -41,11 +41,13 @@ fun FiltroDeOrigem.aceita(origem: OrigemAtendimento): Boolean = when (this) {
 }
 
 // Aplica o filtro e devolve o resultado do mais recente para o mais antigo pela data de abertura; no
-// empate, pelo protocolo em ordem alfabética. A ordem é uma decisão do Rafael para a lista do Admin e
+// empate, pelo número do protocolo. A ordem é uma decisão do Rafael para a lista do Admin e
 // ainda não foi confirmada com o grupo.
 fun filtrarListaAdmin(itens: List<ItemDaListaAdmin>, filtro: FiltroDeOrigem): List<ItemDaListaAdmin> =
     itens.filter { filtro.aceita(it.origem) }
-        .sortedWith(compareByDescending<ItemDaListaAdmin> { it.abertoEm }.thenBy { it.protocolo })
+        .sortedWith(
+            compareByDescending<ItemDaListaAdmin> { it.abertoEm }.thenBy(ComparadorDeProtocolo) { it.protocolo },
+        )
 
 // Texto da linha: protocolo e nome do cliente separados por " · ". O separador é pontuação, por isso
 // fica no Kotlin e não no strings.xml.

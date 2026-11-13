@@ -74,7 +74,7 @@ fun DetalheAtendimentoTela(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             CartaoDeSecao {
-                LinhaDoTempo(etapas = linhaDoTempo(detalhe.status))
+                LinhaDoTempo(etapas = linhaDoTempo(detalhe.status, detalhe.statusAntesDoCancelamento))
             }
             CartaoDeSecao {
                 CartaoDeInformacoes(detalhe)
@@ -136,6 +136,7 @@ private fun detalheDePreview(
     nomeFazenda: String? = "Fazenda Santa Rita",
     cidade: String? = "Ribeirão Preto, SP",
     motivo: MotivoAtendimento = MotivoAtendimento.DUVIDAS,
+    statusAntesDoCancelamento: StatusAtendimento? = null,
 ) = DetalheAtendimento(
     id = "1",
     protocolo = "OS-0498",
@@ -144,6 +145,7 @@ private fun detalheDePreview(
     abertoEm = Instant.parse("2026-10-20T15:00:00Z"),
     nomeFazenda = nomeFazenda,
     cidade = cidade,
+    statusAntesDoCancelamento = statusAntesDoCancelamento,
 )
 
 @Composable
@@ -167,6 +169,16 @@ private fun DetalheAbertoSoComCidadePreview() =
 @Preview(showBackground = true, heightDp = 700)
 @Composable
 private fun DetalheCanceladoPreview() = TelaDePreview(detalheDePreview(StatusAtendimento.CANCELADO))
+
+// Cancelado durante o atendimento: a etapa Em atendimento continua como feita.
+@Preview(showBackground = true, heightDp = 700)
+@Composable
+private fun DetalheCanceladoAposEmAtendimentoPreview() = TelaDePreview(
+    detalheDePreview(
+        StatusAtendimento.CANCELADO,
+        statusAntesDoCancelamento = StatusAtendimento.EM_ATENDIMENTO,
+    ),
+)
 
 @Preview(showBackground = true, heightDp = 700)
 @Composable

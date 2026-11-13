@@ -64,13 +64,12 @@ internal fun normalizarParaBusca(texto: String): String =
         .lowercase()
 
 // Ordem da fila: primeiro o que está em atendimento (trabalho em curso); depois os demais, do mais
-// antigo para o mais novo; no empate, pelo protocolo em ordem alfabética.
+// antigo para o mais novo; no empate, pelo número do protocolo.
 // Essa ordem é uma decisão do Rafael para a fila, ainda não confirmada com o grupo.
 fun ordenarFila(itens: List<ItemDaFila>): List<ItemDaFila> =
     itens.sortedWith(
         compareBy<ItemDaFila>(
             { if (it.status == StatusAtendimento.EM_ATENDIMENTO) 0 else 1 },
             { it.abertoEm },
-            { it.protocolo },
-        ),
+        ).thenBy(ComparadorDeProtocolo) { it.protocolo },
     )

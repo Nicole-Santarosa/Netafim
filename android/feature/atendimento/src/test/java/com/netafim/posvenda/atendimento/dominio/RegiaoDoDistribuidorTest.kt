@@ -169,4 +169,23 @@ class RegiaoDoDistribuidorTest {
         )
         assertEquals(listOf("b", "c", "a"), ids(filtrarRegiao(itens, FiltroDaRegiao.TODOS, "")))
     }
+
+    // ---- ordem por protocolo
+
+    @Test
+    fun empateDeDataDesempataPeloNumeroDoProtocolo() {
+        val itens = listOf(
+            item("dez-mil", protocolo = "OS-10000", aberto = "2026-11-05T12:00:00Z"),
+            item("nove-mil", protocolo = "OS-9999", aberto = "2026-11-05T12:00:00Z"),
+            item("mais-novo", protocolo = "OS-0001", aberto = "2026-11-09T12:00:00Z"),
+        )
+        // O mais recente continua primeiro; só o empate de data usa o número do protocolo.
+        assertEquals(listOf("mais-novo", "nove-mil", "dez-mil"), ids(ordenarRegiao(itens)))
+    }
+
+    @Test
+    fun protocoloForaDoFormatoComparaComoTextoNaRegiao() {
+        val itens = listOf(item("b", protocolo = "XYZ"), item("a", protocolo = "ABC"))
+        assertEquals(listOf("a", "b"), ids(ordenarRegiao(itens)))
+    }
 }

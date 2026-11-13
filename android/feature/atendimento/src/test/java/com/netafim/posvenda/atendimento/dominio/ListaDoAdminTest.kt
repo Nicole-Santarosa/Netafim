@@ -90,6 +90,26 @@ class ListaDoAdminTest {
     }
 
     @Test
+    fun empateDeDataDesempataPeloNumeroDoProtocolo() {
+        val itens = listOf(
+            item("dez-mil", protocolo = "OS-10000", aberto = "2026-11-05T12:00:00Z"),
+            item("nove-mil", protocolo = "OS-9999", aberto = "2026-11-05T12:00:00Z"),
+            item("mais-novo", protocolo = "OS-0001", aberto = "2026-11-09T12:00:00Z"),
+        )
+        // A data continua mandando: o mais novo vem primeiro, e só o empate usa o número do protocolo.
+        assertEquals(
+            listOf("mais-novo", "nove-mil", "dez-mil"),
+            ids(filtrarListaAdmin(itens, FiltroDeOrigem.TODAS)),
+        )
+    }
+
+    @Test
+    fun protocoloForaDoFormatoComparaComoTextoNaListaDoAdmin() {
+        val itens = listOf(item("b", protocolo = "XYZ"), item("a", protocolo = "ABC"))
+        assertEquals(listOf("a", "b"), ids(filtrarListaAdmin(itens, FiltroDeOrigem.TODAS)))
+    }
+
+    @Test
     fun listaVaziaContinuaVazia() {
         assertTrue(filtrarListaAdmin(emptyList(), FiltroDeOrigem.TODAS).isEmpty())
         assertTrue(filtrarListaAdmin(emptyList(), FiltroDeOrigem.CLIENTE_FINAL).isEmpty())

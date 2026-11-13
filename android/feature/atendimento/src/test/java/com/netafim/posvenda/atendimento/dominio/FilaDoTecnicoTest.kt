@@ -147,6 +147,33 @@ class FilaDoTecnicoTest {
     }
 
     @Test
+    fun empateDeAberturaDesempataPeloNumeroDoProtocolo() {
+        val itens = listOf(
+            item("dez-mil", protocolo = "OS-10000"),
+            item("nove-mil", protocolo = "OS-9999"),
+        )
+        assertEquals(listOf("nove-mil", "dez-mil"), ids(ordenarFila(itens)))
+    }
+
+    @Test
+    fun protocoloFeitoDeTextoNaoDerrubaAOrdenacaoDaFila() {
+        val itens = listOf(item("b", protocolo = "XYZ"), item("a", protocolo = "ABC"))
+        assertEquals(listOf("a", "b"), ids(ordenarFila(itens)))
+    }
+
+    @Test
+    fun protocoloIgualMantemAOrdemDeEntradaEOutrosCriteriosIntactos() {
+        val itens = listOf(
+            item("primeiro", protocolo = "OS-0100"),
+            item("segundo", protocolo = "OS-100"),
+            item("em-curso", protocolo = "OS-0900", status = StatusAtendimento.EM_ATENDIMENTO),
+            item("antigo", protocolo = "OS-0950", aberto = "2026-10-01T12:00:00Z"),
+        )
+        // Em atendimento primeiro, depois a abertura mais antiga e só então o protocolo (empate mantém a entrada).
+        assertEquals(listOf("em-curso", "antigo", "primeiro", "segundo"), ids(ordenarFila(itens)))
+    }
+
+    @Test
     fun filtrarFilaJaDevolveOrdenado() {
         val itens = listOf(
             item("1", status = StatusAtendimento.AGENDADO, aberto = "2026-10-01T12:00:00Z"),

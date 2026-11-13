@@ -31,9 +31,9 @@ fun filtrarRegiao(itens: List<ItemDaFila>, filtro: FiltroDaRegiao, busca: String
 }
 
 // Ordem da lista da região: do mais recente para o mais antigo pela data de abertura; no empate, pelo
-// protocolo em ordem alfabética. É uma decisão do Rafael para a lista da região (a região acompanha o
+// número do protocolo. É uma decisão do Rafael para a lista da região (a região acompanha o
 // que acabou de chegar, diferente da fila do técnico) e ainda não foi confirmada com o grupo.
 fun ordenarRegiao(itens: List<ItemDaFila>): List<ItemDaFila> =
     itens.sortedWith(
-        compareByDescending<ItemDaFila> { it.abertoEm }.thenBy { it.protocolo },
+        compareByDescending<ItemDaFila> { it.abertoEm }.thenBy(ComparadorDeProtocolo) { it.protocolo },
     )
