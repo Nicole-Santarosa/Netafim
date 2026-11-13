@@ -228,3 +228,21 @@ def test_abertura_sem_culturas_continua_igual(mundo, entrar_como):
         id_atendimento=corpo["id_atendimento"]
     ).exists()
     assert cliente.get(f"{URL}/{corpo['id_atendimento']}").data["culturas"] == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "campo",
+    ["situacao_projeto", "estado_projeto", "tipo_venda", "tipo_atendimento", "area_setor"],
+)
+def test_texto_vazio_em_campo_de_lista_devolve_400_no_campo(mundo, entrar_como, campo):
+    entrar_como(mundo["id_usuario_cliente"])
+
+    corpo = corpo_valido(mundo, **{campo: ""})
+
+    resposta = cliente_autenticado(mundo["id_usuario_cliente"]).post(URL, corpo, format="json")
+
+    # 400 de validação apontando o campo, e não o 422 do CHECK do banco.
+    assert resposta.status_code == 400
+    assert campo in resposta.data
+    assert not Atendimento.objects.filter(id_atendimento=corpo["id_atendimento"]).exists()

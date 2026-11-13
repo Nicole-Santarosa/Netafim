@@ -16,6 +16,7 @@ CAMPOS_DA_LISTA = {
     "nome_produtor",
     "nome_fazenda_informado",
     "cidade",
+    "id_tecnico_responsavel",
     "data_abertura",
     "data_atualizacao",
     "versao",

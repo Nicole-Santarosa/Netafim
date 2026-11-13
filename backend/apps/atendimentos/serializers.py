@@ -80,6 +80,17 @@ class AberturaAtendimentoSerializer(serializers.ModelSerializer):
             "data_abertura": {"required": False},
             # Mesma regra do CHECK ck_atend_qtd_participantes: maior que zero.
             "qtd_participantes_prevista": {"min_value": 1},
+            # Lista fechada: o model tem blank=True nesses cinco campos e o DRF
+            # copia isso para allow_blank, então "" passaria na validação e o
+            # CHECK do banco ("nulo ou um dos valores") recusaria depois, com um
+            # 422 genérico. Sem allow_blank, "" vira 400 apontando o campo. O
+            # allow_null e o required continuam como o model definiu: nulo e
+            # ausente seguem aceitos.
+            "situacao_projeto": {"allow_blank": False},
+            "estado_projeto": {"allow_blank": False},
+            "tipo_venda": {"allow_blank": False},
+            "tipo_atendimento": {"allow_blank": False},
+            "area_setor": {"allow_blank": False},
         }
 
     def validate_culturas(self, ids):
@@ -157,7 +168,8 @@ class AtendimentoListaSerializer(serializers.ModelSerializer):
     A tela calcula o "Aberto há X dias" a partir de data_abertura, então o
     servidor não manda esse número pronto. O nome do produtor só vem preenchido
     quando o atendimento o informou; o nome do cliente virá do snapshot, em
-    outra peça.
+    outra peça. O id_tecnico_responsavel vem nulo enquanto ninguém foi atribuído
+    e deixa a fila do técnico saber, sem abrir o detalhe, de quem é cada pedido.
     """
 
     class Meta:
@@ -171,6 +183,7 @@ class AtendimentoListaSerializer(serializers.ModelSerializer):
             "nome_produtor",
             "nome_fazenda_informado",
             "cidade",
+            "id_tecnico_responsavel",
             "data_abertura",
             "data_atualizacao",
             "versao",

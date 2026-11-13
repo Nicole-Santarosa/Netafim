@@ -135,7 +135,8 @@ paths:
           description: >-
             Campo obrigatório ausente, valor fora da lista, formato inválido, ou
             regra entre campos (cliente_final sem id_cliente, netafim sem
-            area_setor), ou culturas com id repetido, inexistente ou excluído (erro
+            area_setor), texto vazio em situacao_projeto, estado_projeto,
+            tipo_venda, tipo_atendimento ou area_setor, ou culturas com id repetido, inexistente ou excluído (erro
             no campo culturas). Também vem como 400 "valor_invalido" quando o banco recusa
             o formato ou o tamanho de um valor.
           content:
@@ -444,7 +445,9 @@ components:
           allOf:
           - $ref: '#/components/schemas/AreaSetor'
           nullable: true
-          description: Obrigatório quando a origem é netafim.
+          description: >-
+            Obrigatório quando a origem é netafim. Texto vazio ("") responde 400
+            no campo.
         contato_solicitante:
           type: string
           maxLength: 20
@@ -456,18 +459,30 @@ components:
           allOf:
           - $ref: '#/components/schemas/SituacaoProjeto'
           nullable: true
+          description: >-
+            Opcional. Texto vazio ("") responde 400 no campo; para não informar,
+            use nulo ou omita o campo.
         estado_projeto:
           allOf:
           - $ref: '#/components/schemas/EstadoProjeto'
           nullable: true
+          description: >-
+            Opcional. Texto vazio ("") responde 400 no campo; para não informar,
+            use nulo ou omita o campo.
         tipo_venda:
           allOf:
           - $ref: '#/components/schemas/TipoVenda'
           nullable: true
+          description: >-
+            Opcional. Texto vazio ("") responde 400 no campo; para não informar,
+            use nulo ou omita o campo.
         tipo_atendimento:
           allOf:
           - $ref: '#/components/schemas/TipoAtendimento'
           nullable: true
+          description: >-
+            Opcional. Texto vazio ("") responde 400 no campo; para não informar,
+            use nulo ou omita o campo.
         descricao_problema:
           type: string
           nullable: true
@@ -544,6 +559,10 @@ components:
         cidade:
           type: string
           nullable: true
+        id_tecnico_responsavel:
+          type: integer
+          nullable: true
+          description: Técnico atribuído ao atendimento, ou nulo enquanto ninguém foi atribuído.
         data_abertura:
           type: string
           format: date-time

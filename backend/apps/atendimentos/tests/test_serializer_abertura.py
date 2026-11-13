@@ -117,3 +117,52 @@ def test_todo_campo_do_serializer_esta_nas_colunas_aceitas_do_servico():
     campos = set(AberturaAtendimentoSerializer().fields)
 
     assert campos <= set(COLUNAS_ACEITAS_NA_ABERTURA) | {"culturas"}
+
+
+# Os cinco campos de lista fechada que o banco só aceita com nulo ou um valor
+# da lista, e um valor válido de cada um.
+CAMPOS_DE_LISTA = {
+    "situacao_projeto": "garantia",
+    "estado_projeto": "operando",
+    "tipo_venda": "projeto",
+    "tipo_atendimento": "online",
+    "area_setor": "comercial",
+}
+
+
+@pytest.mark.parametrize("campo", list(CAMPOS_DE_LISTA))
+def test_texto_vazio_em_campo_de_lista_gera_erro_no_campo(campo):
+    # Antes o "" passava e o banco recusava no CHECK, com um 422 genérico.
+    serializer, valido = validar(dados_minimos(**{campo: ""}))
+
+    assert not valido
+    assert campo in serializer.errors
+
+
+@pytest.mark.parametrize("campo", list(CAMPOS_DE_LISTA))
+def test_campo_de_lista_ausente_ou_nulo_continua_aceito(campo):
+    serializer, valido = validar(dados_minimos())
+    assert valido, serializer.errors
+    assert campo not in serializer.validated_data
+
+    serializer, valido = validar(dados_minimos(**{campo: None}))
+    assert valido, serializer.errors
+    assert serializer.validated_data[campo] is None
+
+
+@pytest.mark.parametrize("campo,valor", list(CAMPOS_DE_LISTA.items()))
+def test_campo_de_lista_com_valor_valido_continua_aceito(campo, valor):
+    serializer, valido = validar(dados_minimos(**{campo: valor}))
+
+    assert valido, serializer.errors
+    assert serializer.validated_data[campo] == valor
+
+
+def test_netafim_com_area_setor_vazio_continua_erro_no_campo():
+    dados = dados_minimos(origem="netafim", area_setor="")
+    del dados["id_cliente"]
+
+    serializer, valido = validar(dados)
+
+    assert not valido
+    assert "area_setor" in serializer.errors
