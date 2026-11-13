@@ -385,6 +385,12 @@ class SolicitacaoTitularViewSet(viewsets.ViewSet):
     def atender(self, request, pk=None):
         return Response(titular.atender(request.user, int(pk), request=request))
 
+    @extend_schema(request=None, responses=s.DadosPessoaisSerializer)
+    @action(detail=True, methods=["get"], url_path="dados")
+    def dados(self, request, pk=None):
+        """Cópia dos dados do titular do pedido (acesso ou portabilidade), para o Netafim Admin."""
+        return Response(titular.exportar_dados_do_titular(request.user, int(pk), request=request))
+
     @extend_schema(request=s.NegarSolicitacaoSerializer, responses=s.SolicitacaoAdminSerializer)
     @action(detail=True, methods=["post"])
     def negar(self, request, pk=None):

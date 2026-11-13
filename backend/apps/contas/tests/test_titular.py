@@ -159,6 +159,85 @@ def test_se_a_secao_de_atendimentos_falha_a_exportacao_nao_e_auditada(
     assert banco_sql.um("select count(*) from log_auditoria where acao = 'exportacao_dados'") == 0
 
 
+# --------------------------------------------------------------------------- exportação pelo admin
+
+
+def dados_do_pedido(como, pessoa, id_solicitacao):
+    return como(pessoa).get(f"/api/v1/solicitacoes-lgpd/{id_solicitacao}/dados")
+
+
+def test_admin_exporta_os_dados_do_titular_de_um_pedido_de_acesso(
+    como, banco_sql, netafim_admin, cliente_usuario
+):
+    pedido = pedir(como, cliente_usuario, "acesso").data["id_solicitacao"]
+    r = dados_do_pedido(como, netafim_admin, pedido)
+    assert r.status_code == 200, r.data
+    assert r.data["formato"] == 1
+    assert r.data["conta"]["id_usuario"] == cliente_usuario.pk
+    assert r.data["conta"]["email"] == cliente_usuario.email
+    assert [p["tipo"] for p in r.data["solicitacoes_lgpd"]] == ["acesso"]
+    texto = json.dumps(r.data, default=str).lower()
+    assert "password" not in texto and "segredo" not in texto and "refresh" not in texto
+    # uma única linha de auditoria, com o administrador como autor e o titular como alvo
+    linha = banco_sql.todos(
+        "select id_usuario, entidade_id from log_auditoria where acao = 'exportacao_dados'"
+    )
+    assert len(linha) == 1
+    assert linha[0][0] == netafim_admin.pk
+    assert str(linha[0][1]) == str(cliente_usuario.pk)
+
+
+def test_admin_exporta_tambem_o_pedido_de_portabilidade(como, netafim_admin, cliente_usuario):
+    pedido = pedir(como, cliente_usuario, "portabilidade").data["id_solicitacao"]
+    assert dados_do_pedido(como, netafim_admin, pedido).status_code == 200
+
+
+def test_so_o_netafim_admin_exporta_os_dados_de_um_pedido(
+    como, cliente_usuario, distrib_admin, netafim_usuario
+):
+    pedido = pedir(como, cliente_usuario, "acesso").data["id_solicitacao"]
+    for pessoa in (cliente_usuario, distrib_admin, netafim_usuario):
+        assert dados_do_pedido(como, pessoa, pedido).status_code == 403
+
+
+def test_pedido_que_nao_e_de_acesso_ou_portabilidade_nao_tem_exportacao(
+    como, banco_sql, netafim_admin, cliente_usuario
+):
+    pedido = pedir(como, cliente_usuario, "correcao").data["id_solicitacao"]
+    r = dados_do_pedido(como, netafim_admin, pedido)
+    assert (r.status_code, r.data["codigo"]) == (400, "tipo_sem_exportacao")
+    assert banco_sql.um("select count(*) from log_auditoria where acao = 'exportacao_dados'") == 0
+
+
+def test_pedido_negado_nao_pode_ser_exportado(como, netafim_admin, cliente_usuario):
+    pedido = pedir(como, cliente_usuario, "acesso").data["id_solicitacao"]
+    acao(como, netafim_admin, pedido, "negar", {"justificativa": "Pedido duplicado."})
+    r = dados_do_pedido(como, netafim_admin, pedido)
+    assert (r.status_code, r.data["codigo"]) == (400, "pedido_negado")
+
+
+def test_exportar_pedido_inexistente_responde_404(como, netafim_admin):
+    assert dados_do_pedido(como, netafim_admin, 999999).status_code == 404
+
+
+def test_exportacao_do_admin_inclui_a_secao_de_atendimentos_do_titular(
+    como, netafim_admin, cliente_usuario, monkeypatch
+):
+    pedido = pedir(como, cliente_usuario, "acesso").data["id_solicitacao"]
+    recebidos = []
+
+    def secao(usuario):
+        recebidos.append(usuario.pk)
+        return {"id_usuario": usuario.pk, "atendimentos": [], "historico": []}
+
+    monkeypatch.setattr(titular, "_secao_atendimentos", secao)
+    r = dados_do_pedido(como, netafim_admin, pedido)
+    assert r.status_code == 200, r.data
+    # a seção é do TITULAR do pedido, não do administrador que exporta
+    assert recebidos == [cliente_usuario.pk]
+    assert r.data["atendimentos"]["id_usuario"] == cliente_usuario.pk
+
+
 def test_exportacao_traz_so_os_dados_de_quem_pediu(como, cliente_usuario, distrib_usuario):
     r = como(cliente_usuario).get(DADOS)
     assert r.data["conta"]["id_usuario"] == cliente_usuario.pk

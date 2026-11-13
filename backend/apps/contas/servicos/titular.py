@@ -118,21 +118,12 @@ def _secao_atendimentos(usuario: Usuario) -> dict | None:
     return exportar_atendimentos(usuario)
 
 
-def exportar_dados(usuario: Usuario, *, request=None) -> dict:
-    """Cópia dos dados pessoais que ESTE módulo guarda do titular (acesso e portabilidade).
-
-    Não inclui hash de senha, segredo de MFA nem tokens. A seção ``atendimentos`` vem do módulo de
-    atendimentos (``_secao_atendimentos``) e só aparece quando esse módulo está instalado.
-    """
+def _montar_exportacao(usuario: Usuario, solicitacoes: list[dict]) -> dict:
+    """Corpo da exportação: o que o módulo guarda do titular, sem hash de senha, segredo de MFA nem
+    tokens. A seção ``atendimentos`` vem do módulo de atendimentos (``_secao_atendimentos``) e só
+    aparece quando esse módulo está instalado."""
     from ..api import serializers as s  # evita ciclo: o serializer importa serviços
 
-    try:
-        solicitacoes = minhas_solicitacoes()
-    except ErroNegocio as exc:
-        # Sem a migração 010 o titular ainda pode exportar o que o módulo guarda dele.
-        if exc.codigo != "lgpd_indisponivel":
-            raise
-        solicitacoes = []
     dados = {
         "formato": 1,
         "exportado_em": timezone.now(),
@@ -147,10 +138,24 @@ def exportar_dados(usuario: Usuario, *, request=None) -> dict:
         "dispositivos": s.DispositivoSerializer(usuario.dispositivos.all(), many=True).data,
         "solicitacoes_lgpd": solicitacoes,
     }
-    # Antes da auditoria: se a seção falhar, a exportação não foi feita e nada é registrado.
     atendimentos = _secao_atendimentos(usuario)
     if atendimentos is not None:
         dados["atendimentos"] = atendimentos
+    return dados
+
+
+def exportar_dados(usuario: Usuario, *, request=None) -> dict:
+    """Cópia dos dados pessoais que ESTE módulo guarda do titular (acesso e portabilidade), pelo
+    próprio login do titular. A seção de atendimentos é montada antes da auditoria: se ela falhar, a
+    exportação não foi feita e nada é registrado."""
+    try:
+        solicitacoes = minhas_solicitacoes()
+    except ErroNegocio as exc:
+        # Sem a migração 010 o titular ainda pode exportar o que o módulo guarda dele.
+        if exc.codigo != "lgpd_indisponivel":
+            raise
+        solicitacoes = []
+    dados = _montar_exportacao(usuario, solicitacoes)
     with connection.cursor() as cursor:
         cursor.execute(
             "select fn_audit('exportacao_dados', 'sucesso', 'usuario', %s)", [str(usuario.pk)]
@@ -291,3 +296,53 @@ def negar(ator: Usuario, id_solicitacao: int, justificativa: str, *, request=Non
         tipo=pedido["tipo"],
     )
     return _carregar(id_solicitacao)
+
+
+# Pedidos cuja entrega é a cópia dos dados: o Netafim Admin a prepara e depois atende o pedido.
+TIPOS_COM_EXPORTACAO = frozenset({"acesso", "portabilidade"})
+
+
+def exportar_dados_do_titular(ator: Usuario, id_solicitacao: int, *, request=None) -> dict:
+    """Cópia dos dados de OUTRO titular, para o Netafim Admin responder a um pedido de acesso ou de
+    portabilidade (LGPD, art. 18, II e V). Não atende nem muda o pedido: depois de entregar a
+    cópia, o administrador usa ``atender``.
+
+    Só vale para pedidos de acesso e portabilidade que não foram negados. A leitura passa pelo RLS
+    da sessão do administrador; a seção de atendimentos filtra pelo titular
+    (``exportar_atendimentos``), então o administrador, que enxerga todos os atendimentos, exporta
+    só os do titular. A auditoria registra o administrador como autor e o titular e o pedido como
+    alvo.
+    """
+    pedido = _carregar(id_solicitacao)
+    if pedido["tipo"] not in TIPOS_COM_EXPORTACAO:
+        raise ErroNegocio(
+            "Só pedidos de acesso ou de portabilidade têm exportação de dados.",
+            "tipo_sem_exportacao",
+        )
+    if pedido["status"] == "negada":
+        raise ErroNegocio("O pedido foi negado: não há dados a exportar.", "pedido_negado")
+    id_titular = pedido["id_usuario"]
+    titular_usuario = Usuario.objects.filter(pk=id_titular).first() if id_titular else None
+    if titular_usuario is None:
+        raise ErroNegocio("O titular deste pedido não tem conta no sistema.", "titular_sem_conta")
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "select id_solicitacao, tipo, status, observacao, data_solicitacao, data_prazo, "
+            "data_conclusao, justificativa_negativa from solicitacao_titular "
+            "where id_usuario = %s order by data_solicitacao, id_solicitacao",
+            [id_titular],
+        )
+        solicitacoes = _dicts(cursor)
+    dados = _montar_exportacao(titular_usuario, solicitacoes)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "select fn_audit('exportacao_dados', 'sucesso', 'usuario', %s)", [str(id_titular)]
+        )
+    auditoria.registrar(
+        Acao.EXPORTACAO_DADOS,
+        usuario=ator,
+        request=request,
+        id_titular=id_titular,
+        id_solicitacao=id_solicitacao,
+    )
+    return dados
