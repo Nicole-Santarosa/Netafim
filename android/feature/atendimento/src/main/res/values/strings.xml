@@ -116,4 +116,19 @@
     <string name="atendimento_admin_filtro_cliente_final">Cliente final</string>
     <string name="atendimento_admin_vazio">Nenhum atendimento</string>
     <string name="atendimento_admin_vazio_filtro">Nenhum atendimento encontrado</string>
+
+    <!-- Edição do atendimento -->
+    <string name="atendimento_edicao_titulo">Edição de atendimento</string>
+    <string name="atendimento_edicao_atendimento">Atendimento</string>
+    <string name="atendimento_edicao_situacao">Situação do projeto</string>
+    <string name="atendimento_edicao_situacao_garantia">Em garantia</string>
+    <string name="atendimento_edicao_situacao_fora_garantia">Fora da garantia</string>
+    <string name="atendimento_edicao_situacao_instalacao">Instalação</string>
+    <string name="atendimento_edicao_salvar">Salvar alterações</string>
+    <string name="atendimento_edicao_atualizar">Atualizar</string>
+    <string name="atendimento_edicao_erro_conflito">Este atendimento foi alterado por outra pessoa. Atualize para ver os dados novos e escolha de novo.</string>
+    <string name="atendimento_edicao_erro_sem_permissao">Você não tem permissão para alterar este atendimento.</string>
+    <string name="atendimento_edicao_erro_nao_encontrado">Atendimento não encontrado.</string>
+    <string name="atendimento_edicao_erro_sem_conexao">Sem conexão. Verifique a internet e tente de novo.</string>
+    <string name="atendimento_edicao_erro_regra">Não foi possível salvar a alteração.</string>
 </resources>
