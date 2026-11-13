@@ -10,6 +10,7 @@ histórico legal dos atendimentos continua íntegro) e revoga aparelhos e tokens
 O prazo de resposta (15 dias, art. 19, II) vem do banco; ``atrasada`` avisa o administrador.
 """
 
+from django.apps import apps as apps_instalados
 from django.db import DatabaseError, IntegrityError, ProgrammingError, connection, transaction
 from django.utils import timezone
 
@@ -102,11 +103,26 @@ def registrar(usuario: Usuario, tipo: str, observacao: str | None, *, request=No
     return next(p for p in minhas_solicitacoes() if p["id_solicitacao"] == id_solicitacao)
 
 
+def _secao_atendimentos(usuario: Usuario) -> dict | None:
+    """Seção "atendimentos" da exportação, montada pelo módulo de atendimentos.
+
+    Devolve ``None`` enquanto o app ``apps.atendimentos`` não está instalado nesta branch, para a
+    exportação seguir funcionando só com os dados da conta. Quando o app estiver instalado, a
+    função dele roda na mesma transação e com o ator da requisição já definido, então o RLS vale
+    para a sessão: quem exporta pelo próprio login recebe só o que o banco deixa ele ver.
+    """
+    if not apps_instalados.is_installed("apps.atendimentos"):
+        return None
+    from apps.atendimentos.exportacao import exportar_atendimentos  # evita ciclo e dependência
+
+    return exportar_atendimentos(usuario)
+
+
 def exportar_dados(usuario: Usuario, *, request=None) -> dict:
     """Cópia dos dados pessoais que ESTE módulo guarda do titular (acesso e portabilidade).
 
-    Não inclui hash de senha, segredo de MFA nem tokens. Os dados de atendimentos pertencem ao
-    módulo de atendimentos, que deve acrescentar a própria seção.
+    Não inclui hash de senha, segredo de MFA nem tokens. A seção ``atendimentos`` vem do módulo de
+    atendimentos (``_secao_atendimentos``) e só aparece quando esse módulo está instalado.
     """
     from ..api import serializers as s  # evita ciclo: o serializer importa serviços
 
@@ -131,6 +147,10 @@ def exportar_dados(usuario: Usuario, *, request=None) -> dict:
         "dispositivos": s.DispositivoSerializer(usuario.dispositivos.all(), many=True).data,
         "solicitacoes_lgpd": solicitacoes,
     }
+    # Antes da auditoria: se a seção falhar, a exportação não foi feita e nada é registrado.
+    atendimentos = _secao_atendimentos(usuario)
+    if atendimentos is not None:
+        dados["atendimentos"] = atendimentos
     with connection.cursor() as cursor:
         cursor.execute(
             "select fn_audit('exportacao_dados', 'sucesso', 'usuario', %s)", [str(usuario.pk)]

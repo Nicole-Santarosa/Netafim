@@ -6,6 +6,8 @@ import psycopg
 import pytest
 from django.urls import reverse
 
+from apps.contas.servicos import titular
+
 from .conftest import MIGRACAO_TITULAR
 from .test_autenticacao import logar
 
@@ -126,6 +128,35 @@ def test_exportacao_traz_os_dados_do_titular_sem_segredos(api, como, banco_sql, 
     assert "segredo" not in texto
     assert "refresh" not in texto
     assert banco_sql.um("select count(*) from log_auditoria where acao = 'exportacao_dados'") == 1
+
+
+def test_exportacao_sem_o_modulo_de_atendimentos_nao_traz_a_secao(como, cliente_usuario):
+    r = como(cliente_usuario).get(DADOS)
+    assert r.status_code == 200
+    assert "atendimentos" not in r.data
+
+
+def test_exportacao_inclui_a_secao_de_atendimentos_e_audita_uma_vez(
+    como, banco_sql, cliente_usuario, monkeypatch
+):
+    secao = {"id_usuario": cliente_usuario.pk, "atendimentos": [], "historico": []}
+    monkeypatch.setattr(titular, "_secao_atendimentos", lambda usuario: secao)
+    r = como(cliente_usuario).get(DADOS)
+    assert r.status_code == 200, r.data
+    assert r.data["atendimentos"] == secao
+    assert banco_sql.um("select count(*) from log_auditoria where acao = 'exportacao_dados'") == 1
+
+
+def test_se_a_secao_de_atendimentos_falha_a_exportacao_nao_e_auditada(
+    como, banco_sql, cliente_usuario, monkeypatch
+):
+    def falha(usuario):
+        raise RuntimeError("falha no módulo de atendimentos")
+
+    monkeypatch.setattr(titular, "_secao_atendimentos", falha)
+    with pytest.raises(RuntimeError):
+        como(cliente_usuario).get(DADOS)
+    assert banco_sql.um("select count(*) from log_auditoria where acao = 'exportacao_dados'") == 0
 
 
 def test_exportacao_traz_so_os_dados_de_quem_pediu(como, cliente_usuario, distrib_usuario):

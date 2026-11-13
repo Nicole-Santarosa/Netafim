@@ -1563,6 +1563,9 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SolicitacaoTitular'
+        atendimentos:
+          type: object
+          additionalProperties: {}
       required:
       - consentimento
       - conta
