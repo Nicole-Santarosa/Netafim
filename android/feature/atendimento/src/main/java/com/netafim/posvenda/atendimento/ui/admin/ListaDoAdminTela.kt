@@ -61,13 +61,15 @@ fun ListaDoAdminTela(
     ) {
         BarraDoAtendimento(titulo = stringResource(R.string.atendimento_admin_titulo), aoVoltar = aoVoltar)
         // O protótipo desenha chips cinza preenchidos de 28dp; aqui fica o mesmo estilo de chip da fila do
-        // técnico e da região, para o app ter um estilo só.
+        // técnico e da região, para o app ter um estilo só. Com quatro chips, em 360dp o último ficava
+        // cortado na linha que rola; por isso aqui eles quebram de linha e aparecem todos inteiros.
         LinhaDeFiltros(
             opcoes = FiltroDeOrigem.entries,
             selecionada = filtro,
             rotulo = { rotulosDosFiltros.getValue(it) },
             aoMudar = aoMudarFiltro,
             modifier = Modifier.padding(top = 16.dp),
+            quebrarLinha = true,
         )
         if (itens.isEmpty()) {
             // Uma mensagem para filtro sem resultado, outra para lista realmente vazia.
@@ -159,6 +161,11 @@ private fun TelaDePreview(
 @Preview(showBackground = true, heightDp = 780)
 @Composable
 private fun ListaDoAdminCompletaPreview() = TelaDePreview()
+
+// Largura de 360dp: os quatro chips não cabem numa linha, então o último passa para a linha de baixo.
+@Preview(showBackground = true, widthDp = 360, heightDp = 780)
+@Composable
+private fun ListaDoAdminChipsEm360dpPreview() = TelaDePreview()
 
 @Preview(showBackground = true, heightDp = 780)
 @Composable

@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -186,7 +187,19 @@ private fun AreaDeErro(erro: ErroAoSalvar, aoRecarregar: () -> Unit) {
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
         if (erro == ErroAoSalvar.ConflitoDeVersao) {
-            TextButton(onClick = aoRecarregar, modifier = Modifier.heightIn(min = 48.dp)) {
+            // Zero só o padding horizontal do conteúdo, para o texto do botão ficar alinhado com o início
+            // do aviso; o vertical continua o do botão e a altura mínima de 48dp garante o toque.
+            val paddingPadrao = ButtonDefaults.TextButtonContentPadding
+            TextButton(
+                onClick = aoRecarregar,
+                modifier = Modifier.heightIn(min = 48.dp),
+                contentPadding = PaddingValues(
+                    start = 0.dp,
+                    top = paddingPadrao.calculateTopPadding(),
+                    end = 0.dp,
+                    bottom = paddingPadrao.calculateBottomPadding(),
+                ),
+            ) {
                 Text(stringResource(R.string.atendimento_edicao_atualizar), fontWeight = FontWeight.Medium)
             }
         }

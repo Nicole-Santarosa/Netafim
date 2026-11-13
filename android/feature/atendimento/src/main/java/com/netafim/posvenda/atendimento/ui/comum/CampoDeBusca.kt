@@ -24,14 +24,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 
-// Campo de busca de 48dp: lupa à esquerda e placeholder. O placeholder também vira o rótulo lido pelo
-// leitor de tela. Sem botão de funil: o filtro fica nos chips. Usado pela fila do técnico e pela lista
-// da região do distribuidor, cada uma com o seu texto de placeholder.
+// Campo de busca de 48dp: lupa à esquerda e placeholder. Sem botão de funil: o filtro fica nos chips, e
+// também não há botão de limpar. Usado pela fila do técnico, pela lista da região do distribuidor e
+// pela do Admin, cada uma com o seu texto de placeholder.
+//
+// Leitor de tela: eu não coloco contentDescription neste campo. O BasicTextField já junta (merge) o que
+// está dentro do decorationBox na semântica dele, então com o campo vazio o placeholder é lido como o
+// rótulo, e assim que a pessoa digita o placeholder sai da árvore e o leitor passa a ler o texto digitado.
+// Um contentDescription fixo faria o contrário: o leitor falaria sempre o rótulo no lugar do que foi
+// digitado e a navegação por caractere andaria pelo rótulo, não pelo texto.
 @Composable
 fun CampoDeBusca(
     busca: String,
@@ -45,8 +49,7 @@ fun CampoDeBusca(
         onValueChange = aoMudar,
         modifier = modifier
             .fillMaxWidth()
-            .height(48.dp)
-            .semantics { contentDescription = placeholder },
+            .height(48.dp),
         singleLine = true,
         textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
