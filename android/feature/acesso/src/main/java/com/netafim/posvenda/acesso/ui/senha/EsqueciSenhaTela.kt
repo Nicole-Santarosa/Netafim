@@ -1,6 +1,5 @@
 package com.netafim.posvenda.acesso.ui.senha
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
@@ -16,13 +15,9 @@ import com.netafim.posvenda.acesso.ui.comum.BotaoCheio
 import com.netafim.posvenda.acesso.ui.comum.BotaoContorno
 import com.netafim.posvenda.acesso.ui.comum.CampoDoPrototipo
 import com.netafim.posvenda.acesso.ui.comum.MensagemErro
-import com.netafim.posvenda.acesso.ui.comum.PaginaComWallpaper
+import com.netafim.posvenda.acesso.ui.comum.PaginaComCabecalho
 import com.netafim.posvenda.acesso.ui.comum.TextoApoio
-import com.netafim.posvenda.acesso.ui.comum.TituloDaFolha
 import com.netafim.posvenda.acesso.ui.comum.esc
-import com.netafim.posvenda.acesso.ui.comum.fundoDeCampoNoVidro
-import com.netafim.posvenda.acesso.ui.comum.margensDaFolha
-import com.netafim.posvenda.acesso.ui.comum.textoSuaveNoVidro
 
 @Composable
 fun EsqueciSenhaRota(viewModel: EsqueciSenhaViewModel, aoVoltar: () -> Unit) {
@@ -36,9 +31,9 @@ fun EsqueciSenhaRota(viewModel: EsqueciSenhaViewModel, aoVoltar: () -> Unit) {
 }
 
 /**
- * Recuperar senha sobre o wallpaper da tela (gota com cadeado): o ícone fica livre no alto e o
- * formulário, curto, sobe numa folha de vidro. Depois do envio a folha troca para a confirmação,
- * com um botão para voltar ao login.
+ * Recuperar senha conforme o protótipo (Figma, "05 Recuperar senha"): barra azul com o título, o
+ * campo E-mail e o botão "Enviar link de recuperação" (26 dp abaixo do campo). Depois do envio, fora
+ * do protótipo, o corpo troca para a confirmação com um botão de contorno para voltar ao login.
  */
 @Composable
 fun EsqueciSenhaTela(
@@ -47,53 +42,39 @@ fun EsqueciSenhaTela(
     aoEnviar: () -> Unit,
     aoVoltar: () -> Unit,
 ) {
-    PaginaComWallpaper(
-        wallpaper = R.drawable.fundo_recuperar_senha,
-        descricaoDoWallpaper = stringResource(R.string.acesso_marca),
-        alturaDoHero = 0.60f,
-        aoVoltar = aoVoltar,
-    ) {
-        Column(Modifier.margensDaFolha()) {
-            val enviado = estado.enviado
-            if (enviado != null) {
-                TituloDaFolha(stringResource(R.string.esqueci_enviado_titulo))
-                Spacer(Modifier.height(esc(12)))
-                TextoApoio(enviado, cor = textoSuaveNoVidro())
-                Spacer(Modifier.height(esc(24)))
-                BotaoContorno(stringResource(R.string.acesso_voltar_login), aoVoltar)
-            } else {
-                TituloDaFolha(stringResource(R.string.acesso_esqueci_titulo), stringResource(R.string.esqueci_subtitulo))
-                Spacer(Modifier.height(esc(20)))
-                estado.erroGeral?.let {
-                    MensagemErro(it)
-                    Spacer(Modifier.height(esc(16)))
-                }
-                CampoDoPrototipo(
-                    valor = estado.email,
-                    aoMudar = aoMudarEmail,
-                    rotulo = stringResource(R.string.acesso_email),
-                    erro = estado.erroEmail,
-                    tipoTeclado = KeyboardType.Email,
-                    acaoIme = ImeAction.Done,
-                    aoConcluir = aoEnviar,
-                    habilitado = !estado.carregando,
-                    fundo = fundoDeCampoNoVidro(),
-                    corDoRotulo = textoSuaveNoVidro(),
-                )
-                Spacer(Modifier.height(esc(24)))
-                BotaoCheio(
-                    texto = stringResource(R.string.acesso_enviar_link),
-                    aoClicar = aoEnviar,
-                    carregando = estado.carregando,
-                )
+    PaginaComCabecalho(stringResource(R.string.acesso_esqueci_titulo)) {
+        val enviado = estado.enviado
+        if (enviado != null) {
+            TextoApoio(enviado)
+            Spacer(Modifier.height(esc(26)))
+            BotaoContorno(stringResource(R.string.acesso_voltar_login), aoVoltar)
+        } else {
+            estado.erroGeral?.let {
+                MensagemErro(it)
+                Spacer(Modifier.height(esc(16)))
             }
+            CampoDoPrototipo(
+                valor = estado.email,
+                aoMudar = aoMudarEmail,
+                rotulo = stringResource(R.string.acesso_email),
+                erro = estado.erroEmail,
+                tipoTeclado = KeyboardType.Email,
+                acaoIme = ImeAction.Done,
+                aoConcluir = aoEnviar,
+                habilitado = !estado.carregando,
+            )
+            Spacer(Modifier.height(esc(26)))
+            BotaoCheio(
+                texto = stringResource(R.string.acesso_enviar_link),
+                aoClicar = aoEnviar,
+                carregando = estado.carregando,
+            )
         }
     }
 }
 
-@Preview(showBackground = true, widthDp = 360, heightDp = 800)
+@Preview(showBackground = true, widthDp = 360, heightDp = 828)
 @Preview(showBackground = true, widthDp = 800, heightDp = 1280)
-@Preview(showBackground = true, widthDp = 1280, heightDp = 800)
 @Composable
 private fun EsqueciSenhaTelaPreview() {
     androidx.compose.material3.MaterialTheme {

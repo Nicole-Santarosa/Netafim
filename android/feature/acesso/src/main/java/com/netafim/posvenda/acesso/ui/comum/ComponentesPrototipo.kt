@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -113,6 +114,16 @@ fun estilo(tamanho: Int, peso: FontWeight = FontWeight.Normal): TextStyle =
         letterSpacing = 0.sp,
     )
 
+/** Como [estilo], para os tamanhos fracionados do Figma (ex.: 12,5 sp no subtítulo do login). */
+@Composable
+fun estilo(tamanho: Float, peso: FontWeight = FontWeight.Normal): TextStyle =
+    MaterialTheme.typography.bodyMedium.copy(
+        fontSize = (tamanho * LocalEscala.current).sp,
+        fontWeight = peso,
+        lineHeight = TextUnit.Unspecified,
+        letterSpacing = 0.sp,
+    )
+
 private val SombraBotao = Color(0x593B98FF)
 
 @Composable
@@ -120,7 +131,7 @@ private fun raio() = RoundedCornerShape(esc(8))
 
 /** Barra azul do topo, atrás da barra de status (edge-to-edge) e com o título à esquerda. */
 @Composable
-fun CabecalhoTela(titulo: String, modifier: Modifier = Modifier) {
+fun CabecalhoTela(titulo: String, modifier: Modifier = Modifier, acao: (@Composable () -> Unit)? = null) {
     // O azul passa por baixo da barra de status: ícones claros (e os da navegação, escuros).
     BarraDeStatusSobreImagem()
     Box(
@@ -138,7 +149,16 @@ fun CabecalhoTela(titulo: String, modifier: Modifier = Modifier) {
                 .padding(horizontal = esc(20)),
             contentAlignment = Alignment.CenterStart,
         ) {
-            Text(titulo, color = MaterialTheme.colorScheme.onPrimary, style = estilo(18, FontWeight.SemiBold))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    titulo,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    style = estilo(18, FontWeight.SemiBold),
+                    modifier = Modifier.weight(1f).semantics { heading() },
+                )
+                // Fora do protótipo: ação opcional à direita (ex.: atualizar, abrir o perfil).
+                acao?.invoke()
+            }
         }
     }
 }

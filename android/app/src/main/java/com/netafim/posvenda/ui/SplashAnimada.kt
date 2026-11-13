@@ -98,13 +98,17 @@ internal fun SplashAnimada(aoConcluir: () -> Unit) {
     }
 }
 
-/** Mantém os ícones legíveis no fundo escuro da splash e os restaura nas telas claras. */
+/**
+ * Mantém os ícones legíveis: na splash, tudo é azul-marinho, então os dois conjuntos de ícones ficam
+ * claros; depois dela, as telas do app têm a barra azul no topo (protótipo do Figma) e o corpo
+ * branco, então os ícones da barra de status continuam claros e só os da navegação ficam escuros.
+ */
 @Composable
 internal fun AparenciaBarrasDoSistema(fundoEscuro: Boolean) {
     val atividade = LocalContext.current.encontrarAtividade() ?: return
     SideEffect {
         WindowCompat.getInsetsController(atividade.window, atividade.window.decorView).apply {
-            isAppearanceLightStatusBars = !fundoEscuro
+            isAppearanceLightStatusBars = false
             isAppearanceLightNavigationBars = !fundoEscuro
         }
     }
