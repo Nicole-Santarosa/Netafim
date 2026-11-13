@@ -120,16 +120,21 @@ def abrir_atendimento(id_solicitante: int, dados: dict) -> Atendimento:
 #   transição estão no gatilho do banco.
 # - destinado_a e id_distribuidor: a destinação, que só o Netafim Admin define.
 # - id_tecnico_responsavel: o técnico, que exige a permissão vincular_tecnico.
+# - situacao_projeto: a situação do projeto (garantia, fora da garantia ou
+#   instalação). Quem pode alterar depois da abertura é regra do gatilho do
+#   banco (só o Netafim Admin ou o processo automático): a API não repete essa
+#   checagem, só repassa o erro do banco.
 COLUNAS_ALTERAVEIS = (
     "status",
     "destinado_a",
     "id_distribuidor",
     "id_tecnico_responsavel",
+    "situacao_projeto",
 )
 
 
 def atualizar_atendimento(id_atendimento, versao_esperada: int, mudancas: dict) -> Atendimento:
-    """Altera status, destinação ou técnico, desde que a versão do aplicativo
+    """Altera status, destinação, técnico ou situação do projeto, desde que a versão do aplicativo
     seja a do banco, e devolve o atendimento atualizado.
 
     O gatilho do banco só soma 1 à versão a cada alteração e não compara com a

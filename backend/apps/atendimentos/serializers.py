@@ -8,6 +8,7 @@ from apps.atendimentos.models import (
     Cultura,
     DestinadoA,
     HistoricoAtendimento,
+    SituacaoProjeto,
     Status,
 )
 from apps.atendimentos.servicos import COLUNAS_ALTERAVEIS
@@ -278,7 +279,8 @@ class HistoricoAtendimentoSerializer(serializers.ModelSerializer):
 
 
 class AtendimentoAlteracaoSerializer(serializers.Serializer):
-    """Entrada do PATCH: a versão que o aplicativo conhece mais o que mudar.
+    """Entrada do PATCH: a versão que o aplicativo conhece mais o que mudar
+    (status, destinação, técnico ou situação do projeto).
 
     Só valida formato e lista de valores. As regras de transição de status e de
     quem pode destinar, cancelar ou trocar o técnico são do banco (gatilho), e
@@ -295,6 +297,13 @@ class AtendimentoAlteracaoSerializer(serializers.Serializer):
     id_distribuidor = serializers.IntegerField(required=False)
     # Aceita nulo para desvincular o técnico.
     id_tecnico_responsavel = serializers.IntegerField(required=False, allow_null=True)
+    # Mesma lista e mesma anulabilidade do campo no POST de abertura (as escolhas
+    # vêm do mesmo TextChoices do model). Ausente não muda nada; nulo limpa a
+    # situação; valor fora da lista responde 400 apontando o campo. Quem pode
+    # alterar é regra do gatilho do banco, por isso não há checagem de perfil aqui.
+    situacao_projeto = serializers.ChoiceField(
+        choices=SituacaoProjeto.choices, required=False, allow_null=True
+    )
 
     def validate(self, dados):
         # Um PATCH só com a versão não muda nada: pede ao menos uma alteração.

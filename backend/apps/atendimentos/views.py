@@ -106,7 +106,7 @@ def montar_detalhe(atendimento):
 
 class DetalheAtendimentoView(APIView):
     """GET com os dados completos de um atendimento e a linha do tempo dele;
-    PATCH que altera status, destinação ou técnico."""
+    PATCH que altera status, destinação, técnico ou situação do projeto."""
 
     permission_classes = [IsAuthenticated]
 

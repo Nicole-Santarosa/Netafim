@@ -226,13 +226,16 @@ paths:
       operationId: v1_atendimentos_partial_update
       tags:
       - atendimentos
-      summary: Altera status, destinação ou técnico
+      summary: Altera status, destinação, técnico ou situação do projeto
       description: |-
         Envie a versao que o app conhece e ao menos uma mudança. A alteração só é
         aplicada se a versao for a atual (controle de concorrência otimista). A
         máquina de estados e quem pode cada mudança são regras do banco: cancelar,
         destinar e encerrar são do Netafim Admin; trocar técnico exige a permissão
-        de vincular técnico. Chaves fora da lista são ignoradas. Responde com o
+        de vincular técnico. A situação do projeto (situacao_projeto) só pode ser
+        alterada depois da abertura pelo Netafim Admin (regra do banco): para os
+        outros perfis a resposta é 422. Mandar o valor que já está gravado não
+        conta como alteração. Chaves fora da lista são ignoradas. Responde com o
         mesmo formato do GET, já com a versao nova.
       requestBody:
         required: true
@@ -249,8 +252,8 @@ paths:
                 $ref: '#/components/schemas/AtendimentoDetalhe'
         '400':
           description: >-
-            versao ausente, valor de status ou destinado_a fora da lista, ou
-            nenhuma mudança informada.
+            versao ausente, valor de status, destinado_a ou situacao_projeto fora
+            da lista, ou nenhuma mudança informada.
           content:
             application/json:
               schema:
@@ -290,9 +293,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErroRegra'
-              example:
-                codigo: regra_de_negocio
-                detail: somente o Netafim Admin destina o atendimento
+              examples:
+                destinacao:
+                  summary: Perfil sem permissão para destinar
+                  value:
+                    codigo: regra_de_negocio
+                    detail: somente o Netafim Admin destina o atendimento
+                situacao_projeto:
+                  summary: Perfil que não é Netafim Admin alterando a situação do projeto
+                  value:
+                    codigo: regra_de_negocio
+                    detail: somente o Netafim Admin altera a situação do projeto
   /api/v1/culturas:
     get:
       operationId: v1_culturas_list
@@ -745,6 +756,14 @@ components:
           type: integer
           nullable: true
           description: Use nulo para desvincular o técnico.
+        situacao_projeto:
+          allOf:
+          - $ref: '#/components/schemas/SituacaoProjeto'
+          nullable: true
+          description: >-
+            Mesma lista e mesma anulabilidade do POST. Ausente não muda nada; nulo
+            limpa a situação. Depois da abertura só o Netafim Admin altera (422
+            para os outros perfis).
       description: Além de versao, informe ao menos um dos outros campos.
     ErroRegra:
       type: object
