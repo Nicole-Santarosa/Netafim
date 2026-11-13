@@ -88,6 +88,7 @@ backend/
 │   │   ├── __init__.py
 │   │   ├── apps.py
 │   │   ├── excecoes.py      conflito de versão e falta de permissão na alteração
+│   │   ├── exportacao.py    exportar_atendimentos, a parte dos atendimentos na exportação do titular
 │   │   ├── models.py        models do atendimento (espelho das tabelas, sem migrations)
 │   │   ├── serializers.py   entrada da abertura e da alteração, saída da lista, do detalhe e do histórico
 │   │   ├── servicos.py      abrir_atendimento e atualizar_atendimento
@@ -96,6 +97,7 @@ backend/
 │   │   └── tests/
 │   │       ├── __init__.py
 │   │       ├── test_abertura_model.py
+│   │       ├── test_exportacao.py
 │   │       ├── test_historico_origem.py
 │   │       ├── test_integridade_propriedade.py
 │   │       ├── test_rls_perfis.py
@@ -163,7 +165,7 @@ O `config/settings_teste.py` aponta para esse banco por padrão. Para usar outro
 
 Há uma trava de segurança: se o host do banco não for `127.0.0.1` nem `localhost`, o `settings_teste.py` levanta `ImproperlyConfigured` e os testes nem começam. O `test_trava_seguranca.py` confere essa trava.
 
-O que cada arquivo de teste cobre (111 testes no total, conferidos com `uv run pytest --collect-only -q`):
+O que cada arquivo de teste cobre (121 testes no total, conferidos com `uv run pytest --collect-only -q`):
 
 - `tests/test_conexao.py` (1): a conexão de teste é local e não ignora o RLS.
 - `tests/test_trava_seguranca.py` (1): o `settings_teste.py` recusa host que não seja local.
@@ -179,6 +181,7 @@ O que cada arquivo de teste cobre (111 testes no total, conferidos com `uv run p
 - `apps/atendimentos/tests/test_view_culturas.py` (3): `GET /api/v1/culturas`, com as culturas dos dados iniciais em ordem de nome, sem a cultura excluída e fechado para quem não está autenticado. A cultura excluída vem da fixture `cultura_excluida` do `conftest.py`, que a apaga no fim do teste.
 - `apps/atendimentos/tests/test_integridade_propriedade.py` (4): propriedade do mesmo cliente abre; propriedade de outro cliente é recusada pela FK composta (422); o CHECK `ck_atend_propriedade_cliente` é conferido por INSERT direto pela conexão de administrador; e o Cliente Usuário que envia `id_propriedade` sem `id_cliente` recebe 403 do RLS, que recusa antes de o CHECK ser avaliado. As propriedades são criadas por SQL, pela conexão de administrador, porque ainda não há model.
 - `apps/atendimentos/tests/test_historico_origem.py` (5): o CHECK de origem do histórico (usuário exige responsável, sistema não pode ter responsável) e o evento "criado" da abertura pela API, que sai como usuário.
+- `apps/atendimentos/tests/test_exportacao.py` (10): `exportar_atendimentos` com titular sem atendimento, titular que abriu (com o que ele digitou e os eventos em que é responsável), técnico responsável (sem o que o cliente digitou), atendimento de outra pessoa fora, Netafim Admin exportando outro usuário (só o do titular, mesmo enxergando os dois), objeto ou id do usuário, saída serializável em JSON, ordem estável, duas consultas qualquer que seja o volume e atendimento excluído logicamente (entra com `excluido_em`).
 - `apps/atendimentos/tests/test_rls_perfis.py` (19): o RLS do atendimento nos seis perfis, com 8 usuários (um de cada perfil, mais o Distribuidor Admin e o Cliente Usuário de uma segunda organização) e 8 atendimentos montados pela conexão de administrador. Confere, por perfil, o que ele enxerga e o que consegue alterar (UPDATE com rowcount); o caso do Cliente Admin que vê o atendimento de outro usuário da empresa mas não o altera; o isolamento entre distribuidores e entre empresas.
 
 ### Estado atual do back-end
@@ -197,6 +200,7 @@ Pronto:
 - Detalhe do atendimento (`GET /api/v1/atendimentos/<uuid:id_atendimento>`, `DetalheAtendimentoView`): devolve os dados completos (`AtendimentoDetalheSerializer`, lista explícita de campos, sem `deletado_em`) mais a chave `historico` com a linha do tempo (`HistoricoAtendimentoSerializer`: `id_historico`, `tipo_evento`, `origem_evento`, `valor_anterior`, `valor_novo`, `data_evento`; sem `observacao`, que pode ter dado pessoal). Traz também a chave `culturas`, lista de `{id_cultura, nome}` em ordem de nome (vazia quando não há cultura), lida dos models `Cultura` e `AtendimentoCultura` em uma consulta só, sem vínculos nem culturas excluídos logicamente. Responde 404 para atendimento inexistente, excluído ou que o RLS esconde do usuário.
 - Alteração do atendimento (`PATCH /api/v1/atendimentos/<uuid:id_atendimento>`, na mesma `DetalheAtendimentoView`): o corpo traz `versao` (a que o aplicativo conhece, obrigatória) e ao menos um entre `status`, `destinado_a`, `id_distribuidor`, `id_tecnico_responsavel` (aceita nulo para desvincular) e `situacao_projeto` (mesma lista do `POST`, aceita nulo; depois da abertura só o Netafim Admin altera, regra do gatilho do banco, os outros perfis recebem 422). `atualizar_atendimento` faz `UPDATE ... WHERE versao = esperada`; sem linha alterada, responde 404 (invisível, inexistente ou excluído), 409 `conflito_de_versao` com `versao_atual` (versão velha) ou 403 `sem_permissao` (RLS de UPDATE). A máquina de estados e quem pode cada mudança são do gatilho do banco (erro vira 422). Transições que dependem de agendamento, relatório ou pesquisa seguem 422 até os outros módulos existirem. Responde 200 com o mesmo formato do detalhe.
 - Catálogo de culturas (`GET /api/v1/culturas`, `CulturasView`): lista simples, sem paginação, de `{id_cultura, nome}` (`CulturaSerializer`), só culturas sem `deletado_em`, em ordem de nome e depois de `id_cultura`. Exige usuário autenticado. É de onde o aplicativo tira os ids da lista `culturas` da abertura.
+- Exportação dos atendimentos do titular (LGPD, acesso e portabilidade) em `apps/atendimentos/exportacao.py`: `exportar_atendimentos(usuario)` recebe o usuário ou o id inteiro e devolve um dicionário pronto para JSON com os atendimentos em que ele é solicitante, técnico responsável ou o último a alterar (em ordem de abertura e protocolo, excluídos logicamente incluídos com `excluido_em`) e os eventos do histórico em que ele é o responsável. O que foi digitado no pedido só vai para o solicitante; snapshots, ids de outras pessoas e `observacao` do histórico ficam fora. Filtra pelo titular na consulta (o RLS segue valendo para quem está na sessão), não grava auditoria e não tem rota: quem a chama é a exportação do módulo de contas.
 - Contrato dos endpoints de atendimento (abertura, listagem, detalhe, alteração e catálogo de culturas) em `docs/api/atendimentos-openapi.yaml`.
 
 Ainda não existe:
