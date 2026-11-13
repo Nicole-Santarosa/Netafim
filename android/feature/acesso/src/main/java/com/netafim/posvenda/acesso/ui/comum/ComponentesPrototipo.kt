@@ -74,18 +74,21 @@ private const val LarguraPrototipo = 360
 val LocalEscala = compositionLocalOf { 1f }
 
 /**
- * Escala contínua: até 600 dp (celular) vale 1; acima disso o conteúdo ocupa cerca de 70% da
+ * Escala contínua: até 600 dp de largura (celular) ou 480 dp de altura (celular deitado) vale 1; acima disso o conteúdo ocupa cerca de 70% da
  * largura da tela (tablet 823 dp -> 1,6; paisagem 1316 dp -> 2,0, que é o teto). Campos, botões,
  * textos e espaços crescem na mesma proporção, então a tela se ajusta a qualquer tamanho.
  */
-private fun escalaPara(largura: Dp): Float =
-    if (largura < 600.dp) 1f else (largura.value * 0.7f / LarguraPrototipo).coerceIn(1f, 2f)
+private fun escalaPara(largura: Dp, altura: Dp): Float =
+    // Celular em retrato (largura < 600) ou em paisagem (altura < 480): escala 1, como no protótipo. A
+    // ampliação é só para tablet, onde a altura também é grande; num celular deitado ela deixaria o
+    // formulário maior que a tela.
+    if (largura < 600.dp || altura < 480.dp) 1f else (largura.value * 0.7f / LarguraPrototipo).coerceIn(1f, 2f)
 
 /** Mede a largura disponível e entrega a escala para tudo o que estiver dentro. */
 @Composable
 fun TelaResponsiva(modifier: Modifier = Modifier, conteudo: @Composable () -> Unit) {
     BoxWithConstraints(modifier = modifier) {
-        CompositionLocalProvider(LocalEscala provides escalaPara(maxWidth)) { conteudo() }
+        CompositionLocalProvider(LocalEscala provides escalaPara(maxWidth, maxHeight)) { conteudo() }
     }
 }
 
