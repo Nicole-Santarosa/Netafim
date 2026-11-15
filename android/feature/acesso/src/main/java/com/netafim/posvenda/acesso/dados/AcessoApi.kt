@@ -1,5 +1,6 @@
 package com.netafim.posvenda.acesso.dados
 
+import okhttp3.ResponseBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -55,6 +56,18 @@ interface AcessoApi {
 
     @GET("me")
     suspend fun me(): UsuarioDto
+
+    // ---- Direitos do titular (LGPD)
+
+    @GET("me/solicitacoes-lgpd")
+    suspend fun meusPedidos(): List<PedidoTitularDto>
+
+    @POST("me/solicitacoes-lgpd")
+    suspend fun abrirPedido(@Body corpo: PedidoNovoRequisicao): PedidoTitularDto
+
+    /** Corpo cru: a cópia é entregue como JSON para a pessoa, sem o app interpretar cada campo. */
+    @GET("me/dados")
+    suspend fun meusDados(): ResponseBody
 
     // ---- Cadastros pendentes (Netafim Admin; permissão aprovar_cadastro)
 

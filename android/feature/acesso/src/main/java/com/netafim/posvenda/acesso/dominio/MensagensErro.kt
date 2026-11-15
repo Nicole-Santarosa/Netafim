@@ -30,6 +30,10 @@ object MensagensErro {
         "mfa_nao_iniciado" to "Comece a configuração de novo para gerar o código.",
         "mfa_inativo" to "A verificação em duas etapas não está ativa.",
         "token_invalido" to "Sua sessão expirou. Entre novamente.",
+        "solicitacao_em_aberto" to
+            "Você já tem um pedido desse tipo em andamento. Aguarde a resposta para pedir de novo.",
+        "lgpd_indisponivel" to
+            "Os pedidos de privacidade ainda não estão disponíveis no servidor. Procure a Netafim.",
     )
 
     fun para(codigo: String?, detalheApi: String?): String =

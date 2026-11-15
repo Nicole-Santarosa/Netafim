@@ -186,4 +186,41 @@
         <item quantity="one">%d permissão</item>
         <item quantity="other">%d permissões</item>
     </plurals>
+
+    <!-- Privacidade (LGPD): direitos do titular -->
+    <string name="privacidade_titulo">Privacidade</string>
+    <string name="privacidade_atalho">Privacidade e meus dados</string>
+    <string name="privacidade_explicacao">Pela Lei Geral de Proteção de Dados (LGPD), você pode pedir uma cópia dos seus dados, corrigi-los ou pedir que sejam anonimizados. O prazo de resposta aparece em cada pedido.</string>
+    <string name="privacidade_baixar">Baixar meus dados</string>
+    <string name="privacidade_baixar_aviso">A cópia traz os dados da sua conta, o consentimento, os seus aparelhos e os seus pedidos. Relatórios e evidências dos atendimentos não fazem parte dela.</string>
+    <string name="privacidade_compartilhar_assunto">Meus dados (App Netafim)</string>
+    <string name="privacidade_compartilhar_titulo">Guardar ou enviar a cópia</string>
+    <string name="privacidade_fazer_pedido">Fazer um pedido</string>
+    <string name="privacidade_meus_pedidos">Meus pedidos</string>
+    <string name="privacidade_sem_pedidos">Você ainda não fez nenhum pedido.</string>
+    <string name="privacidade_pedido_em">Pedido em %1$s</string>
+    <string name="privacidade_prazo">Prazo: %1$s</string>
+    <string name="privacidade_concluido_em">Concluído em %1$s</string>
+    <string name="privacidade_motivo_negativa">Motivo: %1$s</string>
+    <string name="privacidade_status_recebida">Recebido</string>
+    <string name="privacidade_status_em_analise">Em análise</string>
+    <string name="privacidade_status_atendida">Atendido</string>
+    <string name="privacidade_status_negada">Negado</string>
+    <string name="privacidade_novo_titulo">Fazer um pedido</string>
+    <string name="privacidade_novo_explicacao">Escolha o que você quer pedir. Cada tipo de pedido só pode ter um em andamento por vez.</string>
+    <string name="privacidade_observacao">Observação (opcional)</string>
+    <string name="privacidade_observacao_dica">Conte o que você precisa. Até 1000 caracteres.</string>
+    <string name="privacidade_enviar">Enviar pedido</string>
+    <string name="privacidade_aviso_irreversivel">Atenção: se este pedido for atendido, sua conta será anonimizada e não há como desfazer.</string>
+    <string name="privacidade_confirmar_titulo">Tem certeza?</string>
+    <string name="privacidade_confirmar_texto">Se este pedido for atendido, sua conta será anonimizada: você perde o acesso ao aplicativo e não há como desfazer. Os registros legais dos atendimentos continuam guardados.</string>
+    <string name="privacidade_confirmar_sim">Sim, enviar o pedido</string>
+    <string name="privacidade_tipo_confirmacao">Saber se vocês tratam os meus dados</string>
+    <string name="privacidade_tipo_acesso">Receber uma cópia dos meus dados</string>
+    <string name="privacidade_tipo_correcao">Corrigir dados incorretos</string>
+    <string name="privacidade_tipo_anonimizacao">Anonimizar os meus dados</string>
+    <string name="privacidade_tipo_eliminacao">Excluir os meus dados</string>
+    <string name="privacidade_tipo_portabilidade">Levar os meus dados para outro serviço</string>
+    <string name="privacidade_tipo_compartilhamento">Saber com quem os meus dados são compartilhados</string>
+    <string name="privacidade_tipo_revogacao_consentimento">Retirar o meu consentimento</string>
 </resources>
