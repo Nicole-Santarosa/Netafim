@@ -24,7 +24,7 @@ from ..models import (
     PerfilPermissao,
     Permissao,
 )
-from ..servicos import auditoria, mfa, usuarios
+from ..servicos import auditoria, mfa, titular, usuarios
 from ..servicos.auditoria import Acao
 from . import serializers as s
 
@@ -356,3 +356,41 @@ class DispositivoViewSet(viewsets.GenericViewSet):
                 id_dispositivo=aparelho.pk,
             )
         return Response(s.DispositivoSerializer(aparelho).data)
+
+
+# --------------------------------------------------------------------------- pedidos de titulares
+
+
+@extend_schema(tags=["lgpd"])
+class SolicitacaoTitularViewSet(viewsets.ViewSet):
+    """Fila de pedidos de titulares (LGPD). Somente o Netafim Admin."""
+
+    permission_classes = [SomenteNetafimAdmin]
+    lookup_value_regex = r"\d+"
+
+    @extend_schema(
+        parameters=[OpenApiParameter("status", str, enum=list(titular.STATUS), required=False)],
+        responses=s.SolicitacaoAdminSerializer(many=True),
+    )
+    def list(self, request):
+        return Response(titular.listar(request.user, request.query_params.get("status")))
+
+    @extend_schema(request=None, responses=s.SolicitacaoAdminSerializer)
+    @action(detail=True, methods=["post"])
+    def analisar(self, request, pk=None):
+        return Response(titular.analisar(request.user, int(pk), request=request))
+
+    @extend_schema(request=None, responses=s.SolicitacaoAdminSerializer)
+    @action(detail=True, methods=["post"])
+    def atender(self, request, pk=None):
+        return Response(titular.atender(request.user, int(pk), request=request))
+
+    @extend_schema(request=s.NegarSolicitacaoSerializer, responses=s.SolicitacaoAdminSerializer)
+    @action(detail=True, methods=["post"])
+    def negar(self, request, pk=None):
+        entrada = s.NegarSolicitacaoSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        pedido = titular.negar(
+            request.user, int(pk), entrada.validated_data["justificativa"], request=request
+        )
+        return Response(pedido)

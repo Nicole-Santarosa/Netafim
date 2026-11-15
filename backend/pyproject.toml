@@ -38,6 +38,7 @@ env = [
     "THROTTLE_LOGIN=1000/min",
     "THROTTLE_CADASTRO=1000/min",
     "THROTTLE_MFA=1000/min",
+    "THROTTLE_TITULAR=1000/hour",
 ]
 
 [tool.ruff]

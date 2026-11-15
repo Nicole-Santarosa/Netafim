@@ -8,6 +8,8 @@ Toda configuração sensível vem de variáveis de ambiente (ver .env.example na
 """
 
 import os
+import tempfile
+import warnings
 from datetime import timedelta
 from pathlib import Path
 
@@ -193,6 +195,44 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+
+# Cache do limite de tentativas por IP (DRF throttling). A memória local é POR PROCESSO: com
+# vários workers do gunicorn (Dockerfile: 3) o limite efetivo viraria N vezes o configurado. O cache
+# em arquivo é compartilhado entre os processos do mesmo contêiner. Com mais de um contêiner,
+# troque por um cache de rede (por exemplo Redis) em CACHES["default"].
+def _pasta_do_cache() -> str | None:
+    """Pasta do cache compartilhado, ou ``None`` se não der para gravar nela (disco só de leitura).
+
+    Não cria a pasta aqui: no build da imagem isto roda como root e o usuário da aplicação ficaria
+    sem acesso. O Django cria a pasta na primeira gravação, já com o dono certo.
+    """
+    try:
+        pasta = Path(env("CACHE_DIR") or Path(tempfile.gettempdir()) / "netafim-cache")
+        existente = pasta
+        while not existente.exists() and existente != existente.parent:
+            existente = existente.parent
+        return str(pasta) if os.access(existente, os.W_OK | os.X_OK) else None
+    except OSError:  # sem pasta temporária utilizável ou sem permissão para consultar a pasta
+        return None
+
+
+_PASTA_CACHE = _pasta_do_cache()
+if _PASTA_CACHE:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+            "LOCATION": _PASTA_CACHE,
+        }
+    }
+else:
+    # Nunca impedir a API de subir por causa do cache; o limite volta a valer por processo.
+    warnings.warn(
+        "Sem pasta gravável para o cache: o limite de tentativas por IP vale por processo. "
+        "Defina CACHE_DIR para uma pasta gravável.",
+        stacklevel=1,
+    )
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
 REST_FRAMEWORK = {
     # Sem sessão do Django não existe AnonymousUser: o anônimo é None.
     "UNAUTHENTICATED_USER": None,
@@ -209,6 +249,7 @@ REST_FRAMEWORK = {
         "login": env("THROTTLE_LOGIN", default="10/min"),
         "cadastro": env("THROTTLE_CADASTRO", default="5/hour"),
         "mfa": env("THROTTLE_MFA", default="10/min"),
+        "titular": env("THROTTLE_TITULAR", default="20/hour"),
     },
 }
 
