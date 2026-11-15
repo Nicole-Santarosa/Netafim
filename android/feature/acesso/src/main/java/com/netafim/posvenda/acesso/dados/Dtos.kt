@@ -211,3 +211,19 @@ data class DefinirPerfilRequisicao(@SerialName("id_perfil") val idPerfil: Int)
 /** Telefone vazio limpa o telefone (a API troca o vazio por nulo). */
 @Serializable
 data class EditarUsuarioRequisicao(val nome: String, val telefone: String)
+
+@Serializable
+data class PerfilCompletoDto(
+    @SerialName("id_perfil") val idPerfil: Int,
+    @SerialName("nome_perfil") val nomePerfil: String,
+    @SerialName("tipo_organizacao") val tipoOrganizacao: String,
+    val nivel: String,
+    val descricao: String? = null,
+    val permissoes: List<String> = emptyList(),
+)
+
+@Serializable
+data class PermissaoDto(val codigo: String, val descricao: String = "")
+
+@Serializable
+data class PermissoesRequisicao(val permissoes: List<String>)

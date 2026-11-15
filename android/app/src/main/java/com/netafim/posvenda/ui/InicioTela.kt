@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -45,9 +46,11 @@ fun InicioTela(
     foto: ImageBitmap?,
     podeGerenciarUsuarios: Boolean,
     podeAprovarCadastros: Boolean,
+    podeGerenciarPermissoes: Boolean,
     aoAbrirPerfil: () -> Unit,
     aoAbrirUsuarios: () -> Unit,
     aoAbrirAprovacao: () -> Unit,
+    aoAbrirPermissoes: () -> Unit,
 ) {
     val descricaoPerfil = stringResource(R.string.inicio_meu_perfil)
     val primeiroNome = nome.trim().substringBefore(' ')
@@ -79,7 +82,7 @@ fun InicioTela(
             Spacer(Modifier.height(esc(24)))
         }
 
-        if (podeGerenciarUsuarios || podeAprovarCadastros) {
+        if (podeGerenciarUsuarios || podeAprovarCadastros || podeGerenciarPermissoes) {
             TituloDeGrupo(stringResource(R.string.inicio_atalhos_titulo))
             Spacer(Modifier.height(esc(8)))
             Column(verticalArrangement = Arrangement.spacedBy(esc(12))) {
@@ -89,6 +92,14 @@ fun InicioTela(
                         titulo = stringResource(R.string.inicio_gestao_usuarios),
                         descricao = stringResource(R.string.inicio_gestao_usuarios_descricao),
                         aoClicar = aoAbrirUsuarios,
+                    )
+                }
+                if (podeGerenciarPermissoes) {
+                    AtalhoEmCartao(
+                        icone = Icons.Outlined.Lock,
+                        titulo = stringResource(R.string.inicio_permissoes),
+                        descricao = stringResource(R.string.inicio_permissoes_descricao),
+                        aoClicar = aoAbrirPermissoes,
                     )
                 }
                 if (podeAprovarCadastros) {

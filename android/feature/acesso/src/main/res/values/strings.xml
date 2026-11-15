@@ -171,4 +171,19 @@
     <string name="usuario_aviso_desativado">Usuário desativado.</string>
     <string name="usuario_aviso_perfil">Perfil alterado.</string>
     <string name="usuario_aviso_convite">Convite reenviado.</string>
+    <!-- Permissões por perfil (RF20) -->
+    <string name="permissoes_titulo">Permissões por perfil</string>
+    <string name="permissoes_explicacao_lista">Escolha um perfil para ver e alterar o que ele pode fazer. A mudança vale para todas as pessoas com esse perfil.</string>
+    <string name="permissoes_explicacao_edicao">Marque o que este perfil pode fazer. A mudança vale já na próxima ação de cada pessoa com esse perfil.</string>
+    <string name="permissoes_vazio">Nenhum perfil encontrado.</string>
+    <string name="permissoes_resumo">%1$s · %2$s</string>
+    <string name="permissoes_tipo_netafim">Netafim</string>
+    <string name="permissoes_tipo_distribuidor">Distribuidor</string>
+    <string name="permissoes_tipo_cliente">Cliente final</string>
+    <string name="permissoes_essencial">Obrigatória para o Netafim Admin</string>
+    <string name="permissoes_salvar">Salvar permissões</string>
+    <plurals name="permissoes_quantidade">
+        <item quantity="one">%d permissão</item>
+        <item quantity="other">%d permissões</item>
+    </plurals>
 </resources>

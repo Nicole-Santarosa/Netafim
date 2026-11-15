@@ -106,7 +106,12 @@ class RepositorioFalso : RepositorioAcesso {
         sessao.value = null
     }
 
-    override suspend fun atualizarPerfil() = resultadoPerfil
+    var atualizacoesDePerfil = 0
+
+    override suspend fun atualizarPerfil(): Resultado<Usuario> {
+        atualizacoesDePerfil++
+        return resultadoPerfil
+    }
     override suspend fun versaoTermoVigente(): Resultado<String> {
         chamadasTermo++
         return resultadoTermo

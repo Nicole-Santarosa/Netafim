@@ -19,6 +19,10 @@ import com.netafim.posvenda.acesso.ui.link.LinkRota
 import com.netafim.posvenda.acesso.ui.link.LinkViewModel
 import com.netafim.posvenda.acesso.ui.login.LoginRota
 import com.netafim.posvenda.acesso.ui.login.LoginViewModel
+import com.netafim.posvenda.acesso.ui.permissoes.PerfisRota
+import com.netafim.posvenda.acesso.ui.permissoes.PerfisViewModel
+import com.netafim.posvenda.acesso.ui.permissoes.PermissoesPerfilRota
+import com.netafim.posvenda.acesso.ui.permissoes.PermissoesPerfilViewModel
 import com.netafim.posvenda.acesso.ui.perfil.MfaViewModel
 import com.netafim.posvenda.acesso.ui.perfil.PerfilRota
 import com.netafim.posvenda.acesso.ui.perfil.PerfilViewModel
@@ -50,13 +54,17 @@ object RotasAcesso {
     const val USUARIO_DETALHE = "acesso/usuarios/{id}"
 
     const val USUARIO_EDITAR = "acesso/usuarios/{id}/editar"
+    const val PERMISSOES = "acesso/permissoes"
+    const val PERMISSOES_PERFIL = "acesso/permissoes/{id}"
+
+    fun permissoesDoPerfil(id: Int) = "acesso/permissoes/$id"
 
     fun detalheDoUsuario(id: Int) = "acesso/usuarios/$id"
     fun editarUsuario(id: Int) = "acesso/usuarios/$id/editar"
 
     /** Telas de dentro do app: sem sessão, a navegação raiz leva ao login. */
     fun exigeSessao(rota: String): Boolean =
-        !rota.startsWith("$GRAFO/") || rota in setOf(PERFIL, TROCAR_SENHA, APROVACAO, USUARIOS, NOVO_USUARIO, USUARIO_DETALHE, USUARIO_EDITAR)
+        !rota.startsWith("$GRAFO/") || rota in setOf(PERFIL, TROCAR_SENHA, APROVACAO, USUARIOS, NOVO_USUARIO, USUARIO_DETALHE, USUARIO_EDITAR, PERMISSOES, PERMISSOES_PERFIL)
 }
 
 private val fabrica = viewModelFactory {
@@ -69,6 +77,7 @@ private val fabrica = viewModelFactory {
     initializer { LinkViewModel(AcessoGrafo.repositorio) }
     initializer { AprovacaoViewModel(AcessoGrafo.repositorioCadastros) }
     initializer { UsuariosViewModel(AcessoGrafo.repositorioUsuarios, AcessoGrafo.repositorio) }
+    initializer { PerfisViewModel(AcessoGrafo.repositorioPerfis) }
     initializer { NovoUsuarioViewModel(AcessoGrafo.repositorioUsuarios) }
 }
 
@@ -135,6 +144,29 @@ fun NavGraphBuilder.telaPerfil(navController: NavHostController) {
     }
     composable(RotasAcesso.TROCAR_SENHA) {
         TrocarSenhaRota(viewModel = viewModel(factory = fabrica), aoConcluir = paraOLogin)
+    }
+}
+
+/** Permissões por perfil (RF20): a lista dos perfis e a edição de um deles, só para o Netafim Admin. */
+fun NavGraphBuilder.telasPermissoes(navController: NavHostController) {
+    composable(RotasAcesso.PERMISSOES) {
+        PerfisRota(
+            viewModel = viewModel(factory = fabrica),
+            aoAbrirPerfil = { navController.navigate(RotasAcesso.permissoesDoPerfil(it)) },
+        )
+    }
+    composable(
+        RotasAcesso.PERMISSOES_PERFIL,
+        arguments = listOf(navArgument("id") { type = NavType.IntType }),
+    ) { entrada ->
+        val id = entrada.arguments?.getInt("id") ?: return@composable
+        val viewModel: PermissoesPerfilViewModel = viewModel(
+            key = "permissoes-perfil-$id",
+            factory = viewModelFactory {
+                initializer { PermissoesPerfilViewModel(AcessoGrafo.repositorioPerfis, AcessoGrafo.repositorio, id) }
+            },
+        )
+        PermissoesPerfilRota(viewModel = viewModel, aoConcluir = { navController.popBackStack() })
     }
 }
 

@@ -19,7 +19,9 @@ import com.netafim.posvenda.acesso.ui.RotasAcesso
 import com.netafim.posvenda.acesso.ui.grafoAcesso
 import com.netafim.posvenda.acesso.ui.telaAprovacao
 import com.netafim.posvenda.acesso.ui.telaPerfil
+import com.netafim.posvenda.acesso.ui.telasPermissoes
 import com.netafim.posvenda.acesso.ui.telasUsuarios
+import com.netafim.posvenda.acesso.dominio.podeGerenciarPermissoes
 import com.netafim.posvenda.acesso.ui.usuarios.podeGerenciarUsuarios
 import com.netafim.posvenda.acesso.dominio.Permissoes
 
@@ -56,6 +58,7 @@ fun NavegacaoRaiz(iniciarLogado: Boolean, navController: NavHostController = rem
         telaPerfil(navController)
         telaAprovacao(navController)
         telasUsuarios(navController)
+        telasPermissoes(navController)
         composable(RotasApp.INICIO) {
             val usuario = sessao?.usuario
             val alteracoesDeFoto by AcessoGrafo.fotos.alteracoes.collectAsStateWithLifecycle()
@@ -70,9 +73,11 @@ fun NavegacaoRaiz(iniciarLogado: Boolean, navController: NavHostController = rem
                 foto = foto,
                 podeGerenciarUsuarios = usuario?.podeGerenciarUsuarios() == true,
                 podeAprovarCadastros = usuario?.temPermissao(Permissoes.APROVAR_CADASTRO) == true,
+                podeGerenciarPermissoes = usuario?.podeGerenciarPermissoes() == true,
                 aoAbrirPerfil = { navController.navigate(RotasAcesso.PERFIL) },
                 aoAbrirUsuarios = { navController.navigate(RotasAcesso.USUARIOS) },
                 aoAbrirAprovacao = { navController.navigate(RotasAcesso.APROVACAO) },
+                aoAbrirPermissoes = { navController.navigate(RotasAcesso.PERMISSOES) },
             )
         }
     }

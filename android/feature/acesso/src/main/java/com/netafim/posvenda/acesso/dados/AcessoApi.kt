@@ -4,6 +4,7 @@ import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
+import retrofit2.http.PUT
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -93,6 +94,16 @@ interface AcessoApi {
     /** Sem paginação na API. */
     @GET("perfis")
     suspend fun perfis(): List<PerfilDto>
+
+    /** Os mesmos perfis de `GET perfis`, com a descrição e os códigos das permissões de cada um. */
+    @GET("perfis")
+    suspend fun perfisComPermissoes(): List<PerfilCompletoDto>
+
+    @GET("permissoes")
+    suspend fun permissoes(): List<PermissaoDto>
+
+    @PUT("perfis/{id}/permissoes")
+    suspend fun salvarPermissoes(@Path("id") id: Int, @Body corpo: PermissoesRequisicao): PerfilCompletoDto
 
     @GET("distribuidores")
     suspend fun distribuidores(@Query("page") pagina: Int): PaginaDto<DistribuidorDto>
