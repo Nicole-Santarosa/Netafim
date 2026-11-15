@@ -430,3 +430,5 @@ class DadosPessoaisSerializer(serializers.Serializer):
     exclusao_solicitada_em = serializers.DateTimeField(allow_null=True)
     dispositivos = DispositivoSerializer(many=True)
     solicitacoes_lgpd = SolicitacaoTitularSerializer(many=True)
+    # Seção do módulo de atendimentos: só vem quando esse módulo está instalado.
+    atendimentos = serializers.DictField(required=False)

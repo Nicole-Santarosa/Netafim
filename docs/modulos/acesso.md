@@ -63,7 +63,7 @@ Opcional por usuário (`usuario.mfa_ativo`), compatível com Google Authenticato
 
 A pessoa pode pedir, pelo app, acesso, correção, anonimização, eliminação, portabilidade, confirmação de tratamento, informação de compartilhamento e revogação do consentimento. O prazo padrão de resposta é de **15 dias** (art. 19, II; o banco grava `data_prazo` e a fila marca `atrasada`; prazo a confirmar com o jurídico).
 
-- **Titular:** `POST me/solicitacoes-lgpd` `{tipo, observacao?}` registra o pedido **sempre em nome de quem está logado**; `GET me/solicitacoes-lgpd` acompanha (inclusive a justificativa de uma negativa); `GET me/dados` devolve uma cópia dos dados pessoais que este módulo guarda (conta, consentimento, aparelhos e pedidos). Não inclui hash de senha, segredo de MFA nem tokens. Os dados de **atendimentos** são do módulo de atendimentos, que deve acrescentar a própria seção. Só um pedido em aberto por tipo (`409 solicitacao_em_aberto`).
+- **Titular:** `POST me/solicitacoes-lgpd` `{tipo, observacao?}` registra o pedido **sempre em nome de quem está logado**; `GET me/solicitacoes-lgpd` acompanha (inclusive a justificativa de uma negativa); `GET me/dados` devolve uma cópia dos dados pessoais que este módulo guarda (conta, consentimento, aparelhos e pedidos). Não inclui hash de senha, segredo de MFA nem tokens. Os dados de **atendimentos** são do módulo de atendimentos: quando o app `apps.atendimentos` está instalado, a chave `atendimentos` traz o resultado de `exportar_atendimentos` (`{id_usuario, atendimentos, historico}`), chamado antes do registro da auditoria e na mesma transação; sem o app instalado a chave não existe. A leitura passa pelo RLS da sessão: quem exporta pelo próprio login recebe só os atendimentos que o banco deixa ele ver (por exemplo, um Netafim Usuário que apenas alterou um atendimento, sem ser solicitante nem técnico, não o recebe). O **Netafim Admin** exporta os dados de outro titular por `GET solicitacoes-lgpd/{id}/dados`, só para pedidos de `acesso` e `portabilidade` que não foram negados (`400 tipo_sem_exportacao` / `pedido_negado`; `404` se o pedido não existe). A rota só lê: depois de entregar a cópia, o administrador usa `atender`. A seção de atendimentos é a do titular do pedido, não a do administrador, e a auditoria `exportacao_dados` registra o administrador como autor e o titular como alvo. Quem já está anonimizado ou inativo não consegue exportar pelo próprio login (não tem login), mas o administrador ainda exporta o que restou. Só um pedido em aberto por tipo (`409 solicitacao_em_aberto`).
 - **Netafim Admin:** `GET solicitacoes-lgpd?status=` (ordenada pelo prazo), `POST solicitacoes-lgpd/{id}/analisar`, `/atender` e `/negar` `{justificativa}`. Atender um pedido de **anonimização ou eliminação** executa `fn_anonimizar_usuario`: nome, e-mail e telefone são descaracterizados, a conta fica inativa e excluída, aparelhos e sessões são revogados, e segredo e códigos de MFA são apagados. O `id` e o histórico legal dos atendimentos ficam. O registro do pedido permanece, sem nome nem e-mail.
 - **Trava de função:** um administrador **não atende o próprio** pedido de anonimização (`403 proprio_pedido`); outro administrador precisa fazê-lo. O último Netafim Admin ativo não é anonimizado.
 - **Por que há funções no banco (migração `010`):** as policies de `solicitacao_titular` só deixam o Netafim Admin ler e gravar, então o titular não conseguiria registrar o próprio pedido. As funções `fn_titular_registrar_solicitacao` e `fn_titular_minhas_solicitacoes` fazem isso só para o usuário logado, sem afrouxar nenhuma policy. Sem a `010` aplicada, as rotas do titular falham (a função não existe).
@@ -115,7 +115,7 @@ O contrato completo, gerado pelo código, está em [`docs/api/acesso-openapi.yam
 | `POST auth/convite/aceitar` · `auth/senha/esqueci` · `auth/senha/redefinir` | público (link do e-mail) |
 | `GET/PATCH me` · `POST me/senha` | usuário logado |
 | `GET me/dados` · `GET/POST me/solicitacoes-lgpd` | titular (usuário logado) |
-| `GET solicitacoes-lgpd` · `POST solicitacoes-lgpd/{id}/analisar\|atender\|negar` | Netafim Admin |
+| `GET solicitacoes-lgpd` · `GET solicitacoes-lgpd/{id}/dados` · `POST solicitacoes-lgpd/{id}/analisar\|atender\|negar` | Netafim Admin |
 | `GET/POST usuarios` · `GET/PATCH/DELETE usuarios/{id}` | admins, no escopo |
 | `POST usuarios/{id}/aprovar` · `recusar` · `situacao` · `perfil` · `reenviar-convite` | admins, conforme a permissão |
 | `GET usuarios/{id}/dispositivos` · `POST dispositivos/{id}/revogar` | Netafim Admin |
@@ -133,7 +133,7 @@ Erros de regra de negócio seguem o formato do DRF com um código estável:
 3. **Insomnia:** *Import → From URL* `http://localhost:8000/api/schema/` (ou o arquivo `docs/api/acesso-openapi.yaml`). Crie uma variável de ambiente `token` e use `Bearer {{ token }}`.
 4. **Primeiro administrador:** a API não cria o primeiro Netafim Admin (o RLS exige um administrador como ator). Rode `uv run python manage.py gerar_hash_senha` e aplique o hash no SQL Editor: `update usuario set password = '<hash>' where lower(email) = lower('<e-mail do admin>');`.
 
-   **Situação atual:** o Netafim Admin (`id_usuario` 1, perfil "Netafim Admin") já está configurado no banco do grupo. A senha foi definida em 28/10/2026 por esse procedimento e o login foi verificado na API contra o Supabase (HTTP 200). O cadastro mantém `exige_troca_senha = true`, então o primeiro acesso pede a troca da senha.
+   **Situação atual:** o Netafim Admin (`id_usuario` 1, perfil "Netafim Admin") está configurado no banco do grupo. A senha foi definida em 28/10/2026 por esse procedimento e o login foi verificado na API contra o Supabase (HTTP 200). **Pendente:** em 09/11/2026 o login dele falhou com a senha testada (2 falhas registradas; o bloqueio vem na 5ª), então a senha precisa ser **redefinida** pelo mesmo procedimento antes de novos testes. O cadastro mantém `exige_troca_senha = true`, então o primeiro acesso pede a troca da senha.
 
 5. **Teste de fumaça contra o banco de verdade** (só leitura, não cria nada): com a API ligada ao Supabase, rode `API_URL=... SMOKE_EMAIL=... SMOKE_SENHA=... uv run python scripts/smoke_api.py`. Confere login, `/me`, listas, renovação de sessão e logout.
 
@@ -167,6 +167,37 @@ val usuario = AcessoGrafo.repositorio.sessao.value?.usuario
 if (usuario?.temPermissao(Permissoes.ABRIR_ATENDIMENTO) == true) { ... }
 ```
 
+## Estado das migrações no banco do grupo (Supabase)
+
+Conferido em 14/11/2026 contra o banco real.
+
+| Nº | Script | Situação |
+|---|---|---|
+| 001 | `fn_revogar_tokens_usuario` | **Não aplicada** (a função não existe no banco) |
+| 004 | `app_auth` e `fn_credencial_*` | Aplicada em 08/11/2026 |
+| 005 | Revoga a leitura do hash e da auditoria | Aplicada em 08/11/2026 |
+| 006 | Tabela de controle das migrações | **Não aplicada** |
+| 007 | MFA por TOTP | Aplicada em 08/11/2026 |
+| 008 + 013 | `fn_atendimento_antes`: quem inicia o atendimento (008) e trava da situação do projeto (013) | Aplicadas em 14/11/2026, em uma única migração (a 013 contém a 008). **Nunca reaplicar a 008 depois da 013** |
+| 010 | Funções do titular LGPD | Aplicada em 08/11/2026 |
+| 011 | `fn_anonimizar_usuario` limpa o contato do solicitante | Aplicada em 14/11/2026 |
+| 012 | pg_cron: encerramento dos atendimentos vencidos | **Não aplicada** (a extensão precisa ser habilitada no painel) |
+
+As propostas 002 e 003 (DT-003 e DT-004) também continuam sem aplicar. O corpo de `fn_atendimento_antes` e de `fn_anonimizar_usuario` foi conferido por MD5 antes e depois da aplicação; o rollback e o registro estão em `01_Gestao_do_Projeto/Aplicacao_Supabase/`.
+
+## Telas do aplicativo (Android)
+
+As telas de acesso seguem o protótipo do Figma (arquivo "Netafim", seção Acesso): Login (quadro "HD 01"), Recuperar senha, Cadastro, Aguardando validação, Aprovação de cadastro e Gestão de usuários. As demais usam a mesma base visual (barra azul de 64 dp com o título, campos e botões do Cadastro) e **não têm quadro no Figma**. O Android vive em branches empilhadas, ainda não mescladas na `main`:
+
+| Branch | O que traz |
+|---|---|
+| `feat/acesso-layout-figma` | Telas refeitas fiéis ao Figma (substitui o visual de wallpaper com vidro) |
+| `feat/acesso-trocar-senha` | Trocar a própria senha (`POST me/senha`), em Meu perfil |
+| `feat/acesso-detalhe-usuario` | Detalhe do usuário: ativar, desativar, definir perfil, reenviar convite e excluir |
+| `feat/acesso-editar-usuario` | Editar nome e telefone (`PATCH usuarios/{id}`) |
+| `feat/acesso-permissoes-perfil` | Permissões por perfil (RF20), só para o Netafim Admin |
+
+Os botões do detalhe seguem `acoesPermitidas(ator, alvo)`: ninguém gerencia a si mesmo, o Netafim Admin gerencia todos, e admin de distribuidor ou de cliente só gerencia usuários de nível Usuário da própria organização. A API continua decidindo e qualquer recusa vira mensagem. As telas novas têm testes automatizados (161 no módulo `:feature:acesso`), mas ainda **não foram conferidas no aparelho**.
 ## Pontos para alinhar com o grupo
 
 Arquivos **provisórios** criados só para o módulo rodar e ser testado: `backend/config/` (settings, urls), `backend/Dockerfile`, `infra/docker-compose.yml`, `.env.example`, `android/` raiz e `android/app/`, `.github/workflows/`. A branch do Rafael também mexe em `config/settings.py`, `pyproject.toml` e `uv.lock`, então haverá conflito de merge a resolver.
@@ -174,7 +205,7 @@ Arquivos **provisórios** criados só para o módulo rodar e ser testado: `backe
 ### Sobre o banco (itens que dependem de quem mantém o SQL)
 
 1. **Encerrar sessões na troca de senha.** O banco não tem como revogar todos os tokens de um usuário. Há uma proposta em [`infra/db/migracoes/001_fn_revogar_tokens_usuario.sql`](../../infra/db/migracoes/001_fn_revogar_tokens_usuario.sql). Enquanto não for aplicada, a API troca a senha, registra um aviso no log e as sessões antigas valem até expirar.
-2. **A API lê o hash da senha e a trilha de auditoria (DT-002).** `app_django` tem `SELECT` na tabela `usuario` inteira e em `log_auditoria`. **Lado Django: feito** (campo só de escrita e conexão `auth`, ver "Contrato com o banco"). **Lado banco: falta aplicar**, em dois scripts: [`004_login_sem_leitura_de_hash.sql`](../../infra/db/migracoes/004_login_sem_leitura_de_hash.sql), **aditivo** (papel `app_auth` e as funções `fn_credencial_*`; compatível com o código antigo e o novo), e [`005_revoga_leitura_de_hash_e_auditoria.sql`](../../infra/db/migracoes/005_revoga_leitura_de_hash_e_auditoria.sql) (os `REVOKE` e o `GRANT` por coluna, com o comando para desfazer). Como a conexão `auth` é opcional e o código cai no modo legado quando ela ainda não existe, **a ordem não quebra ninguém**: (1) o código novo pode entrar a qualquer momento; (2) aplicar o `004`; (3) definir a senha do `app_auth` fora do repositório; (4) configurar `DB_AUTH_USER` e `DB_AUTH_PASSWORD`, reiniciar a API e conferir o login pela conexão `auth` (o `manage.py check` deixa de avisar); (5) só então aplicar o `005`, quando todos já estiverem no código novo. Se o `005` entrar antes do passo 4, o login falha com uma mensagem pedindo `DB_AUTH_PASSWORD`.
+2. **A API lê o hash da senha e a trilha de auditoria (DT-002).** `app_django` tem `SELECT` na tabela `usuario` inteira e em `log_auditoria`. **Lado Django: feito** (campo só de escrita e conexão `auth`, ver "Contrato com o banco"). **Lado banco: aplicado no Supabase em 08/11/2026** (`004` e `005`), em dois scripts: [`004_login_sem_leitura_de_hash.sql`](../../infra/db/migracoes/004_login_sem_leitura_de_hash.sql), **aditivo** (papel `app_auth` e as funções `fn_credencial_*`; compatível com o código antigo e o novo), e [`005_revoga_leitura_de_hash_e_auditoria.sql`](../../infra/db/migracoes/005_revoga_leitura_de_hash_e_auditoria.sql) (os `REVOKE` e o `GRANT` por coluna, com o comando para desfazer). Como a conexão `auth` é opcional e o código cai no modo legado quando ela ainda não existe, **a ordem não quebra ninguém**: (1) o código novo pode entrar a qualquer momento; (2) aplicar o `004`; (3) definir a senha do `app_auth` fora do repositório; (4) configurar `DB_AUTH_USER` e `DB_AUTH_PASSWORD`, reiniciar a API e conferir o login pela conexão `auth` (o `manage.py check` deixa de avisar); (5) só então aplicar o `005`, quando todos já estiverem no código novo. Se o `005` entrar antes do passo 4, o login falha com uma mensagem pedindo `DB_AUTH_PASSWORD`.
 3. **Gatilho `fn_usuario_protege` não protege senha, e-mail nem consentimento de terceiros.** Um admin de empresa com `editar_usuarios` poderia alterá-los direto no banco (a API não oferece isso).
 4. **Política `usuario_insert_admin`** deixa um admin de empresa inserir usuário já ativo e com perfil admin. A API restringe (pendente, nível Usuário), mas o banco não.
 5. **Funções com `search_path` mutável** (10, apontadas pelo Supabase) e **sem timeouts** por papel.
