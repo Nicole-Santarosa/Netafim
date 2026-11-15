@@ -178,10 +178,10 @@ Conferido em 14/11/2026 contra o banco real.
 | 005 | Revoga a leitura do hash e da auditoria | Aplicada em 08/11/2026 |
 | 006 | Tabela de controle das migrações | **Não aplicada** |
 | 007 | MFA por TOTP | Aplicada em 08/11/2026 |
-| 008 + 013 | `fn_atendimento_antes`: quem inicia o atendimento (008) e trava da situação do projeto (013) | Aplicadas em 14/11/2026, em uma única migração (a 013 contém a 008). **Nunca reaplicar a 008 depois da 013** |
+| 008 + 013 | [`008`](../../infra/db/migracoes/008_agendado_para_em_atendimento.sql) e [`013`](../../infra/db/migracoes/013_trava_situacao_projeto.sql), `fn_atendimento_antes`: quem inicia o atendimento (008) e trava da situação do projeto (013) | Aplicadas em 14/11/2026, em uma única migração (a 013 contém a 008). **Nunca reaplicar a 008 depois da 013** |
 | 010 | Funções do titular LGPD | Aplicada em 08/11/2026 |
-| 011 | `fn_anonimizar_usuario` limpa o contato do solicitante | Aplicada em 14/11/2026 |
-| 012 | pg_cron: encerramento dos atendimentos vencidos | **Não aplicada** (a extensão precisa ser habilitada no painel) |
+| 011 | [`011`](../../infra/db/migracoes/011_anonimizar_contato_solicitante.sql), `fn_anonimizar_usuario` limpa o contato do solicitante | Aplicada em 14/11/2026 |
+| 012 | [`012`](../../infra/db/migracoes/012_agendamento_encerramento_vencidos.sql), pg_cron: encerramento dos atendimentos vencidos | **Não aplicada** (a extensão precisa ser habilitada no painel) |
 
 As propostas 002 e 003 (DT-003 e DT-004) também continuam sem aplicar. O corpo de `fn_atendimento_antes` e de `fn_anonimizar_usuario` foi conferido por MD5 antes e depois da aplicação; o rollback e o registro estão em `01_Gestao_do_Projeto/Aplicacao_Supabase/`.
 
