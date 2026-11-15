@@ -7,7 +7,20 @@ interface RepositorioAcesso {
     /** Sessão atual (null quando ninguém está logado). Funciona sem internet. */
     val sessao: StateFlow<Sessao?>
 
-    suspend fun entrar(email: String, senha: String): Resultado<Usuario>
+    suspend fun entrar(email: String, senha: String): Resultado<ResultadoEntrada>
+
+    /** Segundo passo do login com MFA: código do aplicativo (6 dígitos) ou de recuperação. */
+    suspend fun concluirLoginMfa(desafio: String, codigo: String): Resultado<Usuario>
+
+    suspend fun estadoMfa(): Resultado<EstadoMfa>
+
+    /** Gera um segredo novo. O MFA só liga depois de [confirmarMfa]. */
+    suspend fun iniciarMfa(): Resultado<ConfiguracaoMfa>
+
+    /** Liga o MFA e devolve os códigos de recuperação, que a API mostra uma única vez. */
+    suspend fun confirmarMfa(codigo: String): Resultado<List<String>>
+
+    suspend fun desativarMfa(senha: String, codigo: String): Resultado<Unit>
 
     suspend fun sair()
 

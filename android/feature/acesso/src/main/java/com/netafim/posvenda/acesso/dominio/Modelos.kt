@@ -30,6 +30,20 @@ data class Organizacao(
     val nome: String,
 )
 
+/** Resultado do primeiro passo do login: entrou, ou falta o código do segundo fator (MFA). */
+sealed interface ResultadoEntrada {
+    data class Entrou(val usuario: Usuario) : ResultadoEntrada
+
+    /** Senha correta, mas a conta tem MFA: [desafio] vale 5 minutos e vai junto com o código. */
+    data class ExigeSegundoFator(val desafio: String) : ResultadoEntrada
+}
+
+/** Situação do MFA (TOTP) da conta logada. */
+data class EstadoMfa(val ativo: Boolean, val codigosRecuperacaoRestantes: Int)
+
+/** Segredo novo, ainda não confirmado: a pessoa o cadastra no aplicativo autenticador. */
+data class ConfiguracaoMfa(val segredo: String, val otpauthUri: String)
+
 /** Sessão local: tokens e o usuário dono deles. */
 data class Sessao(
     val accessToken: String,

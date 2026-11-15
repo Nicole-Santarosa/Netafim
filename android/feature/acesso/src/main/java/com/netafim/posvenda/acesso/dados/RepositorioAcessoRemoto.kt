@@ -1,9 +1,12 @@
 package com.netafim.posvenda.acesso.dados
 
+import com.netafim.posvenda.acesso.dominio.ConfiguracaoMfa
 import com.netafim.posvenda.acesso.dominio.DadosCadastro
 import com.netafim.posvenda.acesso.dominio.ErroAcesso
+import com.netafim.posvenda.acesso.dominio.EstadoMfa
 import com.netafim.posvenda.acesso.dominio.RepositorioAcesso
 import com.netafim.posvenda.acesso.dominio.Resultado
+import com.netafim.posvenda.acesso.dominio.ResultadoEntrada
 import com.netafim.posvenda.acesso.dominio.Sessao
 import com.netafim.posvenda.acesso.dominio.Usuario
 import kotlin.coroutines.cancellation.CancellationException
@@ -48,9 +51,9 @@ class RepositorioAcessoRemoto(
         return Sessao(guardada.accessToken, guardada.refreshToken, usuario).also { _sessao.value = it }
     }
 
-    override suspend fun entrar(email: String, senha: String): Resultado<Usuario> =
+    override suspend fun entrar(email: String, senha: String): Resultado<ResultadoEntrada> =
         executar {
-            val tokens = try {
+            val resposta = try {
                 apiPublica.login(requisicaoLogin(email, senha))
             } catch (erro: HttpException) {
                 // Outro usuário já registrou este identificador: gera outro e tenta de novo.
@@ -58,8 +61,33 @@ class RepositorioAcessoRemoto(
                 armazenamento.novoIdDispositivo()
                 apiPublica.login(requisicaoLogin(email, senha))
             }
-            guardar(tokens).usuario
+            if (resposta.mfaNecessario) {
+                ResultadoEntrada.ExigeSegundoFator(checkNotNull(resposta.desafio) { "sem desafio" })
+            } else {
+                ResultadoEntrada.Entrou(guardar(resposta.paraTokens()).usuario)
+            }
         }
+
+    override suspend fun concluirLoginMfa(desafio: String, codigo: String): Resultado<Usuario> =
+        executar {
+            guardar(apiPublica.mfaVerificar(MfaVerificarRequisicao(desafio, codigo.trim()))).usuario
+        }
+
+    override suspend fun estadoMfa(): Resultado<EstadoMfa> = executar {
+        apiAutenticada.mfaEstado().let { EstadoMfa(it.ativo, it.codigosRecuperacaoRestantes) }
+    }
+
+    override suspend fun iniciarMfa(): Resultado<ConfiguracaoMfa> = executar {
+        apiAutenticada.mfaIniciar().let { ConfiguracaoMfa(it.segredo, it.otpauthUri) }
+    }
+
+    override suspend fun confirmarMfa(codigo: String): Resultado<List<String>> = executar {
+        apiAutenticada.mfaConfirmar(MfaCodigoRequisicao(codigo.trim())).codigosRecuperacao
+    }
+
+    override suspend fun desativarMfa(senha: String, codigo: String): Resultado<Unit> = executar {
+        apiAutenticada.mfaDesativar(MfaDesativarRequisicao(senha, codigo.trim()))
+    }
 
     private suspend fun requisicaoLogin(email: String, senha: String) = LoginRequisicao(
         email = email.trim(),

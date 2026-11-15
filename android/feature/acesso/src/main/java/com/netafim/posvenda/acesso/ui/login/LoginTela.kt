@@ -53,6 +53,9 @@ fun LoginRota(
         aoEntrar = viewModel::entrar,
         aoSolicitarAcesso = aoSolicitarAcesso,
         aoEsquecerSenha = aoEsquecerSenha,
+        aoMudarCodigo = viewModel::aoMudarCodigo,
+        aoConfirmarCodigo = viewModel::confirmarCodigo,
+        aoVoltarParaSenha = viewModel::voltarParaSenha,
     )
 }
 
@@ -65,7 +68,14 @@ fun LoginTela(
     aoEntrar: () -> Unit,
     aoSolicitarAcesso: () -> Unit,
     aoEsquecerSenha: () -> Unit,
+    aoMudarCodigo: (String) -> Unit = {},
+    aoConfirmarCodigo: () -> Unit = {},
+    aoVoltarParaSenha: () -> Unit = {},
 ) {
+    if (estado.pedindoCodigo) {
+        SegundoFatorTela(estado, aoMudarCodigo, aoConfirmarCodigo, aoVoltarParaSenha)
+        return
+    }
     Scaffold { margens ->
         Column(
             modifier = Modifier

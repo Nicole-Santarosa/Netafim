@@ -15,6 +15,32 @@
     <string name="acesso_mostrar_senha">Mostrar senha</string>
     <string name="acesso_ocultar_senha">Ocultar senha</string>
 
+    <!-- Verificação em duas etapas (MFA) -->
+    <string name="acesso_mfa_login_titulo">Verificação em duas etapas</string>
+    <string name="acesso_mfa_login_explicacao">Abra o aplicativo autenticador e informe o código de 6 dígitos da sua conta Netafim.</string>
+    <string name="acesso_mfa_codigo">Código</string>
+    <string name="acesso_mfa_codigo_dica">Ou use um código de recuperação.</string>
+    <string name="acesso_mfa_verificar">Verificar</string>
+    <string name="acesso_mfa_titulo">Verificação em duas etapas</string>
+    <string name="acesso_mfa_ativa">Ativa. Restam %1$d códigos de recuperação.</string>
+    <string name="acesso_mfa_inativa">Desativada. Ative para exigir um código do aplicativo autenticador ao entrar.</string>
+    <string name="acesso_mfa_ativar">Ativar</string>
+    <string name="acesso_mfa_desativar">Desativar</string>
+    <string name="acesso_mfa_ativar_titulo">Ativar verificação em duas etapas</string>
+    <string name="acesso_mfa_ativar_passo1">1. No aplicativo autenticador (Google Authenticator, Microsoft Authenticator, Authy ou 1Password), adicione uma conta pela chave abaixo.</string>
+    <string name="acesso_mfa_chave">Chave de configuração</string>
+    <string name="acesso_mfa_copiar_chave">Copiar chave</string>
+    <string name="acesso_mfa_abrir_app">Abrir no aplicativo autenticador</string>
+    <string name="acesso_mfa_ativar_passo2">2. Informe o código de 6 dígitos que o aplicativo mostrar.</string>
+    <string name="acesso_mfa_confirmar">Confirmar e ativar</string>
+    <string name="acesso_mfa_recuperacao_titulo">Guarde seus códigos de recuperação</string>
+    <string name="acesso_mfa_recuperacao_explicacao">Cada código vale uma vez e entra no lugar do aplicativo se você perder o aparelho. Eles não serão mostrados de novo.</string>
+    <string name="acesso_mfa_copiar_codigos">Copiar códigos</string>
+    <string name="acesso_mfa_guardei">Guardei os códigos</string>
+    <string name="acesso_mfa_desativar_titulo">Desativar verificação em duas etapas</string>
+    <string name="acesso_mfa_desativar_explicacao">Por segurança, informe a sua senha e um código do aplicativo (ou de recuperação).</string>
+    <string name="acesso_mfa_sem_app">Nenhum aplicativo autenticador encontrado. Digite a chave nele manualmente.</string>
+
     <!-- Cadastro -->
     <string name="acesso_cadastro_titulo">Solicitar acesso</string>
     <string name="acesso_cadastro_explicacao">Preencha seus dados. A Netafim vai validar o cadastro e definir o seu perfil de acesso. Você receberá um e-mail quando o acesso for liberado.</string>

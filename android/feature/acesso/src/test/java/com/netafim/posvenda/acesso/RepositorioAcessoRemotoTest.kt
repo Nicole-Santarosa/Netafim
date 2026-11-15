@@ -8,6 +8,7 @@ import com.netafim.posvenda.acesso.dados.RepositorioAcessoRemoto
 import com.netafim.posvenda.acesso.dominio.DadosCadastro
 import com.netafim.posvenda.acesso.dominio.ErroAcesso
 import com.netafim.posvenda.acesso.dominio.Resultado
+import com.netafim.posvenda.acesso.dominio.ResultadoEntrada
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -74,7 +75,7 @@ class RepositorioAcessoRemotoTest {
         val r = repositorio.entrar(" ana@agroirriga.com.br ", "Irrigacao#2026")
 
         assertTrue(r is Resultado.Sucesso)
-        val usuario = (r as Resultado.Sucesso).valor
+        val usuario = ((r as Resultado.Sucesso).valor as ResultadoEntrada.Entrou).usuario
         assertEquals("Distribuidor Admin", usuario.perfil?.nome)
         assertTrue(usuario.temPermissao("vincular_tecnico"))
         assertEquals("acc-1", repositorio.sessao.value?.accessToken)

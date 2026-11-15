@@ -34,6 +34,56 @@ data class TokensResposta(
     val usuario: UsuarioDto,
 )
 
+/**
+ * Resposta do login: tokens e usuário, ou (conta com MFA) só o desafio. Os campos de sessão são
+ * opcionais porque a API devolve um formato ou o outro.
+ */
+@Serializable
+data class LoginResposta(
+    @SerialName("mfa_necessario") val mfaNecessario: Boolean = false,
+    val desafio: String? = null,
+    val access: String? = null,
+    val refresh: String? = null,
+    @SerialName("access_expira_em") val accessExpiraEm: String? = null,
+    @SerialName("refresh_expira_em") val refreshExpiraEm: String? = null,
+    val usuario: UsuarioDto? = null,
+) {
+    /** Falha com [IllegalStateException] (erro inesperado) se a API não mandou a sessão. */
+    fun paraTokens() = TokensResposta(
+        access = checkNotNull(access) { "login sem access" },
+        refresh = checkNotNull(refresh) { "login sem refresh" },
+        accessExpiraEm = accessExpiraEm.orEmpty(),
+        refreshExpiraEm = refreshExpiraEm.orEmpty(),
+        usuario = checkNotNull(usuario) { "login sem usuario" },
+    )
+}
+
+@Serializable
+data class MfaVerificarRequisicao(val desafio: String, val codigo: String)
+
+@Serializable
+data class MfaCodigoRequisicao(val codigo: String)
+
+@Serializable
+data class MfaDesativarRequisicao(val senha: String, val codigo: String)
+
+@Serializable
+data class MfaEstadoResposta(
+    val ativo: Boolean,
+    @SerialName("codigos_recuperacao_restantes") val codigosRecuperacaoRestantes: Int = 0,
+)
+
+@Serializable
+data class MfaIniciadoResposta(
+    val segredo: String,
+    @SerialName("otpauth_uri") val otpauthUri: String,
+)
+
+@Serializable
+data class MfaConfirmadoResposta(
+    @SerialName("codigos_recuperacao") val codigosRecuperacao: List<String>,
+)
+
 @Serializable
 data class UsuarioDto(
     @SerialName("id_usuario") val idUsuario: Int,

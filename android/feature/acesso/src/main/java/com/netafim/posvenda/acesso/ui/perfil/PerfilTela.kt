@@ -50,8 +50,14 @@ import com.netafim.posvenda.acesso.dominio.Perfil
 import com.netafim.posvenda.acesso.dominio.Usuario
 
 @Composable
-fun PerfilRota(viewModel: PerfilViewModel, aoVoltar: (() -> Unit)?, aoSair: () -> Unit) {
+fun PerfilRota(
+    viewModel: PerfilViewModel,
+    mfaViewModel: MfaViewModel,
+    aoVoltar: (() -> Unit)?,
+    aoSair: () -> Unit,
+) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
+    val mfa by mfaViewModel.estado.collectAsStateWithLifecycle()
     LaunchedEffect(estado.saiu) {
         if (estado.saiu) aoSair()
     }
@@ -60,6 +66,15 @@ fun PerfilRota(viewModel: PerfilViewModel, aoVoltar: (() -> Unit)?, aoSair: () -
         aoAtualizar = viewModel::atualizar,
         aoSair = viewModel::sair,
         aoVoltar = aoVoltar,
+        mfa = mfa,
+        aoAtivarMfa = mfaViewModel::comecarAtivacao,
+        aoDesativarMfa = mfaViewModel::comecarDesativacao,
+        aoMudarCodigoMfa = mfaViewModel::aoMudarCodigo,
+        aoMudarSenhaMfa = mfaViewModel::aoMudarSenha,
+        aoAlternarSenhaMfa = mfaViewModel::alternarVisibilidadeSenha,
+        aoConfirmarAtivacaoMfa = mfaViewModel::confirmarAtivacao,
+        aoConfirmarDesativacaoMfa = mfaViewModel::confirmarDesativacao,
+        aoFecharMfa = mfaViewModel::fechar,
     )
 }
 
@@ -70,6 +85,15 @@ fun PerfilTela(
     aoAtualizar: () -> Unit,
     aoSair: () -> Unit,
     aoVoltar: (() -> Unit)?,
+    mfa: MfaEstadoTela = MfaEstadoTela(),
+    aoAtivarMfa: () -> Unit = {},
+    aoDesativarMfa: () -> Unit = {},
+    aoMudarCodigoMfa: (String) -> Unit = {},
+    aoMudarSenhaMfa: (String) -> Unit = {},
+    aoAlternarSenhaMfa: () -> Unit = {},
+    aoConfirmarAtivacaoMfa: () -> Unit = {},
+    aoConfirmarDesativacaoMfa: () -> Unit = {},
+    aoFecharMfa: () -> Unit = {},
 ) {
     var confirmarSaida by rememberSaveable { mutableStateOf(false) }
     Scaffold(
@@ -122,6 +146,17 @@ fun PerfilTela(
                         Item(stringResource(R.string.acesso_perfil_situacao), rotuloSituacao(usuario.situacao))
                     }
                 }
+                MfaCartao(
+                    estado = mfa,
+                    aoAtivar = aoAtivarMfa,
+                    aoDesativar = aoDesativarMfa,
+                    aoMudarCodigo = aoMudarCodigoMfa,
+                    aoMudarSenha = aoMudarSenhaMfa,
+                    aoAlternarSenha = aoAlternarSenhaMfa,
+                    aoConfirmarAtivacao = aoConfirmarAtivacaoMfa,
+                    aoConfirmarDesativacao = aoConfirmarDesativacaoMfa,
+                    aoFechar = aoFecharMfa,
+                )
                 Permissoes(usuario.permissoes)
                 Spacer(Modifier.size(8.dp))
                 OutlinedButton(onClick = { confirmarSaida = true }, modifier = Modifier.fillMaxWidth()) {
