@@ -3,6 +3,7 @@ package com.netafim.posvenda.acesso.dados
 import com.netafim.posvenda.acesso.dominio.Resultado
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 
 /** Lê uma lista paginada do DRF (PageNumberPagination) até a última página. */
 internal suspend inline fun <T> todasAsPaginas(buscar: (Int) -> PaginaDto<T>): List<T> {
@@ -24,3 +25,10 @@ internal suspend inline fun <T> executarApi(json: Json, bloco: () -> T): Resulta
 } catch (erro: Exception) {
     Resultado.Falha(ErrosHttp.mapear(erro, json))
 }
+
+private val JSON_LEGIVEL = Json { prettyPrint = true }
+
+/** Reformata um JSON para leitura; se o texto não for JSON, devolve como veio (não esconde a cópia da pessoa). */
+internal fun jsonLegivel(bruto: String, json: Json): String =
+    runCatching { JSON_LEGIVEL.encodeToString(JsonElement.serializer(), json.parseToJsonElement(bruto)) }.getOrDefault(bruto)
+

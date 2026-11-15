@@ -223,4 +223,55 @@
     <string name="privacidade_tipo_portabilidade">Levar os meus dados para outro serviço</string>
     <string name="privacidade_tipo_compartilhamento">Saber com quem os meus dados são compartilhados</string>
     <string name="privacidade_tipo_revogacao_consentimento">Retirar o meu consentimento</string>
+
+    <!-- Fila de pedidos de privacidade (Netafim Admin) -->
+    <string name="fila_titulo">Pedidos de privacidade</string>
+    <string name="fila_explicacao">Pedidos dos titulares sobre os dados pessoais (LGPD). Os mais próximos do prazo aparecem primeiro.</string>
+    <plurals name="fila_atrasados">
+        <item quantity="one">%d pedido fora do prazo</item>
+        <item quantity="other">%d pedidos fora do prazo</item>
+    </plurals>
+    <string name="fila_filtro_abertos">Abertos</string>
+    <string name="fila_filtro_atendidos">Atendidos</string>
+    <string name="fila_filtro_negados">Negados</string>
+    <string name="fila_filtro_todos">Todos</string>
+    <string name="fila_vazio">Nenhum pedido nesta lista.</string>
+    <string name="fila_atrasado">Fora do prazo</string>
+    <string name="fila_titular_anonimizado">Titular anonimizado</string>
+    <string name="fila_detalhe_titulo">Pedido de privacidade</string>
+    <string name="fila_erro_carregar">Não foi possível abrir o pedido.</string>
+    <string name="fila_dado_titular">Titular</string>
+    <string name="fila_dado_email">E-mail de contato</string>
+    <string name="fila_dado_pedido">Pedido</string>
+    <string name="fila_dado_situacao">Situação</string>
+    <string name="fila_dado_pedido_em">Pedido em</string>
+    <string name="fila_dado_prazo">Prazo</string>
+    <string name="fila_dado_concluido_em">Concluído em</string>
+    <string name="fila_dado_observacao">Observação do titular</string>
+    <string name="fila_dado_motivo">Motivo da negativa</string>
+    <string name="fila_acao_analisar">Marcar em análise</string>
+    <string name="fila_acao_atender">Atender pedido</string>
+    <string name="fila_acao_negar">Negar pedido</string>
+    <string name="fila_acao_dados">Baixar dados do titular</string>
+    <string name="fila_dados_aviso">A cópia traz os dados que o módulo de acesso guarda do titular. Relatórios e evidências dos atendimentos não fazem parte dela.</string>
+    <string name="fila_sem_acoes">Este pedido já foi concluído.</string>
+    <string name="fila_aviso_analise">Pedido em análise.</string>
+    <string name="fila_aviso_atendido">Pedido atendido.</string>
+    <string name="fila_aviso_negado">Pedido negado.</string>
+    <string name="fila_atender_titulo">Atender este pedido?</string>
+    <string name="fila_atender_texto">O pedido será marcado como atendido e o titular verá a resposta.</string>
+    <string name="fila_atender_texto_anonimiza">Atender anonimiza a conta do titular: nome, e-mail e telefone são descaracterizados, a conta é desativada, os aparelhos e as sessões são encerrados e a pessoa deixa de entrar. Não há como desfazer. O histórico legal dos atendimentos é mantido.</string>
+    <string name="fila_atender_confirmar">Sim, atender</string>
+    <string name="fila_negar_titulo">Negar o pedido</string>
+    <string name="fila_negar_texto">Escreva o motivo. É o que o titular vai ler.</string>
+    <string name="fila_negar_motivo">Motivo</string>
+    <string name="fila_negar_confirmar">Negar pedido</string>
+    <string name="fila_tipo_confirmacao">Confirmação de tratamento</string>
+    <string name="fila_tipo_acesso">Acesso aos dados</string>
+    <string name="fila_tipo_correcao">Correção de dados</string>
+    <string name="fila_tipo_anonimizacao">Anonimização</string>
+    <string name="fila_tipo_eliminacao">Eliminação</string>
+    <string name="fila_tipo_portabilidade">Portabilidade</string>
+    <string name="fila_tipo_compartilhamento">Informação de compartilhamento</string>
+    <string name="fila_tipo_revogacao_consentimento">Revogação de consentimento</string>
 </resources>

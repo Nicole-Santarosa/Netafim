@@ -21,6 +21,19 @@ internal fun textoDoTipo(tipo: TipoPedido): Int = when (tipo) {
     TipoPedido.REVOGACAO_CONSENTIMENTO -> R.string.privacidade_tipo_revogacao_consentimento
 }
 
+/** Nome neutro do tipo, para quem atende o pedido (o texto do titular está em primeira pessoa). */
+@StringRes
+internal fun textoDoTipoParaAdmin(tipo: TipoPedido): Int = when (tipo) {
+    TipoPedido.CONFIRMACAO -> R.string.fila_tipo_confirmacao
+    TipoPedido.ACESSO -> R.string.fila_tipo_acesso
+    TipoPedido.CORRECAO -> R.string.fila_tipo_correcao
+    TipoPedido.ANONIMIZACAO -> R.string.fila_tipo_anonimizacao
+    TipoPedido.ELIMINACAO -> R.string.fila_tipo_eliminacao
+    TipoPedido.PORTABILIDADE -> R.string.fila_tipo_portabilidade
+    TipoPedido.COMPARTILHAMENTO -> R.string.fila_tipo_compartilhamento
+    TipoPedido.REVOGACAO_CONSENTIMENTO -> R.string.fila_tipo_revogacao_consentimento
+}
+
 /** Texto do andamento do pedido; um status que o app não conhece volta como nulo (a tela mostra o código). */
 @StringRes
 internal fun textoDoStatus(status: String): Int? = when (status) {

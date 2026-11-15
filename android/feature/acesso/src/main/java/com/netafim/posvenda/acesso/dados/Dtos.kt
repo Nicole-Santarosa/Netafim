@@ -244,3 +244,25 @@ data class PedidoTitularDto(
 /** Corpo de `POST me/solicitacoes-lgpd`; a observação é opcional (a API não aceita nulo, por isso sai omitida). */
 @Serializable
 data class PedidoNovoRequisicao(val tipo: String, val observacao: String? = null)
+
+/** Item de `GET solicitacoes-lgpd` e resposta de analisar, atender e negar (Netafim Admin). */
+@Serializable
+data class PedidoAdminDto(
+    @SerialName("id_solicitacao") val idSolicitacao: Int,
+    @SerialName("id_usuario") val idUsuario: Int? = null,
+    @SerialName("nome_titular") val nomeTitular: String? = null,
+    @SerialName("email_contato") val emailContato: String = "",
+    val tipo: String,
+    val status: String,
+    val observacao: String? = null,
+    @SerialName("data_solicitacao") val dataSolicitacao: String,
+    @SerialName("data_prazo") val dataPrazo: String,
+    @SerialName("data_conclusao") val dataConclusao: String? = null,
+    @SerialName("id_responsavel") val idResponsavel: Int? = null,
+    @SerialName("justificativa_negativa") val justificativaNegativa: String? = null,
+    val atrasada: Boolean = false,
+)
+
+@Serializable
+data class NegarPedidoRequisicao(val justificativa: String)
+

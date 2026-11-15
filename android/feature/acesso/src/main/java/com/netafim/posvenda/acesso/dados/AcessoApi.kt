@@ -69,6 +69,23 @@ interface AcessoApi {
     @GET("me/dados")
     suspend fun meusDados(): ResponseBody
 
+    // ---- Fila de pedidos de titulares (Netafim Admin)
+
+    @GET("solicitacoes-lgpd")
+    suspend fun filaLgpd(): List<PedidoAdminDto>
+
+    @POST("solicitacoes-lgpd/{id}/analisar")
+    suspend fun analisarPedido(@Path("id") id: Int): PedidoAdminDto
+
+    @POST("solicitacoes-lgpd/{id}/atender")
+    suspend fun atenderPedido(@Path("id") id: Int): PedidoAdminDto
+
+    @POST("solicitacoes-lgpd/{id}/negar")
+    suspend fun negarPedido(@Path("id") id: Int, @Body corpo: NegarPedidoRequisicao): PedidoAdminDto
+
+    @GET("solicitacoes-lgpd/{id}/dados")
+    suspend fun dadosDoTitular(@Path("id") id: Int): ResponseBody
+
     // ---- Cadastros pendentes (Netafim Admin; permissão aprovar_cadastro)
 
     @GET("usuarios")

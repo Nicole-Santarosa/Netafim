@@ -32,6 +32,8 @@ Telas com quadro no Figma (arquivo "Netafim", seção Acesso): Login (quadro "HD
 | Trocar senha | `acesso/perfil/senha` | Todos | Meu perfil | `POST me/senha` |
 | **Privacidade** | `acesso/privacidade` | Todos | Meu perfil, "Privacidade e meus dados" | `GET me/solicitacoes-lgpd`, `GET me/dados` |
 | **Fazer um pedido** | `acesso/privacidade/novo` | Todos | Privacidade, "Fazer um pedido" | `POST me/solicitacoes-lgpd` |
+| **Pedidos de privacidade (fila)** | `acesso/privacidade/fila` | Netafim Admin | Início, "Pedidos de privacidade" | `GET solicitacoes-lgpd` |
+| **Pedido de privacidade (detalhe)** | `acesso/privacidade/fila/{id}` | Netafim Admin | Fila, cartão do pedido | `POST solicitacoes-lgpd/{id}/analisar`, `/atender`, `/negar`, `GET solicitacoes-lgpd/{id}/dados` |
 | Aprovação de cadastro | `acesso/aprovacao` | Permissão `aprovar_cadastro` | Início | `GET usuarios`, `POST usuarios/{id}/aprovar` e `recusar`, `GET distribuidores`, `GET clientes`, `GET perfis` |
 | Gestão de usuários | `acesso/usuarios` | Admins | Início | `GET usuarios` |
 | Novo usuário | `acesso/usuarios/novo` | Admin de distribuidor e de cliente | Gestão, "Adicionar usuário" | `POST usuarios` |
@@ -49,9 +51,17 @@ O Início (`InicioTela`) pertence ao módulo `app`; ele mostra os atalhos confor
 - **Fazer um pedido:** oito tipos em linguagem simples (confirmar tratamento, receber cópia, corrigir, anonimizar, excluir, levar para outro serviço, saber com quem é compartilhado, retirar consentimento) e uma observação opcional (até 1000 caracteres, enviada sem espaços nas pontas e omitida se vazia).
 - **Anonimizar e excluir** pedem uma **confirmação reforçada**: se o pedido for atendido, a conta é anonimizada, a pessoa perde o acesso e não há como desfazer; os registros legais dos atendimentos continuam guardados. Só depois de confirmar o pedido segue para a API.
 - Erros tratados: `409 solicitacao_em_aberto` (já existe um pedido igual em andamento, aparece no campo do tipo), `503 lgpd_indisponivel` (servidor sem a migração 010), campos inválidos e falta de rede.
-- Quem **atende** os pedidos é o Netafim Admin (rotas `solicitacoes-lgpd`); **essa fila ainda não tem tela no aplicativo** (ver "O que ainda não existe").
+- Quem **atende** os pedidos é o Netafim Admin, pela fila da seção 2.2.
 
-### 2.2 Regras de gestão de usuários (`acoesPermitidas`)
+### 2.2 Fila de pedidos de privacidade (Netafim Admin)
+
+- **Lista:** todos os pedidos, na ordem de prazo da API, com filtros **Abertos** (recebido e em análise, o padrão), **Atendidos**, **Negados** e **Todos** (o filtro é feito no aparelho). Cada cartão mostra o titular (ou "Titular anonimizado"), o tipo, a situação e o prazo (ou a data de conclusão); pedido fora do prazo (`atrasada`, calculado pela API) fica com borda e texto em vermelho e há um aviso com a contagem no alto da lista.
+- **Detalhe:** titular, e-mail de contato, tipo, situação, datas, observação do titular e motivo da negativa. A API não tem rota de um pedido só: o pedido vem da lista e, depois de cada ação, da resposta da ação.
+- **Ações** (`acoesDoPedido`, a API continua decidindo): **Marcar em análise** (só pedido recebido); **Atender** (pedido aberto, com confirmação); **Negar** (pedido aberto, com o **motivo obrigatório**, de até 2000 caracteres, que é o que o titular lê); **Baixar dados do titular** (só `acesso` e `portabilidade`, de pedido não negado e de titular que ainda tem conta). Pedido concluído não muda.
+- **Atender anonimização ou eliminação** anonimiza a conta do titular de verdade (nome, e-mail e telefone descaracterizados, conta desativada, aparelhos e sessões encerrados, sem volta; o histórico legal dos atendimentos fica). O diálogo avisa isso. **Separação de funções:** o administrador não vê o botão Atender no próprio pedido desses tipos (a API também recusa com `403 proprio_pedido`); outro administrador precisa atendê-lo, e o dono do pedido ainda pode negar.
+- **Cópia dos dados do titular:** mesma entrega da seção 2.1 (folha de compartilhar, sem gravar no aparelho). Exige a rota `GET solicitacoes-lgpd/{id}/dados`, que está na branch `feat/exportacao-atendimentos` do back-end: **uma API sem ela responde 404 e o app mostra a mensagem genérica de erro**.
+
+### 2.3 Regras de gestão de usuários (`acoesPermitidas`)
 
 A tela de detalhe só mostra os botões que a API aceitaria (a API continua decidindo; qualquer recusa vira mensagem):
 
@@ -60,7 +70,7 @@ A tela de detalhe só mostra os botões que a API aceitaria (a API continua deci
 - o **admin de distribuidor ou de cliente** gerencia só usuários de nível Usuário da própria organização;
 - **reenviar convite** só para pendente; **ativar** só para inativo (ou bloqueado, para o Netafim Admin); **desativar** só para ativo; desativar e excluir pedem confirmação.
 
-### 2.3 Permissões por perfil (RF20)
+### 2.4 Permissões por perfil (RF20)
 
 `aprovar_cadastro` e `definir_perfil` ficam **travadas** no Netafim Admin (a API também recusa com `permissao_essencial`). A mudança vale já na próxima requisição de cada pessoa com o perfil; o app atualiza o perfil de quem está logado.
 
@@ -104,7 +114,7 @@ Com o JDK 21 em `JAVA_HOME`, dentro de `android/`:
 
 (`10.0.2.2:8000` é o padrão do projeto e só serve para emulador.) Para ver no aparelho por USB: subir a API do back-end (`manage.py runserver 0.0.0.0:8010`), `adb reverse tcp:8010 tcp:8010` e instalar `app/build/outputs/apk/debug/app-debug.apk`. **Cuidado:** a API local, quando aponta para o Supabase, usa o banco real; contas de teste `e2e.*` devem ser apagadas ao fim (SQL de limpeza fora do repositório).
 
-**Testes unitários do módulo: 193, sem falhas** (JUnit, `kotlinx-coroutines-test`, `MockWebServer`). Cobrem ViewModels (login, cadastro, MFA, trocar senha, aprovação, usuários, detalhe, edição, permissões, privacidade), regras de domínio (`acoesPermitidas`, permissões essenciais, tipos de pedido) e o contrato com a API (rotas, métodos, corpos, erros).
+**Testes unitários do módulo: 223, sem falhas** (JUnit, `kotlinx-coroutines-test`, `MockWebServer`). Cobrem ViewModels (login, cadastro, MFA, trocar senha, aprovação, usuários, detalhe, edição, permissões, privacidade, fila de pedidos), regras de domínio (`acoesPermitidas`, `acoesDoPedido`, permissões essenciais, tipos de pedido) e o contrato com a API (rotas, métodos, corpos, erros).
 
 ### Verificação no aparelho
 
@@ -113,19 +123,19 @@ Com o JDK 21 em `JAVA_HOME`, dentro de `android/`:
 | Login, recuperar senha, cadastro, aguardando, aprovação, gestão de usuários, perfil, início | Samsung (celular) e Galaxy Tab S9 FE | Conferidas contra o Figma |
 | Detalhe do usuário, editar usuário, permissões por perfil (lista e editor), trocar senha (validação e erro da API) | Samsung SM-S938B, 15/11/2026 | Conferidas |
 | **Privacidade, fazer um pedido** | Galaxy Tab S9 FE (SM-X510), 15/11/2026, API local → Supabase | Conferidas: lista de pedidos, cópia dos dados pela folha de compartilhar, validação sem tipo, confirmação reforçada (cancelada), pedido comum criado e listado com prazo, recusa de pedido repetido |
+| **Fila de pedidos e detalhe (Netafim Admin)** | Galaxy Tab S9 FE (SM-X510), 15/11/2026, API local → Supabase | Conferidas com um pedido de cada tipo criado pela conta de cliente: lista e filtros, marcar em análise, atender (com confirmação), cópia dos dados do titular, negar sem motivo (validação) e com motivo, diálogo de atender anonimização (cancelado), e o titular vendo "Atendido" e os motivos das negativas em Meus pedidos. **Não testado no aparelho:** atender de fato uma anonimização (irreversível; só testes automatizados) e o aviso de pedido fora do prazo |
 | Código do MFA no login, novo usuário, trocar senha com sucesso, salvar permissões | — | **Não vistas no aparelho** (testadas só por testes automatizados) |
 
 ---
 
 ## 5. Branches e ordem de merge
 
-Empilhadas (cada uma depende da anterior): `pr/04` → `pr/06-android-mfa` → `feat/acesso-telas-v2` → `feat/acesso-layout-figma` → `feat/acesso-trocar-senha` → `feat/acesso-detalhe-usuario` → `feat/acesso-editar-usuario` → `feat/acesso-permissoes-perfil` → `feat/acesso-privacidade-titular`. Textos prontos dos PRs: `01_Gestao_do_Projeto/Textos_dos_PRs.md`.
+Empilhadas (cada uma depende da anterior): `pr/04` → `pr/06-android-mfa` → `feat/acesso-telas-v2` → `feat/acesso-layout-figma` → `feat/acesso-trocar-senha` → `feat/acesso-detalhe-usuario` → `feat/acesso-editar-usuario` → `feat/acesso-permissoes-perfil` → `feat/acesso-privacidade-titular` → `feat/acesso-fila-privacidade`. Textos prontos dos PRs: `01_Gestao_do_Projeto/Textos_dos_PRs.md`.
 
 ---
 
 ## 6. O que ainda não existe
 
-- **Fila de pedidos de LGPD para o Netafim Admin** (analisar, atender, negar, exportar dados do titular): a API existe (`solicitacoes-lgpd`), falta a tela.
 - Fotos de perfil ficam só no aparelho (a API ainda não tem onde receber a foto).
 - Aviso por e-mail ao titular quando o pedido é concluído (depende do SMTP do servidor).
 - Confirmação do prazo de 15 dias com o jurídico (o servidor usa 15 dias; o app só mostra o prazo que vem da API).
