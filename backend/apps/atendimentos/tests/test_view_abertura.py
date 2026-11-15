@@ -27,12 +27,19 @@ def cliente_autenticado(id_usuario):
 
 
 def corpo_valido(mundo, **extras):
-    """Corpo mínimo de um pedido de cliente final, com UUID novo."""
+    """Corpo mínimo de um pedido de cliente final, com UUID novo. Traz os
+    campos que o formulário exige nessa origem (distribuidor, cidade, fazenda e
+    uma cultura). A cultura é lida do banco, então quem chama precisa ter feito
+    o entrar_como antes."""
     corpo = {
         "id_atendimento": str(uuid.uuid4()),
         "origem": "cliente_final",
         "motivo": "pos_venda",
         "id_cliente": mundo["id_cliente"],
+        "id_distribuidor_origem": mundo["id_distribuidor"],
+        "cidade": "Ribeirão Preto",
+        "nome_fazenda_informado": "Fazenda Santa Rita",
+        "culturas": [duas_culturas_ativas()[0][0]],
         "contato_solicitante": "11999990000",
     }
     corpo.update(extras)
@@ -81,9 +88,7 @@ def test_id_solicitante_forjado_no_corpo_e_ignorado(mundo, entrar_como):
     entrar_como(mundo["id_usuario_cliente"])
     corpo = corpo_valido(mundo, id_solicitante=mundo["id_usuario_cliente"] + 1)
 
-    resposta = cliente_autenticado(mundo["id_usuario_cliente"]).post(
-        URL, corpo, format="json"
-    )
+    resposta = cliente_autenticado(mundo["id_usuario_cliente"]).post(URL, corpo, format="json")
 
     assert resposta.status_code == 201
     atendimento = Atendimento.objects.get(id_atendimento=corpo["id_atendimento"])
@@ -133,9 +138,7 @@ def test_distribuidor_de_origem_inexistente_devolve_422(mundo, entrar_como):
     # estrangeira e o tradutor responde 422.
     corpo = corpo_valido(mundo, id_distribuidor_origem=2_000_000_000)
 
-    resposta = cliente_autenticado(mundo["id_usuario_cliente"]).post(
-        URL, corpo, format="json"
-    )
+    resposta = cliente_autenticado(mundo["id_usuario_cliente"]).post(URL, corpo, format="json")
 
     assert resposta.status_code == 422
     assert resposta.data["codigo"] == "referencia_invalida"
@@ -210,24 +213,31 @@ def test_cultura_inexistente_ou_excluida_devolve_400_no_campo_culturas(
 
 
 @pytest.mark.django_db
-def test_abertura_sem_culturas_continua_igual(mundo, entrar_como):
+def test_abertura_com_uma_cultura_devolve_a_resposta_de_sempre(mundo, entrar_como):
+    # Antes este teste abria sem cultura. Agora a cultura é obrigatória (o caso
+    # sem cultura está em test_abertura_obrigatorios.py), então ele confere que,
+    # com uma cultura só, a resposta segue com os mesmos campos e grava um vínculo.
     entrar_como(mundo["id_usuario_cliente"])
     cliente = cliente_autenticado(mundo["id_usuario_cliente"])
     corpo = corpo_valido(mundo)
 
     resposta = cliente.post(URL, corpo, format="json")
 
-    # Mesma resposta de antes (os campos do AtendimentoCriadoSerializer) e
-    # nenhum vínculo gravado.
+    # Os campos do AtendimentoCriadoSerializer, sem nada a mais.
     assert resposta.status_code == 201
     assert set(resposta.data) == {
-        "id_atendimento", "numero_protocolo", "status", "prioridade",
-        "versao", "sync_seq", "data_abertura",
+        "id_atendimento",
+        "numero_protocolo",
+        "status",
+        "prioridade",
+        "versao",
+        "sync_seq",
+        "data_abertura",
     }
-    assert not AtendimentoCultura.objects.filter(
-        id_atendimento=corpo["id_atendimento"]
-    ).exists()
-    assert cliente.get(f"{URL}/{corpo['id_atendimento']}").data["culturas"] == []
+    assert AtendimentoCultura.objects.filter(id_atendimento=corpo["id_atendimento"]).count() == 1
+    assert [
+        c["id_cultura"] for c in cliente.get(f"{URL}/{corpo['id_atendimento']}").data["culturas"]
+    ] == corpo["culturas"]
 
 
 @pytest.mark.django_db

@@ -30,13 +30,31 @@ from apps.atendimentos.servicos import COLUNAS_ALTERAVEIS
 # Chaves que não estão em fields (status, numero_protocolo, id_solicitante,
 # snapshots etc.) são simplesmente ignoradas pelo DRF e não chegam ao
 # validated_data.
+#
+# Campos obrigatórios por origem, cultura obrigatória e os 5 motivos da
+# abertura vêm do formulário de solicitação da Netafim. Essas regras são só
+# da API, não do banco: deixei os CHECKs como estão e não criei migração. O
+# banco continua aceitando, por exemplo, atendimento sem cidade ou com o
+# motivo programacao_feiras (que o relatório de resolução usa); quem barra na
+# abertura é este serializer.
+
+# Campos que o formulário exige em cada origem, conferidos no validate. Dois
+# deles já eram exigidos também pelos CHECKs do banco: id_cliente no
+# cliente_final e area_setor na netafim. Os outros são só da API.
+OBRIGATORIOS_POR_ORIGEM = {
+    "cliente_final": ("id_cliente", "id_distribuidor_origem", "cidade", "nome_fazenda_informado"),
+    "distribuidor": ("nome_produtor", "cidade"),
+    "netafim": ("area_setor", "nome_produtor", "cidade"),
+}
 
 
 class AberturaAtendimentoSerializer(serializers.ModelSerializer):
-    # Ids das culturas do atendimento. Opcional; lista vazia é o mesmo que não
-    # mandar. A validação de cada id fica em validate_culturas.
+    # Ids das culturas do atendimento. O formulário pede ao menos uma cultura em
+    # todas as origens, então a lista é obrigatória e não pode vir vazia (o
+    # próprio ListField responde 400 no campo culturas nos dois casos). A
+    # validação de cada id fica em validate_culturas.
     culturas = serializers.ListField(
-        child=serializers.IntegerField(), required=False, allow_empty=True
+        child=serializers.IntegerField(), required=True, allow_empty=False
     )
 
     class Meta:
@@ -95,10 +113,8 @@ class AberturaAtendimentoSerializer(serializers.ModelSerializer):
 
     def validate_culturas(self, ids):
         """Recusa ids repetidos e ids de cultura inexistente ou excluída, com o
-        erro apontando o campo culturas."""
-        if not ids:
-            return ids
-
+        erro apontando o campo culturas. Lista ausente ou vazia já foi barrada
+        pelo próprio campo antes de chegar aqui."""
         # Um id repetido violaria a chave composta (atendimento, cultura), e o
         # banco responderia 409, que o aplicativo lê como atendimento
         # duplicado. Por isso a repetição é barrada aqui.
@@ -122,21 +138,37 @@ class AberturaAtendimentoSerializer(serializers.ModelSerializer):
             )
         return ids
 
+    def validate_motivo(self, motivo):
+        # Na abertura só valem 5 motivos: o formulário de solicitação da Netafim
+        # não lista Programação de Feiras, que só existe no relatório de
+        # resolução. Quem garante isso é a API, porque o app não é barreira (dá
+        # para chamar a rota direto). O banco continua aceitando os 6 valores no
+        # CHECK, já que o relatório usa programacao_feiras; por isso a regra
+        # fica aqui e não em migração.
+        if motivo == "programacao_feiras":
+            raise serializers.ValidationError(
+                "programacao_feiras não é motivo de abertura; use um dos outros cinco."
+            )
+        return motivo
+
     def validate(self, dados):
-        """Regras entre campos, iguais aos CHECKs do banco, só para o aplicativo
-        receber o erro apontando o campo. O banco continua sendo a fonte da
-        verdade: se algo passar daqui, ele barra do mesmo jeito.
+        """Campos obrigatórios conforme a origem. Dois deles (id_cliente no
+        cliente final e area_setor na Netafim) espelham CHECKs do banco; os
+        outros são regra do formulário, só da API. Junto todos os que faltam
+        numa resposta só, cada um apontando o campo, para o aplicativo marcar
+        tudo de uma vez.
         """
-        # ck_atend_cliente_final: pedido de cliente final precisa do cliente.
-        if dados.get("origem") == "cliente_final" and dados.get("id_cliente") is None:
-            raise serializers.ValidationError(
-                {"id_cliente": "Obrigatório quando a origem é cliente_final."}
-            )
-        # ck_atend_area_netafim: pedido da Netafim precisa do setor.
-        if dados.get("origem") == "netafim" and not dados.get("area_setor"):
-            raise serializers.ValidationError(
-                {"area_setor": "Obrigatório quando a origem é netafim."}
-            )
+        origem = dados.get("origem")
+        faltando = {}
+        for campo in OBRIGATORIOS_POR_ORIGEM.get(origem, ()):
+            valor = dados.get(campo)
+            # Ausente, nulo ou vazio contam igual. O "só espaços" também cai
+            # aqui: o CharField do DRF já tira os espaços das pontas antes do
+            # validate (trim_whitespace), então "   " chega como "".
+            if valor is None or valor == "":
+                faltando[campo] = f"Obrigatório quando a origem é {origem}."
+        if faltando:
+            raise serializers.ValidationError(faltando)
         return dados
 
 

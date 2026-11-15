@@ -134,8 +134,10 @@ paths:
         '400':
           description: >-
             Campo obrigatório ausente, valor fora da lista, formato inválido, ou
-            regra entre campos (cliente_final sem id_cliente, netafim sem
-            area_setor), texto vazio em situacao_projeto, estado_projeto,
+            regra entre campos (obrigatório da origem ausente, nulo, vazio ou só
+            com espaços, com o erro em cada campo que falta; veja a descrição de
+            AberturaAtendimento), culturas ausente ou vazia, motivo
+            programacao_feiras, texto vazio em situacao_projeto, estado_projeto,
             tipo_venda, tipo_atendimento ou area_setor, ou culturas com id repetido, inexistente ou excluído (erro
             no campo culturas). Também vem como 400 "valor_invalido" quando o banco recusa
             o formato ou o tamanho de um valor.
@@ -403,11 +405,20 @@ components:
       - presencial
     AberturaAtendimento:
       type: object
+      description: >-
+        Obrigatórios por origem, conforme o formulário de solicitação da Netafim
+        (regra da API, não do banco). cliente_final: id_cliente,
+        id_distribuidor_origem, cidade e nome_fazenda_informado. distribuidor:
+        nome_produtor e cidade. netafim: area_setor, nome_produtor e cidade. Em
+        todas as origens, culturas com ao menos um item. Nulo, texto vazio ou só
+        com espaços contam como ausente. Cada campo que falta responde 400 com o
+        erro no próprio campo, todos juntos na mesma resposta.
       required:
       - id_atendimento
       - origem
       - motivo
       - contato_solicitante
+      - culturas
       properties:
         id_atendimento:
           type: string
@@ -416,7 +427,13 @@ components:
         origem:
           $ref: '#/components/schemas/Origem'
         motivo:
-          $ref: '#/components/schemas/Motivo'
+          allOf:
+          - $ref: '#/components/schemas/Motivo'
+          description: >-
+            Na abertura só valem cinco motivos: digital_farming, duvidas,
+            entrega_tecnica, pos_venda e treinamento. programacao_feiras responde
+            400 no campo motivo, porque só existe no relatório de resolução (o
+            schema Motivo é o mesmo da resposta e segue com os seis valores).
         id_cliente:
           type: integer
           nullable: true
@@ -428,19 +445,24 @@ components:
         id_distribuidor_origem:
           type: integer
           nullable: true
-          description: Distribuidor escolhido na tela. Id que não existe responde 422.
+          description: >-
+            Distribuidor escolhido na tela. Obrigatório quando a origem é
+            cliente_final. Id que não existe responde 422.
         nome_produtor:
           type: string
           nullable: true
           maxLength: 150
+          description: Obrigatório quando a origem é distribuidor ou netafim.
         nome_fazenda_informado:
           type: string
           nullable: true
           maxLength: 150
+          description: Obrigatório quando a origem é cliente_final.
         cidade:
           type: string
           nullable: true
           maxLength: 100
+          description: Obrigatório em todas as origens.
         area_setor:
           allOf:
           - $ref: '#/components/schemas/AreaSetor'
@@ -508,9 +530,10 @@ components:
             Relógio do aparelho. Opcional; sem ele o servidor usa a hora atual.
         culturas:
           type: array
+          minItems: 1
           description: >-
-            Ids das culturas do atendimento (opcional; lista vazia é o mesmo que
-            não mandar). Cada id precisa existir e não estar excluído, sem
+            Ids das culturas do atendimento. Obrigatória em todas as origens, com
+            ao menos um item: ausente ou vazia responde 400 no campo. Cada id precisa existir e não estar excluído, sem
             repetição. Os vínculos são gravados na mesma transação do atendimento
             e aparecem no detalhe; a resposta 201 não muda.
           items:

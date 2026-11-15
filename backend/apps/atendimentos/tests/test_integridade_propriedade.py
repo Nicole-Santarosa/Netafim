@@ -36,9 +36,7 @@ def test_propriedade_do_mesmo_cliente_abre(mundo, conexao_admin, entrar_como):
     entrar_como(mundo["id_usuario_cliente"])
     corpo = corpo_valido(mundo, id_propriedade=id_propriedade)
 
-    resposta = cliente_autenticado(mundo["id_usuario_cliente"]).post(
-        URL, corpo, format="json"
-    )
+    resposta = cliente_autenticado(mundo["id_usuario_cliente"]).post(URL, corpo, format="json")
 
     assert resposta.status_code == 201
     atendimento = Atendimento.objects.get(id_atendimento=corpo["id_atendimento"])
@@ -54,9 +52,7 @@ def test_propriedade_de_outro_cliente_e_recusada(mundo, conexao_admin, entrar_co
     entrar_como(mundo["id_usuario_cliente"])
     corpo = corpo_valido(mundo, id_propriedade=id_propriedade_alheia)
 
-    resposta = cliente_autenticado(mundo["id_usuario_cliente"]).post(
-        URL, corpo, format="json"
-    )
+    resposta = cliente_autenticado(mundo["id_usuario_cliente"]).post(URL, corpo, format="json")
 
     assert resposta.status_code == 422
     assert resposta.data["codigo"] == "referencia_invalida"
@@ -93,12 +89,14 @@ def test_cliente_usuario_sem_id_cliente_leva_403_do_rls(mundo, conexao_admin, en
     # por aqui (ele é coberto no teste acima, pela conexão de administrador).
     id_propriedade = criar_propriedade(conexao_admin, mundo["id_cliente"])
     entrar_como(mundo["id_usuario_cliente"])
-    corpo = corpo_valido(mundo, origem="distribuidor", id_propriedade=id_propriedade)
+    # A origem distribuidor exige nome_produtor na validação; sem ele a resposta
+    # seria 400 e o pedido nem chegaria ao RLS.
+    corpo = corpo_valido(
+        mundo, origem="distribuidor", id_propriedade=id_propriedade, nome_produtor="Produtor"
+    )
     del corpo["id_cliente"]
 
-    resposta = cliente_autenticado(mundo["id_usuario_cliente"]).post(
-        URL, corpo, format="json"
-    )
+    resposta = cliente_autenticado(mundo["id_usuario_cliente"]).post(URL, corpo, format="json")
 
     assert resposta.status_code == 403
     assert resposta.data["codigo"] == "sem_permissao"

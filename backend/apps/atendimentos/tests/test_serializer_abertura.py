@@ -2,18 +2,39 @@ import uuid
 
 import pytest
 
+from apps.atendimentos.models import Cultura
 from apps.atendimentos.serializers import AberturaAtendimentoSerializer
 from apps.atendimentos.servicos import COLUNAS_ACEITAS_NA_ABERTURA, abrir_atendimento
 
+# A cultura passou a ser obrigatória, e o validate_culturas consulta o catálogo
+# no banco. Por isso todo teste deste arquivo precisa do banco e de um usuário
+# ativo no contexto (o RLS da tabela cultura só mostra o catálogo para ele).
+pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(autouse=True)
+def usuario_no_contexto(mundo, entrar_como):
+    entrar_como(mundo["id_usuario_cliente"])
+
 
 def dados_minimos(**extras):
-    """Pedido mínimo válido de cliente final (id_cliente fictício: o serializer
-    não consulta o banco). Os extras entram por cima."""
+    """Pedido mínimo válido de cliente final, com os campos que o formulário
+    exige nessa origem. id_cliente e id_distribuidor_origem são fictícios: o
+    serializer não consulta essas tabelas. A cultura é real, porque o
+    serializer confere o catálogo. Os extras entram por cima."""
     dados = {
         "id_atendimento": str(uuid.uuid4()),
         "origem": "cliente_final",
         "motivo": "pos_venda",
         "id_cliente": 1,
+        "id_distribuidor_origem": 1,
+        "cidade": "Ribeirão Preto",
+        "nome_fazenda_informado": "Fazenda Santa Rita",
+        "culturas": [
+            Cultura.objects.filter(deletado_em__isnull=True)
+            .values_list("id_cultura", flat=True)
+            .first()
+        ],
         "contato_solicitante": "11999990000",
     }
     dados.update(extras)
@@ -39,9 +60,7 @@ def test_dados_minimos_validos_vao_direto_para_o_servico(mundo, entrar_como):
     assert atendimento.numero_protocolo.startswith("OS-")
 
 
-@pytest.mark.parametrize(
-    "campo", ["id_atendimento", "origem", "motivo", "contato_solicitante"]
-)
+@pytest.mark.parametrize("campo", ["id_atendimento", "origem", "motivo", "contato_solicitante"])
 def test_falta_de_campo_obrigatorio_gera_erro_no_campo(campo):
     dados = dados_minimos()
     del dados[campo]
