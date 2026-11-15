@@ -133,7 +133,7 @@ Erros de regra de negócio seguem o formato do DRF com um código estável:
 3. **Insomnia:** *Import → From URL* `http://localhost:8000/api/schema/` (ou o arquivo `docs/api/acesso-openapi.yaml`). Crie uma variável de ambiente `token` e use `Bearer {{ token }}`.
 4. **Primeiro administrador:** a API não cria o primeiro Netafim Admin (o RLS exige um administrador como ator). Rode `uv run python manage.py gerar_hash_senha` e aplique o hash no SQL Editor: `update usuario set password = '<hash>' where lower(email) = lower('<e-mail do admin>');`.
 
-   **Situação atual:** o Netafim Admin (`id_usuario` 1, perfil "Netafim Admin") já está configurado no banco do grupo. A senha foi definida em 28/10/2026 por esse procedimento e o login foi verificado na API contra o Supabase (HTTP 200). O cadastro mantém `exige_troca_senha = true`, então o primeiro acesso pede a troca da senha.
+   **Situação atual:** o Netafim Admin (`id_usuario` 1, perfil "Netafim Admin") está configurado no banco do grupo. A senha foi definida em 28/10/2026 por esse procedimento e o login foi verificado na API contra o Supabase (HTTP 200). **Pendente:** em 09/11/2026 o login dele falhou com a senha testada (2 falhas registradas; o bloqueio vem na 5ª), então a senha precisa ser **redefinida** pelo mesmo procedimento antes de novos testes. O cadastro mantém `exige_troca_senha = true`, então o primeiro acesso pede a troca da senha.
 
 5. **Teste de fumaça contra o banco de verdade** (só leitura, não cria nada): com a API ligada ao Supabase, rode `API_URL=... SMOKE_EMAIL=... SMOKE_SENHA=... uv run python scripts/smoke_api.py`. Confere login, `/me`, listas, renovação de sessão e logout.
 
@@ -167,6 +167,24 @@ val usuario = AcessoGrafo.repositorio.sessao.value?.usuario
 if (usuario?.temPermissao(Permissoes.ABRIR_ATENDIMENTO) == true) { ... }
 ```
 
+## Estado das migrações no banco do grupo (Supabase)
+
+Conferido em 14/11/2026 contra o banco real.
+
+| Nº | Script | Situação |
+|---|---|---|
+| 001 | `fn_revogar_tokens_usuario` | **Não aplicada** (a função não existe no banco) |
+| 004 | `app_auth` e `fn_credencial_*` | Aplicada em 08/11/2026 |
+| 005 | Revoga a leitura do hash e da auditoria | Aplicada em 08/11/2026 |
+| 006 | Tabela de controle das migrações | **Não aplicada** |
+| 007 | MFA por TOTP | Aplicada em 08/11/2026 |
+| 008 + 013 | `fn_atendimento_antes`: quem inicia o atendimento (008) e trava da situação do projeto (013) | Aplicadas em 14/11/2026, em uma única migração (a 013 contém a 008). **Nunca reaplicar a 008 depois da 013** |
+| 010 | Funções do titular LGPD | Aplicada em 08/11/2026 |
+| 011 | `fn_anonimizar_usuario` limpa o contato do solicitante | Aplicada em 14/11/2026 |
+| 012 | pg_cron: encerramento dos atendimentos vencidos | **Não aplicada** (a extensão precisa ser habilitada no painel) |
+
+As propostas 002 e 003 (DT-003 e DT-004) também continuam sem aplicar. O corpo de `fn_atendimento_antes` e de `fn_anonimizar_usuario` foi conferido por MD5 antes e depois da aplicação; o rollback e o registro estão em `01_Gestao_do_Projeto/Aplicacao_Supabase/`.
+
 ## Pontos para alinhar com o grupo
 
 Arquivos **provisórios** criados só para o módulo rodar e ser testado: `backend/config/` (settings, urls), `backend/Dockerfile`, `infra/docker-compose.yml`, `.env.example`, `android/` raiz e `android/app/`, `.github/workflows/`. A branch do Rafael também mexe em `config/settings.py`, `pyproject.toml` e `uv.lock`, então haverá conflito de merge a resolver.
@@ -174,7 +192,7 @@ Arquivos **provisórios** criados só para o módulo rodar e ser testado: `backe
 ### Sobre o banco (itens que dependem de quem mantém o SQL)
 
 1. **Encerrar sessões na troca de senha.** O banco não tem como revogar todos os tokens de um usuário. Há uma proposta em [`infra/db/migracoes/001_fn_revogar_tokens_usuario.sql`](../../infra/db/migracoes/001_fn_revogar_tokens_usuario.sql). Enquanto não for aplicada, a API troca a senha, registra um aviso no log e as sessões antigas valem até expirar.
-2. **A API lê o hash da senha e a trilha de auditoria (DT-002).** `app_django` tem `SELECT` na tabela `usuario` inteira e em `log_auditoria`. **Lado Django: feito** (campo só de escrita e conexão `auth`, ver "Contrato com o banco"). **Lado banco: falta aplicar**, em dois scripts: [`004_login_sem_leitura_de_hash.sql`](../../infra/db/migracoes/004_login_sem_leitura_de_hash.sql), **aditivo** (papel `app_auth` e as funções `fn_credencial_*`; compatível com o código antigo e o novo), e [`005_revoga_leitura_de_hash_e_auditoria.sql`](../../infra/db/migracoes/005_revoga_leitura_de_hash_e_auditoria.sql) (os `REVOKE` e o `GRANT` por coluna, com o comando para desfazer). Como a conexão `auth` é opcional e o código cai no modo legado quando ela ainda não existe, **a ordem não quebra ninguém**: (1) o código novo pode entrar a qualquer momento; (2) aplicar o `004`; (3) definir a senha do `app_auth` fora do repositório; (4) configurar `DB_AUTH_USER` e `DB_AUTH_PASSWORD`, reiniciar a API e conferir o login pela conexão `auth` (o `manage.py check` deixa de avisar); (5) só então aplicar o `005`, quando todos já estiverem no código novo. Se o `005` entrar antes do passo 4, o login falha com uma mensagem pedindo `DB_AUTH_PASSWORD`.
+2. **A API lê o hash da senha e a trilha de auditoria (DT-002).** `app_django` tem `SELECT` na tabela `usuario` inteira e em `log_auditoria`. **Lado Django: feito** (campo só de escrita e conexão `auth`, ver "Contrato com o banco"). **Lado banco: aplicado no Supabase em 08/11/2026** (`004` e `005`), em dois scripts: [`004_login_sem_leitura_de_hash.sql`](../../infra/db/migracoes/004_login_sem_leitura_de_hash.sql), **aditivo** (papel `app_auth` e as funções `fn_credencial_*`; compatível com o código antigo e o novo), e [`005_revoga_leitura_de_hash_e_auditoria.sql`](../../infra/db/migracoes/005_revoga_leitura_de_hash_e_auditoria.sql) (os `REVOKE` e o `GRANT` por coluna, com o comando para desfazer). Como a conexão `auth` é opcional e o código cai no modo legado quando ela ainda não existe, **a ordem não quebra ninguém**: (1) o código novo pode entrar a qualquer momento; (2) aplicar o `004`; (3) definir a senha do `app_auth` fora do repositório; (4) configurar `DB_AUTH_USER` e `DB_AUTH_PASSWORD`, reiniciar a API e conferir o login pela conexão `auth` (o `manage.py check` deixa de avisar); (5) só então aplicar o `005`, quando todos já estiverem no código novo. Se o `005` entrar antes do passo 4, o login falha com uma mensagem pedindo `DB_AUTH_PASSWORD`.
 3. **Gatilho `fn_usuario_protege` não protege senha, e-mail nem consentimento de terceiros.** Um admin de empresa com `editar_usuarios` poderia alterá-los direto no banco (a API não oferece isso).
 4. **Política `usuario_insert_admin`** deixa um admin de empresa inserir usuário já ativo e com perfil admin. A API restringe (pendente, nível Usuário), mas o banco não.
 5. **Funções com `search_path` mutável** (10, apontadas pelo Supabase) e **sem timeouts** por papel.
