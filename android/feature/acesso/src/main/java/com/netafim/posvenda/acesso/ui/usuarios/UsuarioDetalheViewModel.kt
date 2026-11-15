@@ -67,6 +67,8 @@ class UsuarioDetalheViewModel(
     /** Ao voltar de outra tela (por exemplo, a edição) atualiza os dados sem piscar o carregamento. */
     fun aoRetomar() {
         if (!jaCarregou || _estado.value.processando) return
+        // O aviso de uma ação anterior já cumpriu o papel: não deve reaparecer ao voltar de outra tela.
+        _estado.update { it.copy(aviso = null) }
         viewModelScope.launch {
             val r = repositorio.obter(idUsuario)
             if (r is Resultado.Sucesso) mostrar(r.valor)
