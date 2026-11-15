@@ -51,6 +51,12 @@
     <string name="acesso_propriedade">Nome da propriedade</string>
     <string name="acesso_distribuidor">Distribuidor / revenda que atende você</string>
     <string name="acesso_confirmar_senha">Confirmar senha</string>
+    <string name="acesso_trocar_senha_titulo">Trocar senha</string>
+    <string name="acesso_trocar_senha_explicacao">Informe a senha atual e escolha uma nova. Depois de trocar, você entra de novo com a nova senha.</string>
+    <string name="acesso_trocar_senha_salvar">Salvar nova senha</string>
+    <string name="acesso_senha_atual">Senha atual</string>
+    <string name="acesso_nova_senha">Nova senha</string>
+    <string name="acesso_confirmar_nova_senha">Confirmar nova senha</string>
     <string name="acesso_dica_senha">Mínimo de 8 caracteres, sem ser só números.</string>
     <string name="acesso_aceite_termo">Li e aceito o aviso de privacidade (versão %1$s).</string>
     <string name="acesso_aceite_termo_carregando">Li e aceito o aviso de privacidade.</string>

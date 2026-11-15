@@ -23,6 +23,9 @@ interface AcessoApi {
     @POST("me/mfa/confirmar")
     suspend fun mfaConfirmar(@Body corpo: MfaCodigoRequisicao): MfaConfirmadoResposta
 
+    @POST("me/senha")
+    suspend fun alterarSenha(@Body corpo: AlterarSenhaRequisicao)
+
     @POST("me/mfa/desativar")
     suspend fun mfaDesativar(@Body corpo: MfaDesativarRequisicao)
 
