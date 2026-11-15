@@ -144,6 +144,25 @@ DATABASES["default"]["ATOMIC_REQUESTS"] = True
 DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 DATABASES["default"].setdefault("OPTIONS", {})["prepare_threshold"] = None
 
+# Conexão "auth" (DT-002): papel app_auth, sem privilégio em nenhuma tabela, que só executa
+# fn_credencial_por_email e fn_credencial_por_id. É a única que recebe o hash da senha; a conexão
+# "default" (app_django) não lê usuario.password. Mesmo banco e servidor, outro usuário. No pooler
+# do Supabase o usuário é "app_auth.<ref-do-projeto>". Sem ATOMIC_REQUESTS (só leitura de função).
+#
+# OPCIONAL de propósito: só existe quando DB_AUTH_PASSWORD está definida. Sem ela nada falha na
+# subida (quem importa este settings, como os testes do módulo de atendimentos, segue funcionando) e
+# o login usa o modo LEGADO (ver servicos/credenciais.py), que só funciona enquanto o banco ainda
+# deixa o app_django ler a senha, isto é, antes de aplicar a proposta 004.
+CONEXAO_AUTH_CONFIGURADA = bool(env("DB_AUTH_PASSWORD"))
+if CONEXAO_AUTH_CONFIGURADA:
+    DATABASES["auth"] = {
+        **DATABASES["default"],
+        "OPTIONS": dict(DATABASES["default"]["OPTIONS"]),
+        "USER": env("DB_AUTH_USER", default="app_auth"),
+        "PASSWORD": env("DB_AUTH_PASSWORD"),
+        "ATOMIC_REQUESTS": False,
+    }
+
 AUTH_USER_MODEL = "contas.Usuario"
 
 # O e-mail é único só entre usuários não excluídos (índice único parcial ux_usuario_email, sem
