@@ -21,6 +21,10 @@ class RepositorioUsuariosRemoto(
         api.usuario(idUsuario).paraDominio()
     }
 
+    override suspend fun editar(idUsuario: Int, nome: String, telefone: String): Resultado<Usuario> = executarApi(json) {
+        api.editarUsuario(idUsuario, EditarUsuarioRequisicao(nome.trim(), telefone)).paraDominio()
+    }
+
     override suspend fun alterarSituacao(idUsuario: Int, situacao: String): Resultado<Usuario> = executarApi(json) {
         api.situacaoUsuario(idUsuario, SituacaoRequisicao(situacao)).paraDominio()
     }

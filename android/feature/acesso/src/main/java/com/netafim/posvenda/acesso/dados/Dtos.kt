@@ -207,3 +207,7 @@ data class SituacaoRequisicao(val situacao: String)
 
 @Serializable
 data class DefinirPerfilRequisicao(@SerialName("id_perfil") val idPerfil: Int)
+
+/** Telefone vazio limpa o telefone (a API troca o vazio por nulo). */
+@Serializable
+data class EditarUsuarioRequisicao(val nome: String, val telefone: String)

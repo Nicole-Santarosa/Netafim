@@ -32,6 +32,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.netafim.posvenda.acesso.R
 import com.netafim.posvenda.acesso.dominio.AcoesDoUsuario
@@ -53,14 +55,16 @@ import com.netafim.posvenda.acesso.ui.comum.larguraConteudo
 import com.netafim.posvenda.acesso.ui.perfil.formatarTelefone
 
 @Composable
-fun UsuarioDetalheRota(viewModel: UsuarioDetalheViewModel, aoVoltar: () -> Unit) {
+fun UsuarioDetalheRota(viewModel: UsuarioDetalheViewModel, aoVoltar: () -> Unit, aoEditar: () -> Unit) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.aoRetomar() }
     LaunchedEffect(estado.excluido) {
         if (estado.excluido) aoVoltar()
     }
     UsuarioDetalheTela(
         estado = estado,
         aoRecarregar = viewModel::carregar,
+        aoEditar = aoEditar,
         aoAtivar = viewModel::ativar,
         aoDesativar = viewModel::pedirDesativar,
         aoExcluir = viewModel::pedirExcluir,
@@ -83,6 +87,7 @@ fun UsuarioDetalheRota(viewModel: UsuarioDetalheViewModel, aoVoltar: () -> Unit)
 fun UsuarioDetalheTela(
     estado: UsuarioDetalheEstado,
     aoRecarregar: () -> Unit,
+    aoEditar: () -> Unit,
     aoAtivar: () -> Unit,
     aoDesativar: () -> Unit,
     aoExcluir: () -> Unit,
@@ -105,7 +110,7 @@ fun UsuarioDetalheTela(
                 Spacer(Modifier.height(esc(20)))
                 BotaoContorno(stringResource(R.string.acesso_tentar_novamente), aoRecarregar)
             }
-            else -> Conteudo(estado, usuario, aoAtivar, aoDesativar, aoExcluir, aoReenviarConvite, aoDefinirPerfil)
+            else -> Conteudo(estado, usuario, aoEditar, aoAtivar, aoDesativar, aoExcluir, aoReenviarConvite, aoDefinirPerfil)
         }
     }
     estado.confirmando?.let { acao ->
@@ -120,6 +125,7 @@ fun UsuarioDetalheTela(
 private fun Conteudo(
     estado: UsuarioDetalheEstado,
     usuario: Usuario,
+    aoEditar: () -> Unit,
     aoAtivar: () -> Unit,
     aoDesativar: () -> Unit,
     aoExcluir: () -> Unit,
@@ -160,6 +166,7 @@ private fun Conteudo(
     }
     val livre = !estado.processando
     Column(verticalArrangement = Arrangement.spacedBy(esc(12))) {
+        if (acoes.editar) BotaoContorno(stringResource(R.string.usuario_acao_editar), aoEditar, habilitado = livre)
         if (acoes.definirPerfil) BotaoContorno(stringResource(R.string.usuario_acao_perfil), aoDefinirPerfil, habilitado = livre)
         if (acoes.reenviarConvite) BotaoContorno(stringResource(R.string.usuario_acao_convite), aoReenviarConvite, habilitado = livre)
         if (acoes.ativar) BotaoCheio(stringResource(R.string.usuario_acao_ativar), aoAtivar, carregando = estado.processando)
@@ -293,11 +300,11 @@ private fun UsuarioDetalheTelaPreview() {
         UsuarioDetalheTela(
             estado = UsuarioDetalheEstado(
                 usuario = exemplo(SituacoesUsuario.ATIVO),
-                acoes = AcoesDoUsuario(desativar = true, definirPerfil = true, excluir = true),
+                acoes = AcoesDoUsuario(editar = true, desativar = true, definirPerfil = true, excluir = true),
                 carregando = false,
                 aviso = AvisoUsuario.PERFIL_ALTERADO,
             ),
-            aoRecarregar = {}, aoAtivar = {}, aoDesativar = {}, aoExcluir = {}, aoReenviarConvite = {},
+            aoRecarregar = {}, aoEditar = {}, aoAtivar = {}, aoDesativar = {}, aoExcluir = {}, aoReenviarConvite = {},
             aoDefinirPerfil = {}, aoConfirmar = {}, aoCancelar = {}, aoEscolherPerfil = {}, aoFecharPerfis = {},
             aoRecarregarPerfis = {},
         )

@@ -3,6 +3,7 @@ package com.netafim.posvenda.acesso.dados
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -67,6 +68,9 @@ interface AcessoApi {
 
     @GET("usuarios/{id}")
     suspend fun usuario(@Path("id") id: Int): UsuarioDto
+
+    @PATCH("usuarios/{id}")
+    suspend fun editarUsuario(@Path("id") id: Int, @Body corpo: EditarUsuarioRequisicao): UsuarioDto
 
     @POST("usuarios/{id}/situacao")
     suspend fun situacaoUsuario(@Path("id") id: Int, @Body corpo: SituacaoRequisicao): UsuarioDto

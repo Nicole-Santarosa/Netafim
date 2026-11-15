@@ -21,6 +21,9 @@ interface RepositorioUsuarios {
     /** Um usuário do escopo do administrador (`GET usuarios/{id}`). */
     suspend fun obter(idUsuario: Int): Resultado<Usuario>
 
+    /** Corrige nome e telefone (`PATCH usuarios/{id}`); o e-mail não muda. Telefone vazio limpa o campo. */
+    suspend fun editar(idUsuario: Int, nome: String, telefone: String): Resultado<Usuario>
+
     /** Ativa ou desativa (`ativo` ou `inativo`); bloquear e desbloquear é só do Netafim Admin. */
     suspend fun alterarSituacao(idUsuario: Int, situacao: String): Resultado<Usuario>
 
@@ -48,13 +51,14 @@ object SituacoesUsuario {
 
 /** O que o administrador logado pode fazer com um usuário na tela de detalhe. */
 data class AcoesDoUsuario(
+    val editar: Boolean = false,
     val ativar: Boolean = false,
     val desativar: Boolean = false,
     val reenviarConvite: Boolean = false,
     val definirPerfil: Boolean = false,
     val excluir: Boolean = false,
 ) {
-    val alguma: Boolean get() = ativar || desativar || reenviarConvite || definirPerfil || excluir
+    val alguma: Boolean get() = editar || ativar || desativar || reenviarConvite || definirPerfil || excluir
 }
 
 /**
@@ -73,6 +77,7 @@ fun acoesPermitidas(ator: Usuario, alvo: Usuario): AcoesDoUsuario {
     val criar = ator.temPermissao(Permissoes.CRIAR_USUARIO) && gerencia
     val excluir = ator.temPermissao(Permissoes.EXCLUIR_USUARIO) && gerencia
     return AcoesDoUsuario(
+        editar = editar,
         desativar = editar && alvo.situacao == SituacoesUsuario.ATIVO,
         ativar = editar && (
             alvo.situacao == SituacoesUsuario.INATIVO ||

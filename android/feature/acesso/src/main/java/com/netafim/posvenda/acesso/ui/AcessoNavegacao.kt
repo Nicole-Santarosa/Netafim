@@ -25,6 +25,8 @@ import com.netafim.posvenda.acesso.ui.perfil.PerfilViewModel
 import com.netafim.posvenda.acesso.ui.perfil.TrocarSenhaRota
 import com.netafim.posvenda.acesso.ui.perfil.TrocarSenhaViewModel
 import com.netafim.posvenda.acesso.ui.senha.EsqueciSenhaRota
+import com.netafim.posvenda.acesso.ui.usuarios.EditarUsuarioRota
+import com.netafim.posvenda.acesso.ui.usuarios.EditarUsuarioViewModel
 import com.netafim.posvenda.acesso.ui.usuarios.GestaoUsuariosRota
 import com.netafim.posvenda.acesso.ui.usuarios.NovoUsuarioRota
 import com.netafim.posvenda.acesso.ui.usuarios.NovoUsuarioViewModel
@@ -47,11 +49,14 @@ object RotasAcesso {
     const val NOVO_USUARIO = "acesso/usuarios/novo"
     const val USUARIO_DETALHE = "acesso/usuarios/{id}"
 
+    const val USUARIO_EDITAR = "acesso/usuarios/{id}/editar"
+
     fun detalheDoUsuario(id: Int) = "acesso/usuarios/$id"
+    fun editarUsuario(id: Int) = "acesso/usuarios/$id/editar"
 
     /** Telas de dentro do app: sem sessão, a navegação raiz leva ao login. */
     fun exigeSessao(rota: String): Boolean =
-        !rota.startsWith("$GRAFO/") || rota in setOf(PERFIL, TROCAR_SENHA, APROVACAO, USUARIOS, NOVO_USUARIO, USUARIO_DETALHE)
+        !rota.startsWith("$GRAFO/") || rota in setOf(PERFIL, TROCAR_SENHA, APROVACAO, USUARIOS, NOVO_USUARIO, USUARIO_DETALHE, USUARIO_EDITAR)
 }
 
 private val fabrica = viewModelFactory {
@@ -160,7 +165,24 @@ fun NavGraphBuilder.telasUsuarios(navController: NavHostController) {
                 initializer { UsuarioDetalheViewModel(AcessoGrafo.repositorioUsuarios, AcessoGrafo.repositorio, id) }
             },
         )
-        UsuarioDetalheRota(viewModel = viewModel, aoVoltar = { navController.popBackStack() })
+        UsuarioDetalheRota(
+            viewModel = viewModel,
+            aoVoltar = { navController.popBackStack() },
+            aoEditar = { navController.navigate(RotasAcesso.editarUsuario(id)) },
+        )
+    }
+    composable(
+        RotasAcesso.USUARIO_EDITAR,
+        arguments = listOf(navArgument("id") { type = NavType.IntType }),
+    ) { entrada ->
+        val id = entrada.arguments?.getInt("id") ?: return@composable
+        val viewModel: EditarUsuarioViewModel = viewModel(
+            key = "editar-usuario-$id",
+            factory = viewModelFactory {
+                initializer { EditarUsuarioViewModel(AcessoGrafo.repositorioUsuarios, id) }
+            },
+        )
+        EditarUsuarioRota(viewModel = viewModel, aoConcluir = { navController.popBackStack() })
     }
     composable(RotasAcesso.NOVO_USUARIO) {
         NovoUsuarioRota(

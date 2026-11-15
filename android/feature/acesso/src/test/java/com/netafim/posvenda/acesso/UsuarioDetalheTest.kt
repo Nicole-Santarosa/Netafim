@@ -69,6 +69,14 @@ class AcoesPermitidasTest {
     }
 
     @Test
+    fun `editar dados segue a permissao e a gestao (nao para a si mesmo nem para admin de outra empresa)`() {
+        assertTrue(acoesPermitidas(NETAFIM_ADMIN, pessoa(2, tipo = "cliente")).editar)
+        assertTrue(acoesPermitidas(DISTRIBUIDOR_ADMIN, pessoa(2, organizacaoId = 1)).editar)
+        assertFalse(acoesPermitidas(DISTRIBUIDOR_ADMIN, pessoa(3, nivel = "admin", organizacaoId = 1)).editar)
+        assertFalse(acoesPermitidas(NETAFIM_ADMIN, NETAFIM_ADMIN).editar)
+    }
+
+    @Test
     fun `Netafim Admin desativa, exclui e define o perfil de um usuario ativo de qualquer organizacao`() {
         val acoes = acoesPermitidas(NETAFIM_ADMIN, pessoa(2, tipo = "cliente"))
         assertTrue(acoes.desativar)
@@ -182,6 +190,25 @@ class UsuarioDetalheRemotoTest {
     }
 
     @Test
+    fun `editar envia nome e telefone em PATCH usuarios id`() = runTest {
+        servidor.enqueue(json(usuarioJson))
+        repositorio.editar(2, "  Ana Reis ", "16997389535")
+        val pedido = servidor.takeRequest()
+        assertEquals("PATCH", pedido.method)
+        assertEquals("/api/v1/usuarios/2", pedido.path)
+        val corpo = pedido.body.readUtf8()
+        assertTrue(corpo.contains("\"nome\":\"Ana Reis\""))
+        assertTrue(corpo.contains("\"telefone\":\"16997389535\""))
+    }
+
+    @Test
+    fun `telefone vazio e enviado como vazio para limpar o campo`() = runTest {
+        servidor.enqueue(json(usuarioJson))
+        repositorio.editar(2, "Ana Reis", "")
+        assertTrue(servidor.takeRequest().body.readUtf8().contains("\"telefone\":\"\""))
+    }
+
+    @Test
     fun `reenviar convite e excluir respondem 204`() = runTest {
         servidor.enqueue(MockResponse().setResponseCode(204))
         servidor.enqueue(MockResponse().setResponseCode(204))
@@ -220,6 +247,15 @@ private class UsuariosDetalheFalso : RepositorioUsuarios {
         chamadas += "obter"
         return resultadoObter ?: Resultado.Sucesso(alvo)
     }
+    var resultadoEditar: Resultado<Usuario>? = null
+    var edicoes = mutableListOf<Triple<Int, String, String>>()
+
+    override suspend fun editar(idUsuario: Int, nome: String, telefone: String): Resultado<Usuario> {
+        chamadas += "editar"
+        edicoes += Triple(idUsuario, nome, telefone)
+        return resultadoEditar ?: Resultado.Sucesso(alvo.copy(nome = nome, telefone = telefone.ifEmpty { null })).also { alvo = it.valor }
+    }
+
     override suspend fun alterarSituacao(idUsuario: Int, situacao: String): Resultado<Usuario> {
         chamadas += "situacao:$situacao"
         return resultadoSituacao ?: Resultado.Sucesso(alvo.copy(situacao = situacao)).also { alvo = it.valor }
@@ -328,6 +364,15 @@ class UsuarioDetalheViewModelTest {
         assertNull(vm.estado.value.confirmando)
         assertFalse(vm.estado.value.processando)
         assertEquals("o usuário continua ativo", SituacoesUsuario.ATIVO, vm.estado.value.usuario?.situacao)
+    }
+
+    @Test
+    fun `ao retomar atualiza o usuario sem mostrar carregamento`() {
+        val vm = vm()
+        usuarios.alvo = usuarios.alvo.copy(nome = "Nome corrigido")
+        vm.aoRetomar()
+        assertEquals("Nome corrigido", vm.estado.value.usuario?.nome)
+        assertFalse(vm.estado.value.carregando)
     }
 
     @Test

@@ -57,6 +57,7 @@ private class UsuariosFalso : RepositorioUsuarios {
     // O detalhe do usuário tem testes próprios (UsuarioDetalheTest); aqui só cumpre o contrato.
     private val naoUsado = Resultado.Falha(com.netafim.posvenda.acesso.dominio.ErroAcesso.Inesperado())
     override suspend fun obter(idUsuario: Int) = naoUsado
+    override suspend fun editar(idUsuario: Int, nome: String, telefone: String) = naoUsado
     override suspend fun alterarSituacao(idUsuario: Int, situacao: String) = naoUsado
     override suspend fun definirPerfil(idUsuario: Int, idPerfil: Int) = naoUsado
     override suspend fun reenviarConvite(idUsuario: Int) = naoUsado
