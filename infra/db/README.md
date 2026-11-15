@@ -29,6 +29,10 @@ backend/db/testes/
 6. **Os números não precisam ser contínuos:** PRs empilhados e paralelos entram na `main` em ordem
    diferente da numeração.
 
+## Ordem de 008 e 013
+
+`013_trava_situacao_projeto.sql` redefine `fn_atendimento_antes` **incluindo** o bloco da `008`. Aplique a `008` e depois a `013`, ou só a `013`; **nunca a `008` depois da `013`**, porque ela apaga a trava da situação do projeto. No Supabase as duas entraram juntas em 14/11/2026. Os arquivos são cópias exatas das propostas do Rafael (mesmo SHA-256 do que foi aplicado); não edite o texto, crie uma migração nova.
+
 ## Registro das migrações aplicadas
 
 A migração `006_registro_de_migracoes.sql` (em PR próprio, junto das propostas 002 e 003) cria a tabela `migracao_aplicada` e a função
