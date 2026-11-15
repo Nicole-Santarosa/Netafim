@@ -12,7 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ..constantes import Permissao as P
-from ..constantes import TipoOrganizacao
+from ..constantes import StatusOrganizacao, TipoOrganizacao
 from ..escopo import RequerPermissao, SomenteNetafimAdmin, pode_gerenciar, usuarios_visiveis
 from ..excecoes import ErroNegocio, SemPermissao
 from ..models import (
@@ -194,9 +194,27 @@ class DistribuidorViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
         super().perform_destroy(instancia)
 
     def get_permissions(self):
-        if self.action in {"list", "retrieve"}:
+        if self.action in {"list", "retrieve", "opcoes"}:
             return [IsAuthenticated()]
         return [SomenteNetafimAdmin()]
+
+    @extend_schema(
+        summary="Distribuidores ativos para escolher (id, nome e região)",
+        description=(
+            "Lista os distribuidores ativos, sem paginação e só com id, nome e região, para o "
+            "cliente final escolher o distribuidor da sua região (o `GET /distribuidores` mostra "
+            "ao cliente apenas o distribuidor do cadastro dele). Disponível para Netafim e "
+            "cliente; "
+            "usuário de distribuidor recebe 403."
+        ),
+        responses=s.DistribuidorOpcaoSerializer(many=True),
+    )
+    @action(detail=False, methods=["get"], pagination_class=None)
+    def opcoes(self, request):
+        if request.user.tipo_organizacao == TipoOrganizacao.DISTRIBUIDOR:
+            raise SemPermissao()
+        ativos = Distribuidor.objects.filter(status=StatusOrganizacao.ATIVO).order_by("nome", "pk")
+        return Response(s.DistribuidorOpcaoSerializer(ativos, many=True).data)
 
     def get_queryset(self):
         u = self.request.user
