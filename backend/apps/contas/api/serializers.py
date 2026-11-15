@@ -336,3 +336,45 @@ class PermissoesDoPerfilSerializer(serializers.Serializer):
 
 def versao_termo_vigente() -> str:
     return settings.CONTAS["VERSAO_TERMO_VIGENTE"]
+
+
+# --------------------------------------------------------------------------- MFA (TOTP)
+
+
+class LoginMfaSerializer(serializers.Serializer):
+    """Resposta do login quando a conta tem MFA: ainda NÃO há sessão; falta o segundo fator."""
+
+    mfa_necessario = serializers.BooleanField()
+    desafio = serializers.CharField()
+    desafio_expira_em = serializers.DateTimeField()
+
+
+class MfaVerificarSerializer(serializers.Serializer):
+    desafio = serializers.CharField(max_length=2048)
+    # 6 dígitos do aplicativo (aceita "123 456") ou um código de recuperação (XXXXX-XXXXX)
+    codigo = serializers.CharField(max_length=32, trim_whitespace=False)
+
+
+class MfaCodigoSerializer(serializers.Serializer):
+    codigo = serializers.CharField(max_length=32, trim_whitespace=False)
+
+
+class MfaDesativarSerializer(serializers.Serializer):
+    senha = serializers.CharField(max_length=128, trim_whitespace=False)
+    codigo = serializers.CharField(max_length=32, trim_whitespace=False)
+
+
+class MfaEstadoSerializer(serializers.Serializer):
+    ativo = serializers.BooleanField()
+    codigos_recuperacao_restantes = serializers.IntegerField()
+
+
+class MfaIniciadoSerializer(serializers.Serializer):
+    segredo = serializers.CharField()
+    otpauth_uri = serializers.CharField()
+
+
+class MfaConfirmadoSerializer(serializers.Serializer):
+    """Os códigos de recuperação só aparecem nesta resposta; o banco guarda apenas o hash."""
+
+    codigos_recuperacao = serializers.ListField(child=serializers.CharField())

@@ -208,6 +208,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "login": env("THROTTLE_LOGIN", default="10/min"),
         "cadastro": env("THROTTLE_CADASTRO", default="5/hour"),
+        "mfa": env("THROTTLE_MFA", default="10/min"),
     },
 }
 

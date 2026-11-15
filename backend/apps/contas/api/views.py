@@ -24,7 +24,7 @@ from ..models import (
     PerfilPermissao,
     Permissao,
 )
-from ..servicos import auditoria, usuarios
+from ..servicos import auditoria, mfa, usuarios
 from ..servicos.auditoria import Acao
 from . import serializers as s
 
@@ -141,8 +141,15 @@ class UsuarioViewSet(
         usuarios.reenviar_convite(request.user, self.get_object(), request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @extend_schema(request=None, responses={204: None})
+    @action(detail=True, methods=["post"], url_path="mfa/resetar")
+    def mfa_resetar(self, request, id_usuario=None):
+        """Netafim Admin remove o MFA de quem perdeu o aparelho (e encerra as sessões da pessoa)."""
+        mfa.redefinir(request.user, self.get_object(), request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @extend_schema(responses=s.DispositivoSerializer(many=True))
-    @action(detail=True, methods=["get"])
+    @action(detail=True, methods=["get"], pagination_class=None)
     def dispositivos(self, request, id_usuario=None):
         alvo = self.get_object()
         if not (request.user.eh_netafim_admin or pode_gerenciar(request.user, alvo)):

@@ -30,6 +30,7 @@ class Acao:
     CADASTRO_RECUSADO = "cadastro_recusado"
     SITUACAO_ALTERADA = "situacao_alterada"
     PERFIL_ALTERADO = "perfil_alterado"
+    MFA_ALTERADO = "mfa_alterado"
     PERMISSAO_CONCEDIDA = "permissao_concedida"
     PERMISSAO_REVOGADA = "permissao_revogada"
     ACESSO_NEGADO = "acesso_negado"

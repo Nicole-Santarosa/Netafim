@@ -47,6 +47,18 @@ Não rode `migrate` contra o Supabase. O `Dockerfile` não executa `migrate` na 
 - **Sem enumeração:** login, cadastro e "esqueci a senha" respondem igual exista ou não o e-mail.
 - **Logout:** revoga o refresh informado.
 
+### Autenticação em dois fatores (MFA, TOTP)
+
+Opcional por usuário (`usuario.mfa_ativo`), compatível com Google Authenticator, Microsoft Authenticator, Authy e 1Password (RFC 6238, SHA-1, 6 dígitos, 30 s). Implementado só com a biblioteca padrão.
+
+- **Ativar** (logado): `POST me/mfa/iniciar` devolve o segredo e o link `otpauth://`; o titular cadastra no app autenticador e confirma com `POST me/mfa/confirmar` `{codigo}`. A confirmação liga o MFA e devolve **10 códigos de recuperação, uma única vez** (o banco guarda só o hash). `GET me/mfa` mostra o estado e quantos códigos restam.
+- **Login em dois passos:** com MFA ativo, `POST auth/login` (e-mail e senha corretos) responde `200 {"mfa_necessario": true, "desafio": "...", "desafio_expira_em": ...}` **sem abrir sessão**. O app envia `POST auth/mfa/verificar` `{desafio, codigo}` (código do app ou de recuperação) e só então recebe os tokens. O desafio é assinado e vale 5 minutos.
+- **Força bruta:** cada código errado conta como falha de login (5 seguidas bloqueiam por 15 minutos, como na senha); `THROTTLE_MFA` limita as tentativas por IP. Um código TOTP vale **uma vez** (anti-replay pelo último passo aceito); um código de recuperação também.
+- **Desativar:** `POST me/mfa/desativar` `{senha, codigo}` exige a senha **e** um código. Apaga segredo e códigos (um gatilho do banco também faz isso ao desligar por qualquer caminho, inclusive anonimização LGPD).
+- **Perdeu o aparelho e os códigos:** o Netafim Admin remove o MFA com `POST usuarios/{id}/mfa/resetar` (encerra as sessões da pessoa; fica na auditoria como `mfa_alterado`).
+- **Isolamento (mesmo desenho da DT-002):** segredo e hashes ficam em tabelas sem privilégio para `app_django`; só a conexão `auth` (`app_auth`) executa as funções `fn_mfa_*` (migração `007_mfa_totp.sql`). Sem a conexão `auth` ou sem a 007, as rotas de MFA respondem `503 mfa_indisponivel` e o login segue só com senha (nenhum usuário tem MFA antes da 007).
+- **Limite conhecido:** o segredo TOTP precisa ser reversível (o servidor calcula o código), então fica legível por quem administra o banco ou tem a senha do `app_auth`. A proteção em repouso é a do provedor do banco; criptografia em nível de aplicação é evolução futura. Obrigar MFA para administradores é decisão do grupo (hoje é opcional).
+
 ## Fluxo de cadastro (Regras de Negócio)
 
 1. A pessoa solicita acesso pelo app → usuário `pendente`, sem perfil nem organização.
@@ -85,7 +97,9 @@ O contrato completo, gerado pelo código, está em [`docs/api/acesso-openapi.yam
 
 | Método e rota | Quem usa |
 |---|---|
-| `POST auth/login` · `auth/refresh` · `auth/logout` | todos |
+| `POST auth/login` · `auth/mfa/verificar` · `auth/refresh` · `auth/logout` | todos |
+| `GET me/mfa` · `POST me/mfa/iniciar` · `confirmar` · `desativar` | usuário logado |
+| `POST usuarios/{id}/mfa/resetar` | Netafim Admin |
 | `POST auth/cadastro` · `GET auth/termo` | público (app) |
 | `POST auth/convite/aceitar` · `auth/senha/esqueci` · `auth/senha/redefinir` | público (link do e-mail) |
 | `GET/PATCH me` · `POST me/senha` | usuário logado |

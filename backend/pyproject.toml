@@ -37,6 +37,7 @@ env = [
     "EMAIL_BACKEND=django.core.mail.backends.locmem.EmailBackend",
     "THROTTLE_LOGIN=1000/min",
     "THROTTLE_CADASTRO=1000/min",
+    "THROTTLE_MFA=1000/min",
 ]
 
 [tool.ruff]

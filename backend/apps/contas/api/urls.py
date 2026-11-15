@@ -25,7 +25,12 @@ urlpatterns = [
     path(
         "auth/senha/redefinir", views_auth.RedefinirSenhaView.as_view(), name="auth-senha-redefinir"
     ),
+    path("auth/mfa/verificar", views_auth.MfaVerificarView.as_view(), name="auth-mfa-verificar"),
     path("me", views_auth.MeView.as_view(), name="me"),
+    path("me/mfa", views_auth.MfaEstadoView.as_view(), name="me-mfa"),
+    path("me/mfa/iniciar", views_auth.MfaIniciarView.as_view(), name="me-mfa-iniciar"),
+    path("me/mfa/confirmar", views_auth.MfaConfirmarView.as_view(), name="me-mfa-confirmar"),
+    path("me/mfa/desativar", views_auth.MfaDesativarView.as_view(), name="me-mfa-desativar"),
     path("me/senha", views_auth.AlterarSenhaView.as_view(), name="me-senha"),
     *roteador.urls,
 ]
