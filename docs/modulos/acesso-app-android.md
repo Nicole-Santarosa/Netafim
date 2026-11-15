@@ -124,7 +124,8 @@ Com o JDK 21 em `JAVA_HOME`, dentro de `android/`:
 | Detalhe do usuário, editar usuário, permissões por perfil (lista e editor), trocar senha (validação e erro da API) | Samsung SM-S938B, 15/11/2026 | Conferidas |
 | **Privacidade, fazer um pedido** | Galaxy Tab S9 FE (SM-X510), 15/11/2026, API local → Supabase | Conferidas: lista de pedidos, cópia dos dados pela folha de compartilhar, validação sem tipo, confirmação reforçada (cancelada), pedido comum criado e listado com prazo, recusa de pedido repetido |
 | **Fila de pedidos e detalhe (Netafim Admin)** | Galaxy Tab S9 FE (SM-X510), 15/11/2026, API local → Supabase | Conferidas com um pedido de cada tipo criado pela conta de cliente: lista e filtros, marcar em análise, atender (com confirmação), cópia dos dados do titular, negar sem motivo (validação) e com motivo, diálogo de atender anonimização (cancelado), e o titular vendo "Atendido" e os motivos das negativas em Meus pedidos. **Não testado no aparelho:** atender de fato uma anonimização (irreversível; só testes automatizados) e o aviso de pedido fora do prazo |
-| Código do MFA no login, novo usuário, trocar senha com sucesso, salvar permissões | — | **Não vistas no aparelho** (testadas só por testes automatizados) |
+| **Novo usuário (convite)** | Galaxy Tab S9 FE (SM-X510), 15/11/2026, API local → Supabase, conta Distribuidor Admin | Conferido: validação dos campos vazios ("Informe o nome", "Informe o e-mail"), convite enviado (`POST usuarios` 201) e o usuário aparece como Pendente na lista. **Observação:** quem convida como admin de distribuidor ou de cliente cria o usuário pendente e o domínio do e-mail só é conferido quando o Netafim Admin aprova (`dominio_nao_autorizado`), por isso um domínio fora do cadastro é aceito no convite |
+| Código do MFA no login, trocar senha com sucesso, salvar permissões | — | **Não vistas no aparelho** (testadas só por testes automatizados) |
 
 ---
 
