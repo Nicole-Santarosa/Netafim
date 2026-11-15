@@ -185,6 +185,19 @@ Conferido em 14/11/2026 contra o banco real.
 
 As propostas 002 e 003 (DT-003 e DT-004) também continuam sem aplicar. O corpo de `fn_atendimento_antes` e de `fn_anonimizar_usuario` foi conferido por MD5 antes e depois da aplicação; o rollback e o registro estão em `01_Gestao_do_Projeto/Aplicacao_Supabase/`.
 
+## Telas do aplicativo (Android)
+
+As telas de acesso seguem o protótipo do Figma (arquivo "Netafim", seção Acesso): Login (quadro "HD 01"), Recuperar senha, Cadastro, Aguardando validação, Aprovação de cadastro e Gestão de usuários. As demais usam a mesma base visual (barra azul de 64 dp com o título, campos e botões do Cadastro) e **não têm quadro no Figma**. O Android vive em branches empilhadas, ainda não mescladas na `main`:
+
+| Branch | O que traz |
+|---|---|
+| `feat/acesso-layout-figma` | Telas refeitas fiéis ao Figma (substitui o visual de wallpaper com vidro) |
+| `feat/acesso-trocar-senha` | Trocar a própria senha (`POST me/senha`), em Meu perfil |
+| `feat/acesso-detalhe-usuario` | Detalhe do usuário: ativar, desativar, definir perfil, reenviar convite e excluir |
+| `feat/acesso-editar-usuario` | Editar nome e telefone (`PATCH usuarios/{id}`) |
+| `feat/acesso-permissoes-perfil` | Permissões por perfil (RF20), só para o Netafim Admin |
+
+Os botões do detalhe seguem `acoesPermitidas(ator, alvo)`: ninguém gerencia a si mesmo, o Netafim Admin gerencia todos, e admin de distribuidor ou de cliente só gerencia usuários de nível Usuário da própria organização. A API continua decidindo e qualquer recusa vira mensagem. As telas novas têm testes automatizados (161 no módulo `:feature:acesso`), mas ainda **não foram conferidas no aparelho**.
 ## Pontos para alinhar com o grupo
 
 Arquivos **provisórios** criados só para o módulo rodar e ser testado: `backend/config/` (settings, urls), `backend/Dockerfile`, `infra/docker-compose.yml`, `.env.example`, `android/` raiz e `android/app/`, `.github/workflows/`. A branch do Rafael também mexe em `config/settings.py`, `pyproject.toml` e `uv.lock`, então haverá conflito de merge a resolver.
