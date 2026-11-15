@@ -120,6 +120,7 @@ O contrato completo, gerado pelo código, está em [`docs/api/acesso-openapi.yam
 | `POST usuarios/{id}/aprovar` · `recusar` · `situacao` · `perfil` · `reenviar-convite` | admins, conforme a permissão |
 | `GET usuarios/{id}/dispositivos` · `POST dispositivos/{id}/revogar` | Netafim Admin |
 | `distribuidores` · `clientes` | leitura no escopo; escrita só Netafim Admin |
+| `GET distribuidores/opcoes` | distribuidores **ativos** (`id_distribuidor`, `nome`, `regiao`), sem paginação, para o cliente final escolher o da sua região; Netafim e cliente (distribuidor recebe 403) |
 | `GET perfis` · `GET permissoes` · `PUT perfis/{id}/permissoes` | leitura para todos; edição só Netafim Admin |
 | `dominios` | Netafim Admin |
 

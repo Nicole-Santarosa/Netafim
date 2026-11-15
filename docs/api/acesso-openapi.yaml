@@ -490,6 +490,27 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/distribuidores/opcoes:
+    get:
+      operationId: v1_distribuidores_opcoes_list
+      description: Lista os distribuidores ativos, sem paginação e só com id, nome
+        e região, para o cliente final escolher o distribuidor da sua região (o `GET
+        /distribuidores` mostra ao cliente apenas o distribuidor do cadastro dele).
+        Disponível para Netafim e cliente; usuário de distribuidor recebe 403.
+      summary: Distribuidores ativos para escolher (id, nome e região)
+      tags:
+      - organizacoes
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DistribuidorOpcao'
+          description: ''
   /api/v1/dominios:
     get:
       operationId: v1_dominios_list
@@ -1691,6 +1712,23 @@ components:
       required:
       - data_atualizacao
       - data_criacao
+      - id_distribuidor
+      - nome
+      - regiao
+    DistribuidorOpcao:
+      type: object
+      description: Só o necessário para escolher um distribuidor (sem e-mail nem telefone).
+      properties:
+        id_distribuidor:
+          type: integer
+          readOnly: true
+        nome:
+          type: string
+          readOnly: true
+        regiao:
+          type: string
+          readOnly: true
+      required:
       - id_distribuidor
       - nome
       - regiao

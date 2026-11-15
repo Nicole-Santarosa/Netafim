@@ -286,3 +286,44 @@ def test_netafim_admin_nao_perde_permissoes_essenciais(como, netafim_admin, perf
     r = como(netafim_admin).put(url, {"permissoes": ["abrir_atendimento"]}, format="json")
     assert r.status_code == 400
     assert r.data["codigo"] == "permissao_essencial"
+
+
+def test_opcoes_de_distribuidor_lista_so_os_ativos_com_campos_minimos(
+    como, banco_sql, cliente_usuario, distribuidor, outro_distribuidor
+):
+    """O cliente final escolhe o distribuidor da região, embora a rota comum mostre só o dele."""
+    banco_sql.executar(
+        "update distribuidor set status = 'inativo' where id_distribuidor = %s",
+        outro_distribuidor.pk,
+    )
+    outro_ativo = banco_sql.um(
+        "insert into distribuidor (nome, regiao, status) values ('Agro Norte', 'Norte', 'ativo') "
+        "returning id_distribuidor"
+    )
+    removido = banco_sql.um(
+        "insert into distribuidor (nome, regiao, status, deletado_em) "
+        "values ('Revenda Extinta', 'Sul', 'ativo', now()) returning id_distribuidor"
+    )
+
+    r = como(cliente_usuario).get("/api/v1/distribuidores/opcoes")
+
+    assert r.status_code == 200
+    ids = [d["id_distribuidor"] for d in r.data]
+    assert distribuidor.pk in ids and outro_ativo in ids
+    assert outro_distribuidor.pk not in ids, "inativo não aparece"
+    assert removido not in ids, "excluído não aparece"
+    assert all(set(d) == {"id_distribuidor", "nome", "regiao"} for d in r.data)
+    assert [d["nome"] for d in r.data] == sorted(d["nome"] for d in r.data)
+    # a rota comum continua mostrando ao cliente só o distribuidor do cadastro
+    comum = como(cliente_usuario).get("/api/v1/distribuidores")
+    assert [d["id_distribuidor"] for d in comum.data["results"]] == [distribuidor.pk]
+
+
+def test_opcoes_de_distribuidor_permissoes(
+    como, netafim_usuario, distrib_admin, cliente_admin, api
+):
+    assert como(netafim_usuario).get("/api/v1/distribuidores/opcoes").status_code == 200
+    assert como(cliente_admin).get("/api/v1/distribuidores/opcoes").status_code == 200
+    negado = como(distrib_admin).get("/api/v1/distribuidores/opcoes")
+    assert negado.status_code == 403
+    assert api.get("/api/v1/distribuidores/opcoes").status_code == 401

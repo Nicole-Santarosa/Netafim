@@ -119,6 +119,15 @@ class MeSerializer(UsuarioSerializer):
         return sorted(obj.codigos_permissao())
 
 
+class DistribuidorOpcaoSerializer(serializers.ModelSerializer):
+    """Só o necessário para escolher um distribuidor (sem e-mail nem telefone)."""
+
+    class Meta:
+        model = Distribuidor
+        fields = ["id_distribuidor", "nome", "regiao"]
+        read_only_fields = fields
+
+
 class DistribuidorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Distribuidor
