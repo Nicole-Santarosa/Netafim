@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Define que o FileProvider gerenciará arquivos na pasta Pictures do app -->
+    <external-files-path name="imagens_relatorio" path="Pictures/" />
+</paths>
