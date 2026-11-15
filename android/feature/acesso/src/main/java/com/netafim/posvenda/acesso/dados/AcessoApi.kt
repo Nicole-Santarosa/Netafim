@@ -1,6 +1,7 @@
 package com.netafim.posvenda.acesso.dados
 
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
@@ -63,6 +64,21 @@ interface AcessoApi {
 
     @POST("usuarios")
     suspend fun criarUsuario(@Body corpo: CriarUsuarioRequisicao): UsuarioDto
+
+    @GET("usuarios/{id}")
+    suspend fun usuario(@Path("id") id: Int): UsuarioDto
+
+    @POST("usuarios/{id}/situacao")
+    suspend fun situacaoUsuario(@Path("id") id: Int, @Body corpo: SituacaoRequisicao): UsuarioDto
+
+    @POST("usuarios/{id}/perfil")
+    suspend fun perfilUsuario(@Path("id") id: Int, @Body corpo: DefinirPerfilRequisicao): UsuarioDto
+
+    @POST("usuarios/{id}/reenviar-convite")
+    suspend fun reenviarConvite(@Path("id") id: Int)
+
+    @DELETE("usuarios/{id}")
+    suspend fun excluirUsuario(@Path("id") id: Int)
 
     @POST("usuarios/{id}/aprovar")
     suspend fun aprovarUsuario(@Path("id") id: Int, @Body corpo: AprovarRequisicao): UsuarioDto

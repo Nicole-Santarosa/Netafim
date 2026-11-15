@@ -201,3 +201,9 @@ data class CriarUsuarioRequisicao(
     val email: String,
     val telefone: String? = null,
 )
+
+@Serializable
+data class SituacaoRequisicao(val situacao: String)
+
+@Serializable
+data class DefinirPerfilRequisicao(@SerialName("id_perfil") val idPerfil: Int)

@@ -28,6 +28,8 @@ import com.netafim.posvenda.acesso.ui.senha.EsqueciSenhaRota
 import com.netafim.posvenda.acesso.ui.usuarios.GestaoUsuariosRota
 import com.netafim.posvenda.acesso.ui.usuarios.NovoUsuarioRota
 import com.netafim.posvenda.acesso.ui.usuarios.NovoUsuarioViewModel
+import com.netafim.posvenda.acesso.ui.usuarios.UsuarioDetalheRota
+import com.netafim.posvenda.acesso.ui.usuarios.UsuarioDetalheViewModel
 import com.netafim.posvenda.acesso.ui.usuarios.UsuariosViewModel
 import com.netafim.posvenda.acesso.ui.senha.EsqueciSenhaViewModel
 
@@ -43,10 +45,13 @@ object RotasAcesso {
     const val APROVACAO = "acesso/aprovacao"
     const val USUARIOS = "acesso/usuarios"
     const val NOVO_USUARIO = "acesso/usuarios/novo"
+    const val USUARIO_DETALHE = "acesso/usuarios/{id}"
+
+    fun detalheDoUsuario(id: Int) = "acesso/usuarios/$id"
 
     /** Telas de dentro do app: sem sessão, a navegação raiz leva ao login. */
     fun exigeSessao(rota: String): Boolean =
-        !rota.startsWith("$GRAFO/") || rota in setOf(PERFIL, TROCAR_SENHA, APROVACAO, USUARIOS, NOVO_USUARIO)
+        !rota.startsWith("$GRAFO/") || rota in setOf(PERFIL, TROCAR_SENHA, APROVACAO, USUARIOS, NOVO_USUARIO, USUARIO_DETALHE)
 }
 
 private val fabrica = viewModelFactory {
@@ -141,7 +146,21 @@ fun NavGraphBuilder.telasUsuarios(navController: NavHostController) {
         GestaoUsuariosRota(
             viewModel = viewModel(factory = fabrica),
             aoAdicionar = { navController.navigate(RotasAcesso.NOVO_USUARIO) },
+            aoAbrirUsuario = { navController.navigate(RotasAcesso.detalheDoUsuario(it)) },
         )
+    }
+    composable(
+        RotasAcesso.USUARIO_DETALHE,
+        arguments = listOf(navArgument("id") { type = NavType.IntType }),
+    ) { entrada ->
+        val id = entrada.arguments?.getInt("id") ?: return@composable
+        val viewModel: UsuarioDetalheViewModel = viewModel(
+            key = "usuario-$id",
+            factory = viewModelFactory {
+                initializer { UsuarioDetalheViewModel(AcessoGrafo.repositorioUsuarios, AcessoGrafo.repositorio, id) }
+            },
+        )
+        UsuarioDetalheRota(viewModel = viewModel, aoVoltar = { navController.popBackStack() })
     }
     composable(RotasAcesso.NOVO_USUARIO) {
         NovoUsuarioRota(
