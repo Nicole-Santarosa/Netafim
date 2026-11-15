@@ -10,7 +10,7 @@ plugins {
 
 android {
     // Pacote base do módulo; o R (recursos) deste módulo nasce dele.
-    namespace = "com.netafim.posvenda.atendimento"
+    namespace = "com.example.netafim.atendimento"
     compileSdk = 35
 
     defaultConfig {

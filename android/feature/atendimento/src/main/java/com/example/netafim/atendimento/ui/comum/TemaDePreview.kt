@@ -1,0 +1,29 @@
+package com.example.netafim.atendimento.ui.comum
+
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+
+// Tema usado só nos previews do módulo. O TemaNetafim fica no :app e este módulo não o enxerga,
+// então aqui as cores principais do protótipo são repetidas para o preview parecer com o app.
+// Em tempo de execução as telas usam o MaterialTheme que vier do app; este tema não é aplicado lá.
+@Composable
+internal fun TemaDePreview(conteudo: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = lightColorScheme(
+            primary = Color(0xFF181F4E),
+            onPrimary = Color.White,
+            background = Color.White,
+            surface = Color.White,
+            surfaceVariant = Color(0xFFE9E9E4),
+            onSurface = Color(0xFF21211F),
+            outlineVariant = Color(0xFFC9C9C2),
+        ),
+    ) {
+        // O Surface garante o fundo branco do protótipo nos previews, mesmo quando o preview
+        // não preenche a tela inteira com o fundo do tema.
+        Surface(color = MaterialTheme.colorScheme.background, content = conteudo)
+    }
+}
