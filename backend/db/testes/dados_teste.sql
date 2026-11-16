@@ -17,6 +17,16 @@
 -- esquema (ou superusuário), nunca como app_django, porque o RLS exige um administrador como ator e este
 -- script cria o primeiro. A senha é guardada como hash Argon2 do Django (o mesmo que a API usa).
 --
+-- TRAVAS (o script recusa rodar, sem criar nada, se qualquer uma falhar):
+--   1. confirmação explícita na MESMA sessão (SET netafim.dados_teste = 'sim');
+--   2. o banco NÃO pode ter marcas de Supabase (papéis supabase_admin, supabase_auth_admin,
+--      supabase_storage_admin, authenticator ou service_role; esquemas auth, storage, realtime,
+--      supabase_functions, vault ou graphql_public);
+--   3. o endereço do servidor visto pela conexão tem de ser local: soquete Unix, loopback (127.0.0.0/8, ::1)
+--      ou rede privada (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fc00::/7, fe80::/10, o que cobre o Docker).
+--   Limite conhecido: um banco local que, por algum motivo, tenha esses papéis ou esquemas também é recusado
+--   (falha para o lado seguro); nesse caso use um banco local limpo.
+--
 -- COMO RODAR (banco local). A trava abaixo exige a confirmação na MESMA sessão:
 --   psql "postgres://postgres:SENHA@localhost:5432/netafim" -v ON_ERROR_STOP=1 \
 --        -c "SET netafim.dados_teste = 'sim'" -f backend/db/testes/dados_teste.sql
@@ -36,6 +46,23 @@ BEGIN
   IF coalesce(current_setting('netafim.dados_teste', true), '') <> 'sim' THEN
     RAISE EXCEPTION 'Este script cria usuários com SENHA CONHECIDA e é só para banco local. '
                     'Para confirmar, rode antes, na mesma sessão: SET netafim.dados_teste = ''sim'';'
+      USING ERRCODE = 'P0001';
+  END IF;
+  -- Verificação do ambiente (revisão do PR #6): recusa banco que parece Supabase ou que não esteja numa rede local.
+  IF EXISTS (SELECT 1 FROM pg_roles
+              WHERE rolname IN ('supabase_admin', 'supabase_auth_admin', 'supabase_storage_admin',
+                                'authenticator', 'service_role'))
+     OR EXISTS (SELECT 1 FROM pg_namespace
+                 WHERE nspname IN ('auth', 'storage', 'realtime', 'supabase_functions', 'vault', 'graphql_public')) THEN
+    RAISE EXCEPTION 'Este banco parece ser um Supabase (papéis ou esquemas do Supabase encontrados). '
+                    'Este script cria usuários com SENHA CONHECIDA e não roda aqui.'
+      USING ERRCODE = 'P0001';
+  END IF;
+  IF inet_server_addr() IS NOT NULL
+     AND NOT (inet_server_addr() <<= ANY (ARRAY['127.0.0.0/8', '::1/128', '10.0.0.0/8', '172.16.0.0/12',
+                                                '192.168.0.0/16', 'fc00::/7', 'fe80::/10']::inet[])) THEN
+    RAISE EXCEPTION 'O servidor está no endereço % (fora de loopback e de rede privada). '
+                    'Este script só roda em banco local.', inet_server_addr()
       USING ERRCODE = 'P0001';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM perfil WHERE nome_perfil = 'Netafim Admin') THEN
