@@ -5,7 +5,7 @@ Resposta à pergunta da Nicole: *o que o Android envia, o que recebe e como o se
 **Status:** proposta para o grupo confirmar. **Nenhum destes endpoints existe hoje** (a API de atendimentos do Rafael tem só `GET/POST /atendimentos` e `GET/PATCH /atendimentos/{id}`).
 **Data:** 02/11/2026 · **Autor:** Rodrigo (Pessoa 1)
 
-> **Estado em 15/11/2026:** continua sendo **proposta**. Nenhum endpoint de sincronização foi implementado. Em aberto, para o grupo decidir: **quem implementa `GET /sync/pull` e `POST /sync/push` no back-end** (a função `pull_atendimentos(usuario, desde, limite)`, que o Rafael se comprometeu a entregar no módulo de atendimentos, **ainda não existe**; seria a base do pull) e o prazo para o app (Pessoa 4) consumir. Este arquivo entra no repositório para ter uma fonte versionada; o conteúdo abaixo é o da proposta original, sem alteração.
+> **Estado em 15/11/2026:** continua sendo **proposta**. Nenhum endpoint de sincronização foi implementado. Em aberto, para o grupo decidir: **quem implementa `GET /sync/pull` e `POST /sync/push` no back-end** (a função `pull_atendimentos(desde, limite)` do Rafael existe na branch `rafael-atendimentos-models` (PR #3, ainda não mesclado), sem a rota; é a base do pull) e o prazo para o app (Pessoa 4) consumir. Este arquivo entra no repositório para ter uma fonte versionada; o conteúdo abaixo é o da proposta original, sem alteração.
 
 > Legenda: **[BANCO]** = já existe no snapshot `infra/db/base/001_schema_inicial.sql` (conferido) · **[API]** = já existe no contrato do Rafael (`origin/rafael-atendimentos-models`) · **[NOVO]** = proposta, precisa ser construída/aprovada.
 
@@ -85,12 +85,12 @@ Regras:
     {
       "id_operacao": "0b6f...",
       "resultado": "aplicado",
-      "registro": { "id": "7c1e...", "versao": 1, "sync_seq": 90412, "numero_protocolo": "OS-0042", "...": "..." }
+      "registro": { "id_atendimento": "7c1e...", "versao": 1, "sync_seq": 90412, "numero_protocolo": "OS-0042", "...": "..." }
     },
     {
       "id_operacao": "9aa1...",
       "resultado": "conflito",
-      "registro_servidor": { "id": "55d2...", "versao": 7, "status": "agendado", "...": "..." },
+      "registro_servidor": { "id_atendimento": "55d2...", "versao": 7, "status": "agendado", "...": "..." },
       "id_conflito": "c3f0...-uuid"
     },
     {
@@ -146,7 +146,7 @@ Isso **resolve a dúvida do 409 da DT-017** para o sync: o app não precisa inte
 ```json
 {
   "itens": [
-    { "entidade": "atendimento", "removido": false, "registro": { "id": "7c1e...", "versao": 8, "sync_seq": 90431, "...": "..." } },
+    { "entidade": "atendimento", "removido": false, "registro": { "id_atendimento": "7c1e...", "versao": 8, "sync_seq": 90431, "...": "..." } },
     { "entidade": "evidencia",   "removido": true,  "registro": { "id": "aa01...", "sync_seq": 90433 } }
   ],
   "cursor": 90433,
@@ -225,3 +225,13 @@ O que muda entre a v0.1 e a final (itens A–I) mexe em **campos opcionais** do 
 
 - A função `pull_atendimentos` ainda não existe; é a que o Rafael se comprometeu a fazer.
 - O detalhe do atendimento (`GET` e a resposta do `PATCH`) **ainda não traz `sync_seq`**; só o `POST` e a lista trazem. O Rafael vai acrescentar no detalhe, porque a resposta `aplicado` (seção 4) precisa dele.
+
+## Atualização de 15/11/2026, noite (Rafael, branch `rafael-atendimentos-models`, commit `ed1ff7d`)
+
+Conferido por mim no código dessa branch (não rodei os testes dele):
+
+- O detalhe do atendimento (`GET` e a resposta do `PATCH`) **agora traz `sync_seq`**. A correção da seção anterior fica resolvida na branch dele, ainda não mesclada.
+- `pull_atendimentos(desde=0, limite=200)`, em `apps/atendimentos/sincronizacao.py`: devolve `{itens, cursor, tem_mais}` por `sync_seq` crescente, no máximo **500** por chamada (padrão 200, o que bate com o ponto H). **Não recebe `usuario`** (diferente do rascunho): o RLS decide o que cada perfil recebe, pela conexão da API. Excluído desce como tombstone `{id_atendimento, versao, sync_seq}`. Com página vazia, o cursor devolvido é o próprio `desde`. Só cobre a entidade `atendimento`; a rota `GET /sync/pull`, o push, as outras entidades e a tabela de operações **não existem**.
+- **Chave do id (decisão a):** o rascunho usava `id`; a API real usa `id_atendimento`. Os registros de atendimento acima (resposta do push, conflito e pull) passaram a usar `id_atendimento`, para o registro ser o mesmo JSON do detalhe. A operação do push (`id` na seção 3) e a evidência (`aa01...`) **não foram alteradas**: o nome da chave da evidência ainda não está definido. A Nicole precisa ler `id_atendimento` no Room.
+- **Histórico offline (decisão b), proposta do Rafael, ainda sem resposta:** a linha do tempo do detalhe precisa do histórico sem internet, e a tabela de histórico não tem `sync_seq` próprio. Ele propõe incluir a chave `historico` dentro do registro do atendimento (uma consulta a mais por página). Depende de a Nicole e o grupo concordarem, e de ver o tamanho da página.
+- **Quem implementa a rota `GET /sync/pull` e o push (decisão c):** continua em aberto (ponto I da seção 9).
