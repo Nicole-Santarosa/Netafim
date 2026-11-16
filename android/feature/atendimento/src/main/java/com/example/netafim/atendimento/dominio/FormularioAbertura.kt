@@ -1,24 +1,27 @@
 package com.example.netafim.atendimento.dominio
 
 // Limites de tamanho do contrato da API (schema AberturaAtendimento): cidade aceita até 100
-// caracteres e contato_solicitante até 20. A localidade do formulário vai no campo cidade.
-const val LIMITE_LOCALIDADE = 100
+// caracteres, nome_fazenda_informado até 150 e contato_solicitante até 20.
+const val LIMITE_CIDADE = 100
+const val LIMITE_NOME_FAZENDA = 150
 const val LIMITE_CONTATO = 20
-
-// Decisão do grupo ainda em confirmação: a localidade é obrigatória na abertura pelo cliente?
-// No contrato o campo cidade é opcional, então a regra é só do app. Para mudar, troque só este valor.
-const val LOCALIDADE_OBRIGATORIA = true
 
 // Dados que o cliente preenche na abertura (protótipo do cliente). Todos começam vazios.
 // Os campos de identificação (id do atendimento, origem, id do cliente) não são do formulário:
 // o app os preenche com o aparelho e a sessão.
+// Os obrigatórios seguem o formulário de solicitação da Netafim para o cliente final, que é o
+// mesmo que a API passou a exigir: distribuidor, cidade, nome da fazenda, ao menos uma cultura e
+// o motivo, além do contato, que o contrato sempre pediu.
 data class FormularioAbertura(
     val motivo: MotivoAtendimento? = null,
-    // Ids do catálogo de culturas (GET /culturas). Opcional.
+    // Ids do catálogo de culturas (GET /culturas). Ao menos um.
     val culturas: Set<Int> = emptySet(),
-    val localidade: String = "",
+    // Vai no campo cidade da API.
+    val cidade: String = "",
+    // Vai no campo nome_fazenda_informado da API.
+    val nomeFazenda: String = "",
     val contato: String = "",
-    // Distribuidor escolhido na lista. Opcional.
+    // Distribuidor escolhido na lista. Obrigatório para o cliente final.
     val idDistribuidor: Int? = null,
     val tipoVenda: TipoVenda? = null,
 )
@@ -28,20 +31,28 @@ enum class ErroCampo {
     MUITO_LONGO,
 }
 
-// Um erro opcional por campo validado. Distribuidor, culturas e tipo de venda não geram erro.
+// Um erro opcional por campo validado. Culturas e distribuidor só têm o erro de obrigatório,
+// porque são escolhas de lista. O tipo de venda não gera erro: sem escolha vale o padrão.
 data class ErrosFormulario(
     val motivo: ErroCampo? = null,
-    val localidade: ErroCampo? = null,
+    val cidade: ErroCampo? = null,
+    val nomeFazenda: ErroCampo? = null,
+    val culturas: ErroCampo? = null,
+    val distribuidor: ErroCampo? = null,
     val contato: ErroCampo? = null,
 ) {
     val valido: Boolean
-        get() = motivo == null && localidade == null && contato == null
+        get() = motivo == null && cidade == null && nomeFazenda == null &&
+            culturas == null && distribuidor == null && contato == null
 }
 
 fun validar(formulario: FormularioAbertura): ErrosFormulario = ErrosFormulario(
     // O motivo é obrigatório no contrato da API.
     motivo = if (formulario.motivo == null) ErroCampo.OBRIGATORIO else null,
-    localidade = validarTexto(formulario.localidade, LIMITE_LOCALIDADE, LOCALIDADE_OBRIGATORIA),
+    cidade = validarTexto(formulario.cidade, LIMITE_CIDADE, obrigatorio = true),
+    nomeFazenda = validarTexto(formulario.nomeFazenda, LIMITE_NOME_FAZENDA, obrigatorio = true),
+    culturas = if (formulario.culturas.isEmpty()) ErroCampo.OBRIGATORIO else null,
+    distribuidor = if (formulario.idDistribuidor == null) ErroCampo.OBRIGATORIO else null,
     // O contato é obrigatório no contrato (contato_solicitante).
     contato = validarTexto(formulario.contato, LIMITE_CONTATO, obrigatorio = true),
 )

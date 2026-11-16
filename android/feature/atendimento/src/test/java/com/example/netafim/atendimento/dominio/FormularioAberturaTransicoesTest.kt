@@ -35,10 +35,17 @@ class FormularioAberturaTransicoesTest {
 
     @Test
     fun trocaDeMotivoNaoMexeNosOutrosCampos() {
-        val antes = FormularioAbertura(culturas = setOf(1), localidade = "X", contato = "1", idDistribuidor = 3)
+        val antes = FormularioAbertura(
+            culturas = setOf(1),
+            cidade = "X",
+            nomeFazenda = "Y",
+            contato = "1",
+            idDistribuidor = 3,
+        )
         val depois = antes.comMotivo(MotivoAtendimento.TREINAMENTO)
         assertEquals(setOf(1), depois.culturas)
-        assertEquals("X", depois.localidade)
+        assertEquals("X", depois.cidade)
+        assertEquals("Y", depois.nomeFazenda)
         assertEquals("1", depois.contato)
         assertEquals(3, depois.idDistribuidor)
     }

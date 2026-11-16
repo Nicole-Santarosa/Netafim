@@ -64,8 +64,9 @@ import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.ErroCampo
 import com.example.netafim.atendimento.dominio.ErrosFormulario
 import com.example.netafim.atendimento.dominio.FormularioAbertura
+import com.example.netafim.atendimento.dominio.LIMITE_CIDADE
 import com.example.netafim.atendimento.dominio.LIMITE_CONTATO
-import com.example.netafim.atendimento.dominio.LIMITE_LOCALIDADE
+import com.example.netafim.atendimento.dominio.LIMITE_NOME_FAZENDA
 import com.example.netafim.atendimento.dominio.MotivoAtendimento
 import com.example.netafim.atendimento.dominio.OpcaoCultura
 import com.example.netafim.atendimento.dominio.OpcaoDistribuidor
@@ -108,28 +109,49 @@ fun AbrirAtendimentoTela(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
+            // A ordem segue o formulário de solicitação da Netafim: distribuidor, cidade, nome da
+            // fazenda, cultura e motivo. Contato e tipo de venda vêm depois, como já estavam.
+            CampoDistribuidor(
+                distribuidores = distribuidores,
+                escolhido = formulario.idDistribuidor,
+                erro = erros.distribuidor,
+                habilitado = habilitado,
+                aoEscolher = { aoAlterar(formulario.copy(idDistribuidor = it)) },
+            )
+            CampoDeTexto(
+                rotulo = stringResource(R.string.atendimento_abrir_cidade),
+                valor = formulario.cidade,
+                aoMudar = { aoAlterar(formulario.copy(cidade = it)) },
+                erro = erros.cidade,
+                textoObrigatorio = R.string.atendimento_abrir_erro_cidade,
+                limite = LIMITE_CIDADE,
+                teclado = KeyboardType.Text,
+                acao = ImeAction.Next,
+                habilitado = habilitado,
+            )
+            CampoDeTexto(
+                rotulo = stringResource(R.string.atendimento_abrir_nome_fazenda),
+                valor = formulario.nomeFazenda,
+                aoMudar = { aoAlterar(formulario.copy(nomeFazenda = it)) },
+                erro = erros.nomeFazenda,
+                textoObrigatorio = R.string.atendimento_abrir_erro_nome_fazenda,
+                limite = LIMITE_NOME_FAZENDA,
+                teclado = KeyboardType.Text,
+                acao = ImeAction.Next,
+                habilitado = habilitado,
+            )
+            SecaoCulturas(
+                culturas = culturas,
+                marcadas = formulario.culturas,
+                erro = erros.culturas,
+                habilitado = habilitado,
+                aoAlternar = { aoAlterar(formulario.comCulturaAlternada(it)) },
+            )
             SecaoMotivo(
                 escolhido = formulario.motivo,
                 erro = erros.motivo,
                 habilitado = habilitado,
                 aoEscolher = { aoAlterar(formulario.comMotivo(it)) },
-            )
-            SecaoCulturas(
-                culturas = culturas,
-                marcadas = formulario.culturas,
-                habilitado = habilitado,
-                aoAlternar = { aoAlterar(formulario.comCulturaAlternada(it)) },
-            )
-            CampoDeTexto(
-                rotulo = stringResource(R.string.atendimento_abrir_localidade),
-                valor = formulario.localidade,
-                aoMudar = { aoAlterar(formulario.copy(localidade = it)) },
-                erro = erros.localidade,
-                textoObrigatorio = R.string.atendimento_abrir_erro_localidade,
-                limite = LIMITE_LOCALIDADE,
-                teclado = KeyboardType.Text,
-                acao = ImeAction.Next,
-                habilitado = habilitado,
             )
             CampoDeTexto(
                 rotulo = stringResource(R.string.atendimento_abrir_contato),
@@ -141,12 +163,6 @@ fun AbrirAtendimentoTela(
                 teclado = KeyboardType.Phone,
                 acao = ImeAction.Done,
                 habilitado = habilitado,
-            )
-            CampoDistribuidor(
-                distribuidores = distribuidores,
-                escolhido = formulario.idDistribuidor,
-                habilitado = habilitado,
-                aoEscolher = { aoAlterar(formulario.copy(idDistribuidor = it)) },
             )
             // Tipo de venda só existe no motivo Digital Farming.
             if (formulario.motivo == MotivoAtendimento.DIGITAL_FARMING) {
@@ -301,6 +317,7 @@ private fun ChipDeSelecao(texto: String, marcado: Boolean, habilitado: Boolean, 
 private fun SecaoCulturas(
     culturas: List<OpcaoCultura>,
     marcadas: Set<Int>,
+    erro: ErroCampo?,
     habilitado: Boolean,
     aoAlternar: (Int) -> Unit,
 ) {
@@ -319,6 +336,10 @@ private fun SecaoCulturas(
                     aoClicar = { aoAlternar(cultura.id) },
                 )
             }
+        }
+        // Cultura só tem o erro de obrigatório; o limite não entra na mensagem.
+        if (erro != null) {
+            MensagemDeErro(textoDoErro(erro, R.string.atendimento_abrir_erro_cultura, limite = 0))
         }
     }
 }
@@ -376,19 +397,22 @@ private fun CampoDeTexto(
     }
 }
 
-// Distribuidor: menu suspenso somente leitura. A primeira opção, "Nenhum", limpa a escolha.
+// Distribuidor: menu suspenso somente leitura, só com os distribuidores. Como o campo é obrigatório,
+// tirei a opção "Nenhum" que limpava a escolha: escolher nenhum só levaria ao erro. O nulo agora só
+// existe no estado inicial do formulário, e aí o campo mostra o texto de orientação.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CampoDistribuidor(
     distribuidores: List<OpcaoDistribuidor>,
     escolhido: Int?,
+    erro: ErroCampo?,
     habilitado: Boolean,
-    aoEscolher: (Int?) -> Unit,
+    aoEscolher: (Int) -> Unit,
 ) {
     // Só o abrir e fechar do menu fica guardado aqui; a escolha em si volta para o chamador.
     var aberto by remember { mutableStateOf(false) }
-    val nenhum = stringResource(R.string.atendimento_abrir_distribuidor_nenhum)
-    val nomeExibido = distribuidores.firstOrNull { it.id == escolhido }?.nome ?: nenhum
+    // Sem escolha o valor fica vazio e o placeholder mostra "Selecione o distribuidor".
+    val nomeExibido = distribuidores.firstOrNull { it.id == escolhido }?.nome.orEmpty()
     Column(modifier = Modifier.semantics(mergeDescendants = true) {}) {
         Rotulo(stringResource(R.string.atendimento_abrir_distribuidor))
         Spacer(Modifier.size(8.dp))
@@ -398,7 +422,9 @@ private fun CampoDistribuidor(
                 onValueChange = {},
                 readOnly = true,
                 enabled = habilitado,
+                isError = erro != null,
                 singleLine = true,
+                placeholder = { Text(stringResource(R.string.atendimento_abrir_distribuidor_selecione)) },
                 shape = formaDoCampo,
                 colors = coresDoCampo(),
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = aberto) },
@@ -407,13 +433,6 @@ private fun CampoDistribuidor(
                     .fillMaxWidth(),
             )
             ExposedDropdownMenu(expanded = aberto && habilitado, onDismissRequest = { aberto = false }) {
-                DropdownMenuItem(
-                    text = { Text(nenhum) },
-                    onClick = {
-                        aoEscolher(null)
-                        aberto = false
-                    },
-                )
                 distribuidores.forEach { distribuidor ->
                     DropdownMenuItem(
                         text = { Text(distribuidor.nome) },
@@ -424,6 +443,10 @@ private fun CampoDistribuidor(
                     )
                 }
             }
+        }
+        // Dentro da mesma coluna com mergeDescendants, para o leitor de tela ler o erro junto do campo.
+        if (erro != null) {
+            MensagemDeErro(textoDoErro(erro, R.string.atendimento_abrir_erro_distribuidor, limite = 0))
         }
     }
 }
@@ -498,7 +521,8 @@ private val distribuidoresDoPreview = listOf(
 private val formularioPreenchido = FormularioAbertura(
     motivo = MotivoAtendimento.DIGITAL_FARMING,
     culturas = setOf(2, 4),
-    localidade = "Arealva, SP",
+    cidade = "Arealva",
+    nomeFazenda = "Fazenda Boa Vista",
     contato = "14999990000",
     idDistribuidor = 11,
     tipoVenda = TipoVenda.PROJETO,
@@ -541,10 +565,35 @@ private fun AbrirAtendimentoPreenchidoPreview() {
 private fun AbrirAtendimentoComErrosPreview() {
     TelaDePreview(
         formulario = FormularioAbertura(),
+        // O que o validar devolve para o formulário vazio: todos os obrigatórios faltando.
         erros = ErrosFormulario(
             motivo = ErroCampo.OBRIGATORIO,
-            localidade = ErroCampo.OBRIGATORIO,
+            cidade = ErroCampo.OBRIGATORIO,
+            nomeFazenda = ErroCampo.OBRIGATORIO,
+            culturas = ErroCampo.OBRIGATORIO,
+            distribuidor = ErroCampo.OBRIGATORIO,
             contato = ErroCampo.OBRIGATORIO,
+        ),
+    )
+}
+
+// Erros dos campos novos com o resto preenchido: cultura e distribuidor sem escolha, e cidade e nome
+// da fazenda passando do limite, para conferir a mensagem de "muito longo" com 100 e 150.
+@Preview(showBackground = true, heightDp = 1100)
+@Composable
+private fun AbrirAtendimentoErrosDosCamposNovosPreview() {
+    TelaDePreview(
+        formulario = formularioPreenchido.copy(
+            culturas = emptySet(),
+            idDistribuidor = null,
+            cidade = "a".repeat(LIMITE_CIDADE + 1),
+            nomeFazenda = "a".repeat(LIMITE_NOME_FAZENDA + 1),
+        ),
+        erros = ErrosFormulario(
+            cidade = ErroCampo.MUITO_LONGO,
+            nomeFazenda = ErroCampo.MUITO_LONGO,
+            culturas = ErroCampo.OBRIGATORIO,
+            distribuidor = ErroCampo.OBRIGATORIO,
         ),
     )
 }
