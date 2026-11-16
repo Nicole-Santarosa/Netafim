@@ -20,7 +20,7 @@ CAMPOS_DO_DETALHE = {
     "tipo_atendimento", "descricao_problema", "data_inicio_problema", "data_sugerida",
     "necessidade", "qtd_participantes_prevista", "snapshot_cliente",
     "snapshot_propriedade", "data_abertura", "data_conclusao", "data_encerramento",
-    "versao", "data_criacao", "data_atualizacao", "culturas",
+    "versao", "sync_seq", "data_criacao", "data_atualizacao", "culturas",
 }  # mais a chave "historico", que a view acrescenta
 
 
@@ -229,3 +229,26 @@ def test_patch_tambem_devolve_as_culturas(mundo, conexao_admin, entrar_como):
     assert resposta.status_code == 200
     assert resposta.data["status"] == "cancelado"
     assert resposta.data["culturas"] == esperado(culturas)
+
+
+@pytest.mark.django_db
+def test_sync_seq_vem_no_detalhe_e_sobe_na_resposta_do_patch(mundo, conexao_admin, entrar_como):
+    # O detalhe traz o mesmo sync_seq gravado pelo banco, e a resposta do PATCH,
+    # que tem o mesmo formato, já vem com o número novo da alteração.
+    cliente = mundo["id_usuario_cliente"]
+    entrar_como(cliente)
+    atendimento = abrir_atendimento(cliente, dados_pedido(mundo["id_cliente"]))
+
+    detalhe = cliente_autenticado(cliente).get(url(atendimento.id_atendimento))
+
+    assert detalhe.status_code == 200
+    assert detalhe.data["sync_seq"] == atendimento.sync_seq
+
+    admin = criar_admin_netafim(conexao_admin)
+    entrar_como(admin)
+    resposta = cliente_autenticado(admin).patch(
+        url(atendimento.id_atendimento), {"versao": 1, "status": "cancelado"}, format="json"
+    )
+
+    assert resposta.status_code == 200
+    assert resposta.data["sync_seq"] > detalhe.data["sync_seq"]

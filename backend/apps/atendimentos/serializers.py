@@ -271,6 +271,10 @@ class AtendimentoDetalheSerializer(serializers.ModelSerializer):
             "data_conclusao",
             "data_encerramento",
             "versao",
+            # Cursor da sincronização. Vem no detalhe (e na resposta do PATCH, que usa
+            # o mesmo formato) para o app guardar o registro inteiro sem outra ida à
+            # lista; o pull da sincronização devolve este mesmo formato.
+            "sync_seq",
             "data_criacao",
             "data_atualizacao",
             "culturas",

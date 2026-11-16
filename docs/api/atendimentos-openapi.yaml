@@ -757,6 +757,13 @@ components:
           nullable: true
         versao:
           type: integer
+        sync_seq:
+          type: integer
+          format: int64
+          nullable: true
+          description: >-
+            Cursor da sincronização, gerado pelo banco a cada gravação. É o mesmo
+            valor que a lista devolve e que o pull da sincronização usa para ordenar.
         data_criacao:
           type: string
           format: date-time
