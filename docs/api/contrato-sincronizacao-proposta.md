@@ -5,7 +5,7 @@ Resposta à pergunta da Nicole: *o que o Android envia, o que recebe e como o se
 **Status:** proposta para o grupo confirmar. **Nenhum destes endpoints existe hoje** (a API de atendimentos do Rafael tem só `GET/POST /atendimentos` e `GET/PATCH /atendimentos/{id}`).
 **Data:** 02/11/2026 · **Autor:** Rodrigo (Pessoa 1)
 
-> **Estado em 15/11/2026:** continua sendo **proposta**. Nenhum endpoint de sincronização foi implementado. Em aberto, para o grupo decidir: **quem implementa `GET /sync/pull` e `POST /sync/push` no back-end** (a função `pull_atendimentos(usuario, desde, limite)` do módulo de atendimentos, que respeita o RLS e devolve os excluídos, seria a base do pull) e o prazo para o app (Pessoa 4) consumir. Este arquivo entra no repositório para ter uma fonte versionada; o conteúdo abaixo é o da proposta original, sem alteração.
+> **Estado em 15/11/2026:** continua sendo **proposta**. Nenhum endpoint de sincronização foi implementado. Em aberto, para o grupo decidir: **quem implementa `GET /sync/pull` e `POST /sync/push` no back-end** (a função `pull_atendimentos(usuario, desde, limite)`, que o Rafael se comprometeu a entregar no módulo de atendimentos, **ainda não existe**; seria a base do pull) e o prazo para o app (Pessoa 4) consumir. Este arquivo entra no repositório para ter uma fonte versionada; o conteúdo abaixo é o da proposta original, sem alteração.
 
 > Legenda: **[BANCO]** = já existe no snapshot `infra/db/base/001_schema_inicial.sql` (conferido) · **[API]** = já existe no contrato do Rafael (`origin/rafael-atendimentos-models`) · **[NOVO]** = proposta, precisa ser construída/aprovada.
 
@@ -201,7 +201,7 @@ Fila no app: reenviar com **o mesmo `id_operacao`** em caso de falha de rede (é
 | A | **Tabela de operações processadas** (`sync_operacao`: `id_operacao` PK, `id_dispositivo`, `resultado`, `resposta` jsonb, `criado_em`) | [GRUPO] + banco | **Não existe no banco.** Sem ela, um reenvio de *atualização* cuja resposta se perdeu volta como `conflito` falso (a `versao` já subiu). Para *criar*, o UUID já protege. Proposta: migração **009** (a 008 é a regra do Rafael) |
 | B | Política de conflito v1 = "servidor vence + preserva payload" | [GRUPO] | Alternativa: mesclar por campo (exige log de campo, que o banco não tem) |
 | C | Cursor: sobreposição no cliente × marca-d'água no servidor | Nicole (Pessoa 4) | Sobreposição é simples e suficiente para o volume esperado |
-| D | Quais campos do atendimento o app pode **atualizar** pelo sync (hoje o PATCH só aceita status/destino/técnico) | Rafael | Ex.: descrição, data sugerida, agendamento, relatório |
+| D | Quais campos do atendimento o app pode **atualizar** pelo sync | Rafael | **Informado pelo Rafael em 15/11/2026 (não conferido linha a linha pelo autor do contrato):** o PATCH aceita hoje `versao` mais `status`, `destinado_a`, `id_distribuidor`, `id_tecnico_responsavel` (aceita nulo para desvincular) e `situacao_projeto` (aceita nulo); mais nada. Quem pode o quê e as transições são regras do gatilho do banco, então o sync devolve a mesma recusa por operação (422 `regra_de_negocio` ou 403). Sugestão para a v1: manter só esses campos. |
 | E | Resolução de conflitos pelo Admin (rota + tela) | [GRUPO] | Fora da v1 |
 | F | Upload de arquivo (proxy × URL pré-assinada, antivírus, limites) | infra | Depende do Object Storage |
 | G | Escopo da v1: `atendimento` + `evidencia`; **relatório** e `agendamento` na v2 | [GRUPO] | Relatório tem `versao` própria e mais regras |
@@ -218,3 +218,10 @@ Ela pode começar sem esperar o backend, usando só o que está decidido:
 3. Aplicação idempotente do pull (só substitui se `versao`/`sync_seq` maiores; nunca sobrescreve `pendente_envio`).
 
 O que muda entre a v0.1 e a final (itens A–I) mexe em **campos opcionais** do corpo, não na forma geral. Mudar o formato dos JSONs desta proposta exige aviso aqui antes.
+
+---
+
+## Correções de 15/11/2026 (informadas pelo Rafael)
+
+- A função `pull_atendimentos` ainda não existe; é a que o Rafael se comprometeu a fazer.
+- O detalhe do atendimento (`GET` e a resposta do `PATCH`) **ainda não traz `sync_seq`**; só o `POST` e a lista trazem. O Rafael vai acrescentar no detalhe, porque a resposta `aplicado` (seção 4) precisa dele.
