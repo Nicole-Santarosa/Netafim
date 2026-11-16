@@ -9,7 +9,8 @@ proposta.md, seção 6). O que esta função cumpre:
 - inclui os excluídos logicamente (deletado_em preenchido) como tombstone, com
   "removido": true, para o app apagar a cópia local;
 - devolve o registro no formato do detalhe da API (GET /atendimentos/{id}),
-  que é o que o app guarda em dadosJson;
+  com a linha do tempo na chave "historico", que é o que o app guarda em
+  dadosJson;
 - não filtra por usuário: o que cada um recebe é decidido pelo RLS, porque a
   consulta passa pela conexão da API com o usuário da sessão.
 
@@ -27,22 +28,53 @@ O que não é desta função, e fica para quem implementar o contrato:
 """
 
 from django.db.models import OuterRef, Subquery
+from rest_framework import serializers
 
-from apps.atendimentos.models import Atendimento, AtendimentoCultura, Cultura
-from apps.atendimentos.serializers import AtendimentoDetalheSerializer
+from apps.atendimentos.models import (
+    Atendimento,
+    AtendimentoCultura,
+    Cultura,
+    HistoricoAtendimento,
+)
+from apps.atendimentos.serializers import (
+    AtendimentoDetalheSerializer,
+    HistoricoAtendimentoSerializer,
+)
 
 LIMITE_PADRAO = 200
 LIMITE_MAXIMO = 500
 
 
 class _RegistroDoPull(AtendimentoDetalheSerializer):
-    """O detalhe, com as mesmas chaves e o mesmo formato, mas com as culturas
-    vindas de um dicionário montado antes, numa consulta só para a página
-    inteira. O get_culturas do detalhe faz uma consulta por atendimento, o que
-    numa página de 200 viraria 200 consultas."""
+    """O detalhe, com as mesmas chaves e o mesmo formato, mas com as culturas e
+    o histórico vindos de dicionários montados antes, uma consulta para cada um
+    na página inteira. O get_culturas do detalhe faz uma consulta por
+    atendimento, o que numa página de 200 viraria 200 consultas.
+
+    O histórico vai dentro do registro do atendimento, na chave "historico",
+    porque a tabela historico_atendimento não tem sync_seq próprio: o app não
+    teria como pedir só os eventos novos. Cada atendimento que desce já leva a
+    linha do tempo inteira, no mesmo formato do GET do detalhe.
+
+    Limitação conhecida: três eventos (reagendado, reclassificado e editado
+    pós-finalização) são gravados pelo banco sem nenhum UPDATE no atendimento,
+    então o sync_seq dele não sobe. Por isso esses eventos só chegam no pull
+    quando o atendimento mudar por outro motivo. O app também os recebe quando
+    abre o detalhe online (GET), que sempre lê o histórico direto da tabela.
+    """
+
+    historico = serializers.SerializerMethodField()
+
+    class Meta(AtendimentoDetalheSerializer.Meta):
+        fields = (*AtendimentoDetalheSerializer.Meta.fields, "historico")
 
     def get_culturas(self, atendimento):
         return self.context["culturas"].get(atendimento.id_atendimento, [])
+
+    def get_historico(self, atendimento):
+        # Mesmo serializer do GET do detalhe, para o formato ser idêntico.
+        eventos = self.context["historico"].get(atendimento.id_atendimento, [])
+        return list(HistoricoAtendimentoSerializer(eventos, many=True).data)
 
 
 def pull_atendimentos(desde=0, limite=LIMITE_PADRAO):
@@ -67,9 +99,10 @@ def pull_atendimentos(desde=0, limite=LIMITE_PADRAO):
           "tem_mais": false,
         }
 
-    No máximo duas consultas ao banco, qualquer que seja o tamanho da página:
-    uma para os atendimentos e outra para as culturas dos que não foram
-    removidos (essa não acontece se a página só tiver tombstones ou vier vazia).
+    No máximo três consultas ao banco, qualquer que seja o tamanho da página:
+    uma para os atendimentos, outra para as culturas e outra para o histórico
+    dos que não foram removidos (as duas últimas não acontecem se a página só
+    tiver tombstones ou vier vazia). O tombstone não leva histórico.
     """
     _validar_inteiro("desde", desde, minimo=0)
     _validar_inteiro("limite", limite, minimo=1, maximo=LIMITE_MAXIMO)
@@ -82,8 +115,12 @@ def pull_atendimentos(desde=0, limite=LIMITE_PADRAO):
     linhas = linhas[:limite]
 
     ativos = [a for a in linhas if a.deletado_em is None]
-    culturas = _culturas_por_atendimento([a.id_atendimento for a in ativos])
-    registros = _RegistroDoPull(ativos, many=True, context={"culturas": culturas}).data
+    ids_ativos = [a.id_atendimento for a in ativos]
+    contexto = {
+        "culturas": _culturas_por_atendimento(ids_ativos),
+        "historico": _historico_por_atendimento(ids_ativos),
+    }
+    registros = _RegistroDoPull(ativos, many=True, context=contexto).data
     registro_por_id = {a.id_atendimento: dict(r) for a, r in zip(ativos, registros, strict=True)}
 
     itens = []
@@ -143,3 +180,21 @@ def _culturas_por_atendimento(ids_atendimento):
             {"id_cultura": vinculo["id_cultura"], "nome": vinculo["nome"]}
         )
     return culturas
+
+
+def _historico_por_atendimento(ids_atendimento):
+    """Eventos de vários atendimentos numa consulta só, agrupados por
+    atendimento. Dentro de cada um a ordem é a do GET do detalhe: data_evento e,
+    para eventos com a mesma data, id_historico (que é estável e serve de chave
+    para o app não duplicar o evento). Quem enxerga o atendimento enxerga o
+    histórico dele, pela policy da tabela, então não há filtro de usuário aqui.
+    Atendimento sem evento simplesmente não aparece no dicionário."""
+    if not ids_atendimento:
+        return {}
+    eventos = HistoricoAtendimento.objects.filter(id_atendimento__in=ids_atendimento).order_by(
+        "id_atendimento", "data_evento", "id_historico"
+    )
+    historico = {}
+    for evento in eventos:
+        historico.setdefault(evento.id_atendimento, []).append(evento)
+    return historico

@@ -784,6 +784,15 @@ components:
                 type: string
         historico:
           type: array
+          description: |-
+            Eventos do atendimento, do mais antigo para o mais novo (data_evento e
+            id_historico). O id_historico é estável: o aplicativo o usa para não
+            duplicar o evento. O registro do pull da sincronização traz esta mesma
+            chave, porque a tabela de histórico não tem sync_seq próprio. Limitação
+            do pull: reagendado, reclassificado e editado pós-finalização são
+            gravados pelo banco sem alterar o atendimento, então o sync_seq dele não
+            sobe e esses eventos só chegam no pull quando o atendimento mudar por
+            outro motivo. Este GET sempre lê o histórico direto da tabela.
           items:
             $ref: '#/components/schemas/EventoHistorico'
     AlteracaoAtendimento:

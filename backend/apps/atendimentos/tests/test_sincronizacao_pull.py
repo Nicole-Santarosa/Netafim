@@ -14,7 +14,7 @@ import pytest
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from apps.atendimentos.models import Atendimento, Cultura
+from apps.atendimentos.models import Atendimento, Cultura, HistoricoAtendimento
 from apps.atendimentos.servicos import abrir_atendimento, atualizar_atendimento
 from apps.atendimentos.sincronizacao import pull_atendimentos
 from apps.atendimentos.tests.test_rls_perfis import criar_usuario_do_perfil
@@ -305,11 +305,10 @@ def test_item_normal_e_igual_ao_get_do_detalhe(org, entrar_como):
 
     resultado = pull_atendimentos(desde=org["marco"])
 
-    # Comparo o JSON renderizado dos dois lados: mesmas chaves e mesmos valores.
-    # A única chave a mais do GET é o historico, que o pull não traz.
+    # Comparo o JSON renderizado dos dois lados: mesmas chaves (inclusive o
+    # historico) e mesmos valores.
     registro = json.loads(json.dumps(resultado["itens"][0]["registro"]))
-    historico = detalhe.pop("historico")
-    assert historico
+    assert detalhe["historico"]
     assert registro.keys() == detalhe.keys()
     for chave in detalhe:
         assert registro[chave] == detalhe[chave], chave
@@ -317,6 +316,93 @@ def test_item_normal_e_igual_ao_get_do_detalhe(org, entrar_como):
         ativas, key=lambda i: next(c["nome"] for c in detalhe["culturas"] if c["id_cultura"] == i)
     )
     assert excluida not in [c["id_cultura"] for c in registro["culturas"]]
+
+
+# Histórico dentro do registro.
+
+
+def get_do_detalhe(id_usuario, id_atendimento):
+    """JSON do GET do detalhe, como o aplicativo o recebe pela API."""
+    cliente_http = APIClient()
+    cliente_http.force_authenticate(user=UsuarioDeTeste(id_usuario))
+    resposta = cliente_http.get(f"/api/v1/atendimentos/{id_atendimento}")
+    assert resposta.status_code == 200
+    return resposta.json()
+
+
+def test_historico_do_pull_e_igual_ao_do_get_do_detalhe(org, entrar_como):
+    atendimento = abrir(entrar_como, org["cliente"], org["id_cliente"])
+    # A alteração acrescenta eventos além dos de abertura, para a ordem e o
+    # formato serem conferidos com mais de um tipo de evento.
+    entrar_como(org["admin"])
+    atualizar_atendimento(atendimento.id_atendimento, 1, {"status": "cancelado"})
+    entrar_como(org["cliente"])
+
+    resultado = pull_atendimentos(desde=org["marco"])
+
+    historico = json.loads(json.dumps(resultado["itens"][0]["registro"]["historico"]))
+    do_get = get_do_detalhe(org["cliente"], atendimento.id_atendimento)["historico"]
+    assert len(historico) > 2
+    assert historico == do_get
+    # id_historico é a chave estável do evento para o app não duplicar no Room.
+    assert len({e["id_historico"] for e in historico}) == len(historico)
+
+
+def test_atendimento_sem_eventos_devolve_historico_vazio(org, entrar_como, monkeypatch):
+    abrir(entrar_como, org["cliente"], org["id_cliente"])
+    # O banco grava os eventos de abertura sozinho e a tabela só aceita inserção,
+    # então não dá para ter um atendimento real sem evento. Simulo o dicionário
+    # sem nenhuma entrada, que é o que a consulta devolve nesse caso.
+    monkeypatch.setattr(
+        "apps.atendimentos.sincronizacao._historico_por_atendimento", lambda ids: {}
+    )
+
+    resultado = pull_atendimentos(desde=org["marco"])
+
+    assert resultado["itens"][0]["registro"]["historico"] == []
+
+
+def test_tombstone_nao_traz_historico(org, entrar_como):
+    excluido = abrir(entrar_como, org["cliente"], org["id_cliente"])
+    excluir(entrar_como, org["admin"], excluido)
+
+    entrar_como(org["cliente"])
+    resultado = pull_atendimentos(desde=org["marco"])
+
+    registro = resultado["itens"][0]["registro"]
+    assert resultado["itens"][0]["removido"] is True
+    assert "historico" not in registro
+    assert set(registro) == {"id_atendimento", "versao", "sync_seq"}
+
+
+def test_perfil_sem_visibilidade_nao_recebe_o_atendimento_nem_o_historico(
+    conexao_admin, entrar_como
+):
+    d1, c1 = criar_organizacao(conexao_admin)
+    d2, c2 = criar_organizacao(conexao_admin)
+    dono = criar_usuario_do_perfil(conexao_admin, "Cliente Usuário", "cliente", id_cliente=c1)
+    de_fora = criar_usuario_do_perfil(conexao_admin, "Cliente Usuário", "cliente", id_cliente=c2)
+    dist_de_fora = criar_usuario_do_perfil(
+        conexao_admin, "Distribuidor Admin", "distribuidor", id_distribuidor=d2
+    )
+    inicio = marco(conexao_admin)
+    atendimento = abrir(entrar_como, dono, c1)
+
+    # O dono recebe o atendimento com a linha do tempo.
+    entrar_como(dono)
+    assert [i["registro"]["id_atendimento"] for i in pull_atendimentos(desde=inicio)["itens"]] == [
+        str(atendimento.id_atendimento)
+    ]
+    assert pull_atendimentos(desde=inicio)["itens"][0]["registro"]["historico"]
+
+    for usuario in (de_fora, dist_de_fora):
+        entrar_como(usuario)
+        # Nem o atendimento no pull, nem os eventos lidos direto da tabela: a
+        # policy do histórico segue a visibilidade do atendimento.
+        assert pull_atendimentos(desde=inicio)["itens"] == []
+        assert not HistoricoAtendimento.objects.filter(
+            id_atendimento=atendimento.id_atendimento
+        ).exists()
 
 
 def test_culturas_de_cada_atendimento_vem_separadas(org, entrar_como):
@@ -355,7 +441,7 @@ def test_resultado_e_serializavel_em_json(org, entrar_como):
 
 
 @pytest.mark.parametrize("quantidade", [1, 20])
-def test_duas_consultas_qualquer_que_seja_o_tamanho_da_pagina(
+def test_tres_consultas_qualquer_que_seja_o_tamanho_da_pagina(
     org, entrar_como, django_assert_num_queries, quantidade
 ):
     entrar_como(org["cliente"])
@@ -363,12 +449,14 @@ def test_duas_consultas_qualquer_que_seja_o_tamanho_da_pagina(
     for _ in range(quantidade):
         abrir(entrar_como, org["cliente"], org["id_cliente"], culturas=culturas)
 
-    # Uma para os atendimentos e uma para as culturas da página inteira.
-    with django_assert_num_queries(2):
+    # Uma para os atendimentos, uma para as culturas e uma para o histórico da
+    # página inteira: não cresce com a quantidade de atendimentos.
+    with django_assert_num_queries(3):
         resultado = pull_atendimentos(desde=org["marco"])
 
     assert len(resultado["itens"]) == quantidade
     assert all(len(i["registro"]["culturas"]) == 2 for i in resultado["itens"])
+    assert all(i["registro"]["historico"] for i in resultado["itens"])
 
 
 def test_pagina_so_com_tombstone_ou_vazia_faz_uma_consulta(
