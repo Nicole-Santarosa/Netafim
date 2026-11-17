@@ -8,12 +8,15 @@ import androidx.compose.ui.graphics.Color
 import com.example.netafim.core.modelo.Atendimento
 import com.example.netafim.core.modelo.Cultura
 import com.example.netafim.core.modelo.EventoDoHistorico
+import com.example.netafim.core.modelo.FiltroDeAtendimentos
 import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.OrigemAtendimento
 import com.example.netafim.core.modelo.SituacaoDeSincronizacao
 import com.example.netafim.core.modelo.SituacaoDoProjeto
 import com.example.netafim.core.modelo.StatusAtendimento
+import com.example.netafim.core.modelo.buscarNosItens
+import com.example.netafim.core.modelo.ordenar
 import java.time.Instant
 
 // Tema usado só nos previews do módulo. O TemaNetafim fica no :app e este módulo não o enxerga,
@@ -61,6 +64,17 @@ internal fun itemDePreview(
     idTecnicoResponsavel = null,
     sincronizacao = SituacaoDeSincronizacao.SINCRONIZADO,
 )
+
+// Faz nos previews o que o repositório faz de verdade: aplica status, origem, busca e ordem do pedido sobre
+// os itens fictícios, para o preview mostrar a lista já pronta como a tela a receberá. Só olha os campos que
+// as telas de lista usam (somenteMeusComoTecnico e origemDoRegistro dependem do usuário e do banco local).
+internal fun listaDePreview(itens: List<ItemDeAtendimento>, filtro: FiltroDeAtendimentos): List<ItemDeAtendimento> {
+    val filtrados = itens.filter {
+        (filtro.status.isEmpty() || it.status in filtro.status) &&
+            (filtro.origem.isEmpty() || it.origem in filtro.origem)
+    }
+    return ordenar(buscarNosItens(filtrados, filtro.busca), filtro.ordem)
+}
 
 // Monta um atendimento completo para os previews dos detalhes, em cima do itemDePreview. O local do item é
 // o nome da fazenda e a cidade juntos, como o repositório entrega. O que o detalhe não desenha fica vazio

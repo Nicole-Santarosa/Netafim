@@ -47,18 +47,6 @@ sealed interface ErroAoSalvar {
     data object SemConexao : ErroAoSalvar
 }
 
-// Traduz a resposta do PATCH no erro da tela. statusHttp nulo significa que não houve resposta (sem
-// rede). Devolve nulo para um status que a edição não trata (por exemplo 400 e 401, que têm caminho
-// próprio na camada de dados), para quem chama decidir o que fazer em vez de a tela mostrar algo errado.
-fun erroAoSalvar(statusHttp: Int?, mensagemDaApi: String?): ErroAoSalvar? = when (statusHttp) {
-    null -> ErroAoSalvar.SemConexao
-    409 -> ErroAoSalvar.ConflitoDeVersao
-    403 -> ErroAoSalvar.SemPermissao
-    404 -> ErroAoSalvar.NaoEncontrado
-    422 -> ErroAoSalvar.RegraDeNegocio(mensagemDaApi.orEmpty())
-    else -> null
-}
-
 // Traduz o resultado que o repositório devolve ao salvar no erro que a tela sabe mostrar. Sucesso não é erro e
 // devolve nulo. Cada caso vai para o valor mais próximo, sem mensagem nova:
 // - ConflitoDeVersao, SemPermissao e NaoEncontrado têm o valor de mesmo nome.

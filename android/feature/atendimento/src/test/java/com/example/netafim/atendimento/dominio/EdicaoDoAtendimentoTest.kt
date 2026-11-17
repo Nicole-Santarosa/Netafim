@@ -150,36 +150,4 @@ class EdicaoDoAtendimentoTest {
         )
         assertEquals(listOf(ResultadoDaAcao.Sucesso), todos.filter { erroDoResultado(it) == null })
     }
-
-    // ---- erroAoSalvar
-
-    @Test
-    fun semRespostaViraSemConexao() {
-        assertEquals(ErroAoSalvar.SemConexao, erroAoSalvar(null, null))
-    }
-
-    @Test
-    fun cadaStatusDaApiViraSeuErro() {
-        assertEquals(ErroAoSalvar.ConflitoDeVersao, erroAoSalvar(409, "texto qualquer"))
-        assertEquals(ErroAoSalvar.SemPermissao, erroAoSalvar(403, null))
-        assertEquals(ErroAoSalvar.NaoEncontrado, erroAoSalvar(404, null))
-    }
-
-    @Test
-    fun regraDeNegocioLevaOTextoDaApi() {
-        val mensagem = "somente o Netafim Admin altera a situação do projeto"
-        assertEquals(ErroAoSalvar.RegraDeNegocio(mensagem), erroAoSalvar(422, mensagem))
-    }
-
-    @Test
-    fun regraDeNegocioSemTextoFicaComMensagemVazia() {
-        assertEquals(ErroAoSalvar.RegraDeNegocio(""), erroAoSalvar(422, null))
-    }
-
-    @Test
-    fun statusQueAEdicaoNaoTrataDevolveNulo() {
-        assertNull(erroAoSalvar(400, "x"))
-        assertNull(erroAoSalvar(401, null))
-        assertNull(erroAoSalvar(500, null))
-    }
 }

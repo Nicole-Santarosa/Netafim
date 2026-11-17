@@ -1,217 +1,77 @@
 package com.example.netafim.atendimento.dominio
 
-import com.example.netafim.core.modelo.ItemDeAtendimento
-import com.example.netafim.core.modelo.MotivoAtendimento
-import com.example.netafim.core.modelo.OrigemAtendimento
-import com.example.netafim.core.modelo.SituacaoDeSincronizacao
+import com.example.netafim.core.modelo.OrdemDaLista
 import com.example.netafim.core.modelo.StatusAtendimento
-import java.time.Instant
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+// A filtragem e a ordem em si são aplicadas pelo repositório (testadas no :core:modelo e nos testes do
+// ViewModel com o repositório falso). Aqui se confere só a tradução do chip no pedido.
 class RegiaoDoDistribuidorTest {
 
-    private fun item(
-        id: String,
-        protocolo: String = "OS-$id",
-        cliente: String = "Cliente $id",
-        local: String? = "Cidade $id",
-        status: StatusAtendimento = StatusAtendimento.DESTINADO,
-        aberto: String = "2026-11-01T12:00:00Z",
-    ) = ItemDeAtendimento(
-        id = id,
-        protocolo = protocolo,
-        motivo = MotivoAtendimento.DUVIDAS,
-        status = status,
-        origem = OrigemAtendimento.CLIENTE_FINAL,
-        abertoEm = Instant.parse(aberto),
-        nomeCliente = cliente,
-        local = local,
-        idTecnicoResponsavel = null,
-        sincronizacao = SituacaoDeSincronizacao.SINCRONIZADO,
-    )
-
-    private fun ids(lista: List<ItemDeAtendimento>) = lista.map { it.id }
-
-    // Um item para cada um dos oito status, para conferir os filtros.
-    private fun umDeCadaStatus() = StatusAtendimento.entries
-        .filter { it != StatusAtendimento.DESCONHECIDO }
-        .map { item(it.name, status = it) }
-
-    // ---- aceita
+    // Os oito status reais; o desconhecido é tratado à parte.
+    private val statusReais = StatusAtendimento.entries.filter { it != StatusAtendimento.DESCONHECIDO }
 
     @Test
-    fun todosAceitaOsOitoStatus() {
-        StatusAtendimento.entries.forEach { status ->
-            assertTrue(status.name, FiltroDaRegiao.TODOS.aceita(status))
-        }
+    fun todosNaoLimitaOStatus() {
+        // Conjunto vazio quer dizer sem filtro: passam todos, inclusive cancelado e o status desconhecido.
+        assertTrue(FiltroDaRegiao.TODOS.comoFiltroDeAtendimentos("").status.isEmpty())
     }
 
     @Test
-    fun emAndamentoAceitaSoOsSelosAbertoEEmAtendimento() {
-        val esperados = setOf(
-            StatusAtendimento.ABERTO,
-            StatusAtendimento.DESTINADO,
-            StatusAtendimento.AGENDADO,
-            StatusAtendimento.EM_ATENDIMENTO,
-        )
-        StatusAtendimento.entries.forEach { status ->
-            assertEquals(status.name, status in esperados, FiltroDaRegiao.EM_ANDAMENTO.aceita(status))
-        }
-    }
-
-    @Test
-    fun concluidosAceitaSoOSeloConcluido() {
-        val esperados = setOf(
-            StatusAtendimento.RESOLVIDO,
-            StatusAtendimento.ENCERRADO,
-            StatusAtendimento.ENCERRADO_SEM_AVALIACAO,
-        )
-        StatusAtendimento.entries.forEach { status ->
-            assertEquals(status.name, status in esperados, FiltroDaRegiao.CONCLUIDOS.aceita(status))
-        }
-    }
-
-    @Test
-    fun canceladoSoApareceEmTodos() {
-        assertTrue(FiltroDaRegiao.TODOS.aceita(StatusAtendimento.CANCELADO))
-        assertEquals(false, FiltroDaRegiao.EM_ANDAMENTO.aceita(StatusAtendimento.CANCELADO))
-        assertEquals(false, FiltroDaRegiao.CONCLUIDOS.aceita(StatusAtendimento.CANCELADO))
-    }
-
-    @Test
-    fun statusDesconhecidoSoApareceEmTodos() {
-        // O app não sabe se o atendimento está em andamento ou concluído, então só o filtro Todos o mostra.
-        assertTrue(FiltroDaRegiao.TODOS.aceita(StatusAtendimento.DESCONHECIDO))
-        assertEquals(false, FiltroDaRegiao.EM_ANDAMENTO.aceita(StatusAtendimento.DESCONHECIDO))
-        assertEquals(false, FiltroDaRegiao.CONCLUIDOS.aceita(StatusAtendimento.DESCONHECIDO))
-    }
-
-    // ---- filtrarRegiao
-
-    @Test
-    fun filtrarRegiaoPorFiltro() {
-        val itens = umDeCadaStatus()
-        assertEquals(8, filtrarRegiao(itens, FiltroDaRegiao.TODOS, "").size)
+    fun emAndamentoPedeOsSelosAbertoEEmAtendimento() {
+        val esperados = statusReais.filter {
+            it.selo == SeloStatus.ABERTO || it.selo == SeloStatus.EM_ATENDIMENTO
+        }.toSet()
+        assertEquals(esperados, FiltroDaRegiao.EM_ANDAMENTO.comoFiltroDeAtendimentos("").status)
         assertEquals(
-            setOf("ABERTO", "DESTINADO", "AGENDADO", "EM_ATENDIMENTO"),
-            ids(filtrarRegiao(itens, FiltroDaRegiao.EM_ANDAMENTO, "")).toSet(),
+            setOf(
+                StatusAtendimento.ABERTO,
+                StatusAtendimento.DESTINADO,
+                StatusAtendimento.AGENDADO,
+                StatusAtendimento.EM_ATENDIMENTO,
+            ),
+            esperados,
         )
+    }
+
+    @Test
+    fun concluidosPedeSoOSeloConcluido() {
+        val esperados = statusReais.filter { it.selo == SeloStatus.CONCLUIDO }.toSet()
+        assertEquals(esperados, FiltroDaRegiao.CONCLUIDOS.comoFiltroDeAtendimentos("").status)
         assertEquals(
-            setOf("RESOLVIDO", "ENCERRADO", "ENCERRADO_SEM_AVALIACAO"),
-            ids(filtrarRegiao(itens, FiltroDaRegiao.CONCLUIDOS, "")).toSet(),
+            setOf(
+                StatusAtendimento.RESOLVIDO,
+                StatusAtendimento.ENCERRADO,
+                StatusAtendimento.ENCERRADO_SEM_AVALIACAO,
+            ),
+            esperados,
         )
     }
 
     @Test
-    fun buscaPorProtocolo() {
-        val itens = listOf(item("1", protocolo = "OS-0506"), item("2", protocolo = "OS-0477"))
-        assertEquals(listOf("1"), ids(filtrarRegiao(itens, FiltroDaRegiao.TODOS, "0506")))
+    fun canceladoEODesconhecidoSoApareceEmTodos() {
+        listOf(FiltroDaRegiao.EM_ANDAMENTO, FiltroDaRegiao.CONCLUIDOS).forEach { filtro ->
+            val status = filtro.comoFiltroDeAtendimentos("").status
+            assertFalse(filtro.name, StatusAtendimento.CANCELADO in status)
+            assertFalse(filtro.name, StatusAtendimento.DESCONHECIDO in status)
+        }
     }
 
     @Test
-    fun buscaPorCliente() {
-        val itens = listOf(item("1", cliente = "Citrosuco"), item("2", cliente = "Fazenda Santa Rita"))
-        assertEquals(listOf("1"), ids(filtrarRegiao(itens, FiltroDaRegiao.TODOS, "citro")))
+    fun aListaSaiDoMaisRecenteParaOMaisAntigoSemFiltrarPorTecnico() {
+        FiltroDaRegiao.entries.forEach { filtro ->
+            val pedido = filtro.comoFiltroDeAtendimentos("")
+            assertEquals(filtro.name, OrdemDaLista.MAIS_RECENTE_PRIMEIRO, pedido.ordem)
+            assertFalse(filtro.name, pedido.somenteMeusComoTecnico)
+            assertTrue(filtro.name, pedido.origem.isEmpty())
+        }
     }
 
     @Test
-    fun buscaPorLocal() {
-        val itens = listOf(item("1", local = "Arealva, SP"), item("2", local = "Araraquara, SP"))
-        assertEquals(listOf("1"), ids(filtrarRegiao(itens, FiltroDaRegiao.TODOS, "arealva")))
-    }
-
-    @Test
-    fun buscaIgnoraAcentoEMaiusculas() {
-        val itens = listOf(item("1", local = "Ribeirão Preto, SP"), item("2", local = "Araraquara, SP"))
-        assertEquals(listOf("1"), ids(filtrarRegiao(itens, FiltroDaRegiao.TODOS, "RIBEIRAO")))
-        assertEquals(listOf("1"), ids(filtrarRegiao(itens, FiltroDaRegiao.TODOS, "ribeirão")))
-    }
-
-    @Test
-    fun buscaEmBrancoNaoFiltra() {
-        val itens = listOf(item("1"), item("2"))
-        assertEquals(2, filtrarRegiao(itens, FiltroDaRegiao.TODOS, "").size)
-        assertEquals(2, filtrarRegiao(itens, FiltroDaRegiao.TODOS, "   ").size)
-    }
-
-    @Test
-    fun buscaAparaEspacosDasPontas() {
-        val itens = listOf(item("1", cliente = "Citrosuco"), item("2"))
-        assertEquals(listOf("1"), ids(filtrarRegiao(itens, FiltroDaRegiao.TODOS, "  citro  ")))
-    }
-
-    @Test
-    fun buscaSemResultadoDevolveListaVazia() {
-        val itens = listOf(item("1"), item("2"))
-        assertTrue(filtrarRegiao(itens, FiltroDaRegiao.TODOS, "xyz").isEmpty())
-    }
-
-    @Test
-    fun itemSemLocalNaoQuebraABusca() {
-        val itens = listOf(item("1", local = null, cliente = "Citrosuco"), item("2", local = "Arealva, SP"))
-        assertEquals(listOf("1"), ids(filtrarRegiao(itens, FiltroDaRegiao.TODOS, "citro")))
-        assertEquals(listOf("2"), ids(filtrarRegiao(itens, FiltroDaRegiao.TODOS, "arealva")))
-    }
-
-    @Test
-    fun filtroEBuscaValemJuntos() {
-        val itens = listOf(
-            item("1", cliente = "Citrosuco", status = StatusAtendimento.ENCERRADO),
-            item("2", cliente = "Citrus Norte", status = StatusAtendimento.EM_ATENDIMENTO),
-        )
-        assertEquals(listOf("1"), ids(filtrarRegiao(itens, FiltroDaRegiao.CONCLUIDOS, "citr")))
-    }
-
-    // ---- ordenarRegiao
-
-    @Test
-    fun ordenaDoMaisRecenteParaOMaisAntigo() {
-        val itens = listOf(
-            item("a", aberto = "2026-11-01T12:00:00Z"),
-            item("b", aberto = "2026-11-10T12:00:00Z"),
-            item("c", aberto = "2026-11-05T12:00:00Z"),
-        )
-        assertEquals(listOf("b", "c", "a"), ids(ordenarRegiao(itens)))
-    }
-
-    @Test
-    fun empateDeDataDesempataPeloProtocolo() {
-        val itens = listOf(
-            item("1", protocolo = "OS-0300", aberto = "2026-11-05T12:00:00Z"),
-            item("2", protocolo = "OS-0100", aberto = "2026-11-05T12:00:00Z"),
-            item("3", protocolo = "OS-0200", aberto = "2026-11-05T12:00:00Z"),
-        )
-        assertEquals(listOf("2", "3", "1"), ids(ordenarRegiao(itens)))
-    }
-
-    @Test
-    fun filtrarRegiaoJaDevolveOrdenado() {
-        val itens = listOf(
-            item("a", aberto = "2026-11-01T12:00:00Z"),
-            item("b", aberto = "2026-11-10T12:00:00Z"),
-            item("c", aberto = "2026-11-05T12:00:00Z", status = StatusAtendimento.CANCELADO),
-        )
-        assertEquals(listOf("b", "c", "a"), ids(filtrarRegiao(itens, FiltroDaRegiao.TODOS, "")))
-    }
-
-    // ---- ordem por protocolo
-
-    @Test
-    fun empateDeDataDesempataPeloNumeroDoProtocolo() {
-        val itens = listOf(
-            item("dez-mil", protocolo = "OS-10000", aberto = "2026-11-05T12:00:00Z"),
-            item("nove-mil", protocolo = "OS-9999", aberto = "2026-11-05T12:00:00Z"),
-            item("mais-novo", protocolo = "OS-0001", aberto = "2026-11-09T12:00:00Z"),
-        )
-        // O mais recente continua primeiro; só o empate de data usa o número do protocolo.
-        assertEquals(listOf("mais-novo", "nove-mil", "dez-mil"), ids(ordenarRegiao(itens)))
-    }
-
-    @Test
-    fun protocoloForaDoFormatoComparaComoTextoNaRegiao() {
-        val itens = listOf(item("b", protocolo = "XYZ"), item("a", protocolo = "ABC"))
-        assertEquals(listOf("a", "b"), ids(ordenarRegiao(itens)))
+    fun aBuscaViajaNoPedidoSemMudar() {
+        assertEquals("Ribeirão", FiltroDaRegiao.CONCLUIDOS.comoFiltroDeAtendimentos("Ribeirão").busca)
     }
 }

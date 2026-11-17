@@ -27,7 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.FiltroDeOrigem
-import com.example.netafim.atendimento.dominio.filtrarListaAdmin
+import com.example.netafim.atendimento.dominio.comoFiltroDeAtendimentos
 import com.example.netafim.atendimento.dominio.selo
 import com.example.netafim.atendimento.dominio.textoDaLinha
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
@@ -35,6 +35,7 @@ import com.example.netafim.atendimento.ui.comum.LinhaDeFiltros
 import com.example.netafim.atendimento.ui.comum.MensagemDeEstadoVazio
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.itemDePreview
+import com.example.netafim.atendimento.ui.comum.listaDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
 import com.example.netafim.atendimento.ui.fila.SeloDaFila
 import com.example.netafim.core.modelo.ItemDeAtendimento
@@ -43,8 +44,8 @@ import com.example.netafim.core.modelo.OrigemAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
 
 // Lista de atendimentos do Admin da Netafim, com filtro por origem. Tela sem estado: os itens chegam já
-// filtrados e ordenados (ver filtrarListaAdmin) e a tela só desenha; o filtro volta ao chamador pela
-// lambda. Não há busca nesta tela.
+// filtrados e ordenados pelo repositório (ver comoFiltroDeAtendimentos) e a tela só desenha; o filtro volta
+// ao chamador pela lambda. Não há busca nesta tela.
 @Composable
 fun ListaDoAdminTela(
     itens: List<ItemDeAtendimento>,
@@ -162,7 +163,7 @@ private fun TelaDePreview(
 ) {
     TemaDePreview {
         ListaDoAdminTela(
-            itens = filtrarListaAdmin(itens, filtro),
+            itens = listaDePreview(itens, filtro.comoFiltroDeAtendimentos()),
             filtro = filtro,
             aoMudarFiltro = {},
             aoAbrir = {},

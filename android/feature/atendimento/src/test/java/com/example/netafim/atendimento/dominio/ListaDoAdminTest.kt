@@ -2,11 +2,13 @@ package com.example.netafim.atendimento.dominio
 
 import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.OrdemDaLista
 import com.example.netafim.core.modelo.OrigemAtendimento
 import com.example.netafim.core.modelo.SituacaoDeSincronizacao
 import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -31,8 +33,6 @@ class ListaDoAdminTest {
         sincronizacao = SituacaoDeSincronizacao.SINCRONIZADO,
     )
 
-    private fun ids(lista: List<ItemDeAtendimento>) = lista.map { it.id }
-
     private val semProtocolo = "Pendente de sincronização"
 
     // ---- OrigemAtendimento.deCodigo
@@ -50,92 +50,36 @@ class ListaDoAdminTest {
         assertEquals(OrigemAtendimento.DESCONHECIDO, OrigemAtendimento.deCodigo(""))
     }
 
-    // ---- aceita
+    // ---- comoFiltroDeAtendimentos
+    // A filtragem e a ordem em si são do repositório; aqui se confere só a tradução do chip no pedido.
 
     @Test
-    fun todasAceitaAsTresOrigens() {
-        OrigemAtendimento.entries.forEach { assertTrue(it.name, FiltroDeOrigem.TODAS.aceita(it)) }
+    fun todasNaoLimitaAOrigem() {
+        // Conjunto vazio quer dizer sem filtro, inclusive para a origem que o app ainda não conhece.
+        assertTrue(FiltroDeOrigem.TODAS.comoFiltroDeAtendimentos().origem.isEmpty())
     }
 
     @Test
-    fun cadaFiltroAceitaSoASuaOrigem() {
+    fun cadaChipPedeSoASuaOrigem() {
         val correspondente = mapOf(
             FiltroDeOrigem.NETAFIM to OrigemAtendimento.NETAFIM,
             FiltroDeOrigem.DISTRIBUIDOR to OrigemAtendimento.DISTRIBUIDOR,
             FiltroDeOrigem.CLIENTE_FINAL to OrigemAtendimento.CLIENTE_FINAL,
         )
         correspondente.forEach { (filtro, esperada) ->
-            OrigemAtendimento.entries.forEach { origem ->
-                assertEquals("$filtro $origem", origem == esperada, filtro.aceita(origem))
-            }
+            assertEquals(filtro.name, setOf(esperada), filtro.comoFiltroDeAtendimentos().origem)
         }
     }
 
-    // ---- filtrarListaAdmin
-
     @Test
-    fun filtrarPorOrigem() {
-        val itens = listOf(
-            item("1", origem = OrigemAtendimento.NETAFIM),
-            item("2", origem = OrigemAtendimento.DISTRIBUIDOR),
-            item("3", origem = OrigemAtendimento.CLIENTE_FINAL),
-        )
-        assertEquals(3, filtrarListaAdmin(itens, FiltroDeOrigem.TODAS).size)
-        assertEquals(listOf("1"), ids(filtrarListaAdmin(itens, FiltroDeOrigem.NETAFIM)))
-        assertEquals(listOf("2"), ids(filtrarListaAdmin(itens, FiltroDeOrigem.DISTRIBUIDOR)))
-        assertEquals(listOf("3"), ids(filtrarListaAdmin(itens, FiltroDeOrigem.CLIENTE_FINAL)))
-    }
-
-    @Test
-    fun ordenaDoMaisRecenteParaOMaisAntigo() {
-        val itens = listOf(
-            item("a", aberto = "2026-11-01T12:00:00Z"),
-            item("b", aberto = "2026-11-10T12:00:00Z"),
-            item("c", aberto = "2026-11-05T12:00:00Z"),
-        )
-        assertEquals(listOf("b", "c", "a"), ids(filtrarListaAdmin(itens, FiltroDeOrigem.TODAS)))
-    }
-
-    @Test
-    fun empateDeDataDesempataPeloProtocolo() {
-        val itens = listOf(
-            item("1", protocolo = "OS-0300", aberto = "2026-11-05T12:00:00Z"),
-            item("2", protocolo = "OS-0100", aberto = "2026-11-05T12:00:00Z"),
-            item("3", protocolo = "OS-0200", aberto = "2026-11-05T12:00:00Z"),
-        )
-        assertEquals(listOf("2", "3", "1"), ids(filtrarListaAdmin(itens, FiltroDeOrigem.TODAS)))
-    }
-
-    @Test
-    fun empateDeDataDesempataPeloNumeroDoProtocolo() {
-        val itens = listOf(
-            item("dez-mil", protocolo = "OS-10000", aberto = "2026-11-05T12:00:00Z"),
-            item("nove-mil", protocolo = "OS-9999", aberto = "2026-11-05T12:00:00Z"),
-            item("mais-novo", protocolo = "OS-0001", aberto = "2026-11-09T12:00:00Z"),
-        )
-        // A data continua mandando: o mais novo vem primeiro, e só o empate usa o número do protocolo.
-        assertEquals(
-            listOf("mais-novo", "nove-mil", "dez-mil"),
-            ids(filtrarListaAdmin(itens, FiltroDeOrigem.TODAS)),
-        )
-    }
-
-    @Test
-    fun protocoloForaDoFormatoComparaComoTextoNaListaDoAdmin() {
-        val itens = listOf(item("b", protocolo = "XYZ"), item("a", protocolo = "ABC"))
-        assertEquals(listOf("a", "b"), ids(filtrarListaAdmin(itens, FiltroDeOrigem.TODAS)))
-    }
-
-    @Test
-    fun listaVaziaContinuaVazia() {
-        assertTrue(filtrarListaAdmin(emptyList(), FiltroDeOrigem.TODAS).isEmpty())
-        assertTrue(filtrarListaAdmin(emptyList(), FiltroDeOrigem.CLIENTE_FINAL).isEmpty())
-    }
-
-    @Test
-    fun filtroSemCorrespondenciaDevolveVazio() {
-        val itens = listOf(item("1", origem = OrigemAtendimento.NETAFIM))
-        assertTrue(filtrarListaAdmin(itens, FiltroDeOrigem.DISTRIBUIDOR).isEmpty())
+    fun aListaDoAdminSaiDoMaisRecenteSemBuscaNemLimiteDeStatus() {
+        FiltroDeOrigem.entries.forEach { filtro ->
+            val pedido = filtro.comoFiltroDeAtendimentos()
+            assertEquals(filtro.name, OrdemDaLista.MAIS_RECENTE_PRIMEIRO, pedido.ordem)
+            assertEquals(filtro.name, "", pedido.busca)
+            assertTrue(filtro.name, pedido.status.isEmpty())
+            assertFalse(filtro.name, pedido.somenteMeusComoTecnico)
+        }
     }
 
     // ---- textoDaLinha

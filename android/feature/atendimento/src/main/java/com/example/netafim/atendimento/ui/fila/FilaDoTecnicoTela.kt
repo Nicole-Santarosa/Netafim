@@ -16,19 +16,20 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.FiltroDaFila
-import com.example.netafim.atendimento.dominio.filtrarFila
+import com.example.netafim.atendimento.dominio.comoFiltroDeAtendimentos
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.CampoDeBusca
 import com.example.netafim.atendimento.ui.comum.LinhaDeFiltros
 import com.example.netafim.atendimento.ui.comum.MensagemDeEstadoVazio
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.itemDePreview
+import com.example.netafim.atendimento.ui.comum.listaDePreview
 import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
 
-// Fila de atendimentos do técnico. Tela sem estado: os itens chegam já filtrados e ordenados (ver
-// filtrarFila) e a tela só desenha; busca e filtro voltam ao chamador pelas lambdas.
+// Fila de atendimentos do técnico. Tela sem estado: os itens chegam já filtrados, buscados e ordenados pelo
+// repositório (ver comoFiltroDeAtendimentos) e a tela só desenha; busca e filtro voltam ao chamador pelas lambdas.
 @Composable
 fun FilaDoTecnicoTela(
     itens: List<ItemDeAtendimento>,
@@ -94,7 +95,7 @@ private val itensDoPreview = listOf(
 private fun TelaDePreview(filtro: FiltroDaFila = FiltroDaFila.TODOS, busca: String = "") {
     TemaDePreview {
         FilaDoTecnicoTela(
-            itens = filtrarFila(itensDoPreview, filtro, busca),
+            itens = listaDePreview(itensDoPreview, filtro.comoFiltroDeAtendimentos(busca)),
             filtro = filtro,
             busca = busca,
             aoMudarFiltro = {},
