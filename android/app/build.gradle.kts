@@ -8,6 +8,10 @@ plugins {
 
 val urlApi = providers.gradleProperty("netafim.apiBaseUrl").get()
 
+// Domínio do App Link dos e-mails de convite e de redefinição de senha (ex.: app.netafim.com.br).
+// Em branco no debug; o release exige um valor (ver verificarConfiguracaoRelease).
+val linkHost = providers.gradleProperty("netafim.linkHost").orElse("").get().trim()
+
 android {
     namespace = "com.example.netafim"
     compileSdk = 35
@@ -20,6 +24,9 @@ android {
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "URL_API", "\"$urlApi\"")
+        buildConfigField("String", "LINK_HOST", "\"$linkHost\"")
+        // Sem domínio, o filtro https do manifesto aponta para um host reservado que não casa com nada.
+        manifestPlaceholders["linkHost"] = linkHost.ifEmpty { "link.invalid" }
     }
 
     buildTypes {
@@ -40,6 +47,25 @@ android {
         buildConfig = true
     }
 }
+
+// O release não pode sair com a URL de desenvolvimento (HTTP, emulador) nem sem o domínio dos links:
+// o app só fala HTTPS em produção e, sem o App Link verificado, os links dos e-mails não abrem o app.
+val verificarConfiguracaoRelease = tasks.register("verificarConfiguracaoRelease") {
+    val url = urlApi
+    val host = linkHost
+    doLast {
+        check(url.startsWith("https://")) {
+            "Build release recusado: netafim.apiBaseUrl precisa começar com https:// (recebido: $url). " +
+                "Ex.: ./gradlew assembleRelease -Pnetafim.apiBaseUrl=https://SEU_SERVIDOR/api/v1/ " +
+                "-Pnetafim.linkHost=app.seu-dominio.com.br"
+        }
+        check(host.isNotEmpty()) {
+            "Build release recusado: defina netafim.linkHost (domínio do App Link, ex.: app.seu-dominio.com.br). " +
+                "Sem ele os links de convite e de redefinição de senha não abrem o app."
+        }
+    }
+}
+tasks.matching { it.name == "preReleaseBuild" }.configureEach { dependsOn(verificarConfiguracaoRelease) }
 
 dependencies {
     implementation(project(":feature:acesso"))

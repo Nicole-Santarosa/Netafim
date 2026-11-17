@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!--
+            Somente debug: link de teste sem domínio, netafim://convite?acao=...&token=...
+            Qualquer app instalado pode registrar este esquema e receber o token; por isso ele não vai
+            para o release (ver src/main/AndroidManifest.xml).
+        -->
+        <activity-alias
+            android:name=".LinkAcessoDebugAlias"
+            android:exported="true"
+            android:targetActivity="com.example.netafim.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="convite"
+                    android:scheme="netafim" />
+            </intent-filter>
+        </activity-alias>
+    </application>
+
+</manifest>

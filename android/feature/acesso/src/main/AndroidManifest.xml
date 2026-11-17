@@ -19,22 +19,28 @@
         </provider>
 
         <!--
-            Links dos e-mails de convite e de redefinição de senha: netafim://convite?acao=...&token=...
+            Links dos e-mails de convite e de redefinição de senha:
+            https://${linkHost}/convite?acao=...&token=...
+            O token do link é de uso único e vale uma conta; por isso só o App Link verificado (autoVerify +
+            assetlinks.json no domínio) fica em produção. O esquema próprio netafim:// existe só no debug
+            (src/debug/AndroidManifest.xml), porque qualquer app instalado pode registrá-lo.
             O alias abre a MainActivity do aplicativo; o Navigation Compose leva o link até a tela do
             módulo de acesso (ver AcessoNavegacao). Fica aqui para o :app não precisar conhecer o link.
+            ${linkHost} vem de manifestPlaceholders (propriedade netafim.linkHost do Gradle).
             Atenção: depende do nome da classe com.example.netafim.MainActivity.
         -->
         <activity-alias
             android:name=".LinkAcessoAlias"
             android:exported="true"
             android:targetActivity="com.example.netafim.MainActivity">
-            <intent-filter>
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
-                    android:host="convite"
-                    android:scheme="netafim" />
+                    android:host="${linkHost}"
+                    android:path="/convite"
+                    android:scheme="https" />
             </intent-filter>
         </activity-alias>
     </application>

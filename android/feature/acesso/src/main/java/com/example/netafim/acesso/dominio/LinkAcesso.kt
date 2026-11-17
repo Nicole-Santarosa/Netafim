@@ -11,8 +11,34 @@ enum class AcaoLink(val valor: String) {
     }
 }
 
+/** Esquema próprio dos links, só para desenvolvimento: qualquer app instalado pode registrá-lo. */
+private const val ESQUEMA_PROPRIO = "netafim://convite"
+
+/** Nome de domínio puro (sem esquema, porta nem caminho), como `app.netafim.com.br`. */
+private val FORMATO_HOST = Regex("""^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$""")
+
 /**
- * Link `netafim://convite?acao=<convite|redefinir-senha>&token=<token>` enviado por e-mail.
+ * Padrões de link que o app aceita. O link do e-mail leva um token de uso único; por isso, em produção, só
+ * vale o App Link verificado (`https://<hostLink>/convite`), que o sistema entrega apenas a este app depois de
+ * conferir o `assetlinks.json` do domínio. O esquema próprio `netafim://` só entra quando [esquemaProprio] é
+ * verdadeiro (build de debug).
+ *
+ * @throws IllegalArgumentException se [hostLink] não estiver vazio e não for um nome de domínio.
+ */
+fun padroesDeLink(hostLink: String, esquemaProprio: Boolean): List<String> {
+    val host = hostLink.trim().lowercase()
+    require(host.isEmpty() || FORMATO_HOST.matches(host)) {
+        "linkHost precisa ser só o domínio (ex.: app.netafim.com.br), sem https:// nem caminho."
+    }
+    return buildList {
+        if (host.isNotEmpty()) add("https://$host/convite?acao={acao}&token={token}")
+        if (esquemaProprio) add("$ESQUEMA_PROPRIO?acao={acao}&token={token}")
+    }
+}
+
+/**
+ * Link `https://<domínio>/convite?acao=<convite|redefinir-senha>&token=<token>` enviado por e-mail
+ * (em debug também `netafim://convite?...`).
  *
  * O token é um segredo de uso único: nunca vai para log nem para tela, e some do estado assim que o
  * link é usado. Aqui só se confere o formato; quem decide se ele vale é a API.
