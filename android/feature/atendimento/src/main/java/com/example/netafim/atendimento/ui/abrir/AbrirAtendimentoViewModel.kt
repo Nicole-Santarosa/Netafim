@@ -102,6 +102,10 @@ class AbrirAtendimentoViewModel(
         val usuario = sessao.usuario.value ?: return
 
         tentouEnviar = true
+        // Cada tentativa começa sem o aviso da anterior: se esta parar na validação, o que vale são os erros
+        // dos campos, e não uma recusa antiga do servidor. Fica antes da trava porque, com um envio em
+        // andamento, o erro já foi limpo quando ele começou.
+        _erro.value = null
         // A origem e os ids da sessão saem do usuário, e vêm antes da validação porque é a origem que diz
         // quais campos são obrigatórios. Cliente ou distribuidor sem organização não pode abrir (a API
         // recusaria): mostra "sem permissão" sem chamar o repositório.
@@ -134,7 +138,6 @@ class AbrirAtendimentoViewModel(
             return
         }
 
-        _erro.value = null
         viewModelScope.launch {
             val resultado = repositorio.abrirAtendimento(solicitacao)
             _erro.value = erroDoResultado(resultado)

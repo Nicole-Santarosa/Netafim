@@ -151,9 +151,18 @@
     <string name="atendimento_edicao_situacao_instalacao">Instalação</string>
     <string name="atendimento_edicao_salvar">Salvar alterações</string>
     <string name="atendimento_edicao_atualizar">Atualizar</string>
-    <string name="atendimento_edicao_erro_conflito">Este atendimento foi alterado por outra pessoa. Atualize para ver os dados novos e escolha de novo.</string>
-    <string name="atendimento_edicao_erro_sem_permissao">Você não tem permissão para alterar este atendimento.</string>
-    <string name="atendimento_edicao_erro_nao_encontrado">Atendimento não encontrado.</string>
-    <string name="atendimento_edicao_erro_sem_conexao">Sem conexão. Verifique a internet e tente de novo.</string>
-    <string name="atendimento_edicao_erro_regra">Não foi possível salvar a alteração.</string>
+
+    <!--
+        Aviso de erro das telas de ação (iniciar, salvar a edição e abrir), um texto por valor de
+        ErroAoSalvar. Valem para as três telas, por isso não citam a ação: cada um diz o que aconteceu
+        e o que a pessoa pode fazer.
+    -->
+    <string name="atendimento_erro_conflito">Este atendimento foi alterado por outra pessoa. Atualize os dados e tente de novo.</string>
+    <string name="atendimento_erro_sem_permissao">Seu usuário não tem permissão para esta ação. Se precisar dela, fale com o administrador da sua empresa.</string>
+    <string name="atendimento_erro_nao_encontrado">Este atendimento não foi encontrado. Ele pode ter sido excluído ou não estar mais disponível para você. Volte para a lista.</string>
+    <string name="atendimento_erro_sem_conexao">Não foi possível falar com o servidor. Verifique a internet e tente de novo.</string>
+    <string name="atendimento_erro_regra">O pedido não foi aceito. Confira os dados e tente de novo.</string>
+    <!-- Descrição que o leitor de tela anuncia, com o texto do aviso no lugar de %s -->
+    <string name="atendimento_erro_descricao">Erro: %s</string>
+    <string name="atendimento_erro_dispensar">Fechar aviso de erro</string>
 </resources>

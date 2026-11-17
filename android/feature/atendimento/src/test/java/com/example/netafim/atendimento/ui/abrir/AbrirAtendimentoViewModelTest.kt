@@ -428,6 +428,38 @@ class AbrirAtendimentoViewModelTest {
     }
 
     @Test
+    fun novoEnvioComSucessoLimpaOErroAnterior() = runTest {
+        repositorio.resultadoDaAbertura = ResultadoDaAcao.FalhaDeRede
+        val viewModel = criar()
+        viewModel.alterar(formularioValido)
+        viewModel.enviar()
+        assertEquals(ErroAoSalvar.SemConexao, viewModel.erro.value)
+
+        repositorio.resultadoDaAbertura = ResultadoDaAcao.Sucesso
+        viewModel.enviar()
+
+        assertNull(viewModel.erro.value)
+        assertEquals(idFixo, viewModel.aberto.value)
+    }
+
+    // Uma tentativa que para na validação não deixa na tela a recusa antiga do servidor: valem os erros dos campos.
+    @Test
+    fun novaTentativaBarradaNaValidacaoTambemLimpaOErroAnterior() = runTest {
+        repositorio.resultadoDaAbertura = ResultadoDaAcao.FalhaDeRede
+        val viewModel = criar()
+        viewModel.alterar(formularioValido)
+        viewModel.enviar()
+        assertEquals(ErroAoSalvar.SemConexao, viewModel.erro.value)
+
+        viewModel.alterar(formularioValido.copy(cidade = ""))
+        viewModel.enviar()
+
+        assertNull(viewModel.erro.value)
+        assertEquals(ErroCampo.OBRIGATORIO, viewModel.erros.value.cidade)
+        assertEquals(1, repositorio.aberturas.size)
+    }
+
+    @Test
     fun envioDuploEnquantoEnviaEIgnorado() = runTest {
         val portao = CompletableDeferred<Unit>()
         repositorio.portao = portao

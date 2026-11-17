@@ -32,16 +32,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.ErroAoSalvar
 import com.example.netafim.atendimento.dominio.podeSalvar
+import com.example.netafim.atendimento.ui.comum.AvisoDeErro
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.CampoDeLeitura
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
@@ -53,10 +51,10 @@ import com.example.netafim.core.modelo.SituacaoDoProjeto
 import com.example.netafim.core.modelo.StatusAtendimento
 
 // Edição reduzida do atendimento para o Admin da Netafim: mostra o atendimento em leitura e deixa trocar só
-// a situação do projeto. Tela sem estado: a escolha, o "salvando" e o erro chegam por parâmetro e cada ação
-// volta por lambda. A tela não olha perfil (quem pode alterar é regra do banco) e não sabe o que acontece
-// depois do toque em Salvar: a chamada ao servidor é da camada de dados. Plano de ação, status, destinação e
-// técnico ficam fora desta versão.
+// a situação do projeto. Tela sem estado: a escolha, o "salvando" e o erro (nulo quando não há) chegam por
+// parâmetro e cada ação volta por lambda, inclusive o fechar do aviso de erro (aoDispensarErro). A tela não
+// olha perfil (quem pode alterar é regra do banco) e não sabe o que acontece depois do toque em Salvar: a
+// chamada ao servidor é da camada de dados. Plano de ação, status, destinação e técnico ficam fora desta versão.
 @Composable
 fun EdicaoDoAtendimentoTela(
     atendimento: Atendimento,
@@ -66,6 +64,7 @@ fun EdicaoDoAtendimentoTela(
     aoEscolher: (SituacaoDoProjeto) -> Unit,
     aoSalvar: () -> Unit,
     aoRecarregar: () -> Unit,
+    aoDispensarErro: () -> Unit,
     aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -96,10 +95,19 @@ fun EdicaoDoAtendimentoTela(
             // situação gravada abre sem nada marcado (escolhida nula).
             SeletorDaSituacao(escolhida = escolhida, habilitado = !salvando, aoEscolher = aoEscolher)
 
-            // Erro acima do botão. Some quando o chamador limpa o erro (ao escolher de novo, por exemplo).
+            // Erro acima do botão. Some quando o chamador limpa o erro (ao fechar o aviso ou escolher de novo).
             if (erro != null) {
                 Spacer(Modifier.height(16.dp))
-                AreaDeErro(erro = erro, aoRecarregar = aoRecarregar)
+                AvisoDeErro(
+                    erro = erro,
+                    aoDispensar = aoDispensarErro,
+                    // No conflito de versão o aviso ganha a ação Atualizar.
+                    acao = if (erro == ErroAoSalvar.ConflitoDeVersao) {
+                        { BotaoAtualizar(aoRecarregar) }
+                    } else {
+                        null
+                    },
+                )
             }
 
             Spacer(Modifier.height(if (erro != null) 16.dp else 34.dp))
@@ -179,47 +187,24 @@ private fun OpcaoDaSituacao(
     }
 }
 
-// Mensagem de erro na cor de erro do tema. O liveRegion faz o leitor de tela anunciar a mensagem quando ela
-// aparece. No conflito de versão, a ação Atualizar (48dp) pede ao chamador para recarregar o atendimento;
-// depois disso o Admin refaz a escolha.
+// Ação Atualizar do aviso de conflito de versão: pede ao chamador para recarregar o atendimento; depois disso
+// o Admin refaz a escolha. Zero só o padding horizontal do conteúdo, para o texto do botão ficar alinhado com o
+// início do aviso; o vertical continua o do botão e a altura mínima de 48dp garante o toque.
 @Composable
-private fun AreaDeErro(erro: ErroAoSalvar, aoRecarregar: () -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = textoDoErro(erro),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-        )
-        if (erro == ErroAoSalvar.ConflitoDeVersao) {
-            // Zero só o padding horizontal do conteúdo, para o texto do botão ficar alinhado com o início
-            // do aviso; o vertical continua o do botão e a altura mínima de 48dp garante o toque.
-            val paddingPadrao = ButtonDefaults.TextButtonContentPadding
-            TextButton(
-                onClick = aoRecarregar,
-                modifier = Modifier.heightIn(min = 48.dp),
-                contentPadding = PaddingValues(
-                    start = 0.dp,
-                    top = paddingPadrao.calculateTopPadding(),
-                    end = 0.dp,
-                    bottom = paddingPadrao.calculateBottomPadding(),
-                ),
-            ) {
-                Text(stringResource(R.string.atendimento_edicao_atualizar), fontWeight = FontWeight.Medium)
-            }
-        }
+private fun BotaoAtualizar(aoRecarregar: () -> Unit) {
+    val paddingPadrao = ButtonDefaults.TextButtonContentPadding
+    TextButton(
+        onClick = aoRecarregar,
+        modifier = Modifier.heightIn(min = 48.dp),
+        contentPadding = PaddingValues(
+            start = 0.dp,
+            top = paddingPadrao.calculateTopPadding(),
+            end = 0.dp,
+            bottom = paddingPadrao.calculateBottomPadding(),
+        ),
+    ) {
+        Text(stringResource(R.string.atendimento_edicao_atualizar), fontWeight = FontWeight.Medium)
     }
-}
-
-// Texto de cada erro. Na regra de negócio vale o texto que a API devolveu; se vier vazio, a mensagem genérica.
-@Composable
-private fun textoDoErro(erro: ErroAoSalvar): String = when (erro) {
-    ErroAoSalvar.ConflitoDeVersao -> stringResource(R.string.atendimento_edicao_erro_conflito)
-    ErroAoSalvar.SemPermissao -> stringResource(R.string.atendimento_edicao_erro_sem_permissao)
-    ErroAoSalvar.NaoEncontrado -> stringResource(R.string.atendimento_edicao_erro_nao_encontrado)
-    ErroAoSalvar.SemConexao -> stringResource(R.string.atendimento_edicao_erro_sem_conexao)
-    is ErroAoSalvar.RegraDeNegocio ->
-        erro.mensagem.ifBlank { stringResource(R.string.atendimento_edicao_erro_regra) }
 }
 
 // Mesmo padrão dos outros botões principais do módulo: cor primária, versão mais clara quando desabilitado e
@@ -280,6 +265,7 @@ private fun TelaDePreview(
             aoEscolher = {},
             aoSalvar = {},
             aoRecarregar = {},
+            aoDispensarErro = {},
             aoVoltar = {},
         )
     }
@@ -304,6 +290,12 @@ private fun EdicaoSalvandoPreview() = TelaDePreview(escolhida = SituacaoDoProjet
 @Composable
 private fun EdicaoSemSituacaoPreview() =
     TelaDePreview(atendimento = atendimentoDoPreview(situacao = null))
+
+// Erro sem ação extra: só o texto e o fechar.
+@Preview(showBackground = true, widthDp = 360, heightDp = 780)
+@Composable
+private fun EdicaoSemConexaoPreview() =
+    TelaDePreview(escolhida = SituacaoDoProjeto.GARANTIA, erro = ErroAoSalvar.SemConexao)
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 780)
 @Composable

@@ -61,6 +61,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
+import com.example.netafim.atendimento.dominio.ErroAoSalvar
 import com.example.netafim.atendimento.dominio.ErroCampo
 import com.example.netafim.atendimento.dominio.ErrosFormulario
 import com.example.netafim.atendimento.dominio.FormularioAbertura
@@ -71,6 +72,7 @@ import com.example.netafim.atendimento.dominio.LIMITE_NOME_PRODUTOR
 import com.example.netafim.atendimento.dominio.comCulturaAlternada
 import com.example.netafim.atendimento.dominio.comMotivo
 import com.example.netafim.atendimento.dominio.tipoVendaEfetivo
+import com.example.netafim.atendimento.ui.comum.AvisoDeErro
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
@@ -85,7 +87,8 @@ import com.example.netafim.core.modelo.TipoVenda
 // devolve cada mudança por aoAlterar. Quem valida e quem envia é o chamador.
 // "origem" diz quem está abrindo e, com isso, quais campos aparecem (cada origem tem os seus, conforme o
 // formulário de solicitação da Netafim). "enviando" desabilita o botão e os campos enquanto a solicitação
-// está a caminho.
+// está a caminho. "erro" é o do último envio (nulo quando não há), separado dos erros por campo: é o que o
+// repositório ou a sessão recusaram depois que o formulário já estava válido.
 @Composable
 fun AbrirAtendimentoTela(
     formulario: FormularioAbertura,
@@ -94,8 +97,10 @@ fun AbrirAtendimentoTela(
     culturas: List<Cultura>,
     distribuidores: List<Distribuidor>,
     enviando: Boolean,
+    erro: ErroAoSalvar?,
     aoAlterar: (FormularioAbertura) -> Unit,
     aoEnviar: () -> Unit,
+    aoDispensarErro: () -> Unit,
     aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -209,6 +214,10 @@ fun AbrirAtendimentoTela(
                     habilitado = habilitado,
                     aoEscolher = { aoAlterar(formulario.copy(tipoVenda = it)) },
                 )
+            }
+            // Erro do envio logo acima do botão, depois de todos os campos: aparecer aqui não move nenhum campo.
+            if (erro != null) {
+                AvisoDeErro(erro = erro, aoDispensar = aoDispensarErro)
             }
             BotaoEnviar(enviando = enviando, aoEnviar = aoEnviar)
         }
@@ -624,6 +633,7 @@ private fun TelaDePreview(
     origem: OrigemAtendimento = OrigemAtendimento.CLIENTE_FINAL,
     erros: ErrosFormulario = ErrosFormulario(),
     enviando: Boolean = false,
+    erro: ErroAoSalvar? = null,
 ) {
     TemaDePreview {
         AbrirAtendimentoTela(
@@ -633,8 +643,10 @@ private fun TelaDePreview(
             culturas = culturasDoPreview,
             distribuidores = distribuidoresDoPreview,
             enviando = enviando,
+            erro = erro,
             aoAlterar = {},
             aoEnviar = {},
+            aoDispensarErro = {},
             aoVoltar = {},
         )
     }
@@ -688,6 +700,13 @@ private fun AbrirAtendimentoErrosDosCamposNovosPreview() {
             distribuidor = ErroCampo.OBRIGATORIO,
         ),
     )
+}
+
+// Formulário válido, mas o envio voltou sem permissão (usuário de cliente sem empresa, por exemplo).
+@Preview(showBackground = true, heightDp = 1100)
+@Composable
+private fun AbrirAtendimentoComErroNoEnvioPreview() {
+    TelaDePreview(formulario = formularioPreenchido, erro = ErroAoSalvar.SemPermissao)
 }
 
 @Preview(showBackground = true, heightDp = 1100)

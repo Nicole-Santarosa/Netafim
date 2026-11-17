@@ -117,6 +117,12 @@ class EdicaoDoAtendimentoViewModel(
         _erro.value = null
     }
 
+    // A tela chama quando o aviso de erro já foi lido e o Admin o fechou. A escolha continua como estava, para
+    // ele poder tentar salvar de novo sem refazer nada.
+    fun dispensarErro() {
+        _erro.value = null
+    }
+
     companion object {
         fun fabrica(
             id: String,

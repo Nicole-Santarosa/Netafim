@@ -23,8 +23,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
+import com.example.netafim.atendimento.dominio.ErroAoSalvar
 import com.example.netafim.atendimento.dominio.culturasEmTexto
 import com.example.netafim.atendimento.dominio.podeIniciar
+import com.example.netafim.atendimento.ui.comum.AvisoDeErro
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.CampoDeLeitura
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
@@ -39,12 +41,15 @@ import com.example.netafim.core.modelo.StatusAtendimento
 // aoIniciar quando o técnico toca no botão. O que acontece depois do clique (chamada ao servidor e
 // os passos seguintes do técnico) não é desta tela. O botão só aparece quando o status permite
 // iniciar; nos outros status a tela é só de leitura. "iniciando" desabilita o botão e mostra o
-// indicador de progresso enquanto o pedido está a caminho.
+// indicador de progresso enquanto o pedido está a caminho. "erro" é o do último pedido de iniciar (nulo
+// quando não há) e aoDispensarErro avisa que o técnico fechou o aviso.
 @Composable
 fun DetalheDoTecnicoTela(
     atendimento: Atendimento,
     iniciando: Boolean,
+    erro: ErroAoSalvar?,
     aoIniciar: () -> Unit,
+    aoDispensarErro: () -> Unit,
     aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -80,9 +85,16 @@ fun DetalheDoTecnicoTela(
                 stringResource(atendimento.item.motivo.rotulo()),
             )
 
+            // Erro do pedido de iniciar, depois dos campos e acima do botão. Fica fora do if do botão porque o
+            // status pode mudar (uma sincronização, por exemplo) e o aviso ainda precisa ser lido.
+            if (erro != null) {
+                Spacer(Modifier.height(16.dp))
+                AvisoDeErro(erro = erro, aoDispensar = aoDispensarErro)
+            }
+
             // Ação principal, só no status em que o back-end aceita iniciar.
             if (podeIniciar(atendimento.item.status)) {
-                Spacer(Modifier.height(34.dp))
+                Spacer(Modifier.height(if (erro != null) 16.dp else 34.dp))
                 BotaoIniciar(iniciando = iniciando, aoIniciar = aoIniciar)
             }
             Spacer(Modifier.height(24.dp))
@@ -137,9 +149,16 @@ private fun atendimentoDoPreview(
 )
 
 @Composable
-private fun TelaDePreview(atendimento: Atendimento, iniciando: Boolean = false) {
+private fun TelaDePreview(atendimento: Atendimento, iniciando: Boolean = false, erro: ErroAoSalvar? = null) {
     TemaDePreview {
-        DetalheDoTecnicoTela(atendimento = atendimento, iniciando = iniciando, aoIniciar = {}, aoVoltar = {})
+        DetalheDoTecnicoTela(
+            atendimento = atendimento,
+            iniciando = iniciando,
+            erro = erro,
+            aoIniciar = {},
+            aoDispensarErro = {},
+            aoVoltar = {},
+        )
     }
 }
 
@@ -178,7 +197,19 @@ private fun DetalheDoTecnicoSemLocalNemCulturasPreview() {
 private fun DetalheDoTecnicoVariasCulturasPreview() {
     TelaDePreview(
         atendimentoDoPreview(
-            culturas = listOf(Cultura(1, "Citrus"), Cultura(2, "Cana-de-açúcar"), Cultura(3, "Soja"), Cultura(4, "Milho")),
+            culturas = listOf(
+                Cultura(1, "Citrus"),
+                Cultura(2, "Cana-de-açúcar"),
+                Cultura(3, "Soja"),
+                Cultura(4, "Milho"),
+            ),
         ),
     )
+}
+
+// O pedido de iniciar foi recusado pela regra do banco e a API não mandou texto: aviso genérico acima do botão.
+@Preview(showBackground = true, widthDp = 360, heightDp = 828)
+@Composable
+private fun DetalheDoTecnicoComErroPreview() {
+    TelaDePreview(atendimentoDoPreview(), erro = ErroAoSalvar.RegraDeNegocio(""))
 }

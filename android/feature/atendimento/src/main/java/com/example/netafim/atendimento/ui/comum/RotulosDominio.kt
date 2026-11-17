@@ -2,6 +2,7 @@ package com.example.netafim.atendimento.ui.comum
 
 import androidx.annotation.StringRes
 import com.example.netafim.atendimento.R
+import com.example.netafim.atendimento.dominio.ErroAoSalvar
 import com.example.netafim.atendimento.dominio.SeloStatus
 import com.example.netafim.core.modelo.AreaDoSetor
 import com.example.netafim.core.modelo.MotivoAtendimento
@@ -45,4 +46,16 @@ fun AreaDoSetor.rotulo(): Int = when (this) {
     AreaDoSetor.INSTALACAO -> R.string.atendimento_area_instalacao
     AreaDoSetor.MARKETING -> R.string.atendimento_area_marketing
     AreaDoSetor.POS_VENDA -> R.string.atendimento_area_pos_venda
+}
+
+// Texto do aviso de cada erro de escrita, nas três telas de ação. O when não tem else de propósito: se
+// ErroAoSalvar ganhar um valor novo, o compilador obriga a escolher o texto dele aqui. Na regra de negócio
+// o id é o do texto genérico; a tela mostra no lugar dele a mensagem da API quando ela vier preenchida.
+@StringRes
+fun ErroAoSalvar.rotulo(): Int = when (this) {
+    ErroAoSalvar.ConflitoDeVersao -> R.string.atendimento_erro_conflito
+    ErroAoSalvar.SemPermissao -> R.string.atendimento_erro_sem_permissao
+    ErroAoSalvar.NaoEncontrado -> R.string.atendimento_erro_nao_encontrado
+    ErroAoSalvar.SemConexao -> R.string.atendimento_erro_sem_conexao
+    is ErroAoSalvar.RegraDeNegocio -> R.string.atendimento_erro_regra
 }

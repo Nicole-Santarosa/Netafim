@@ -26,6 +26,13 @@ class CoresSeloTest {
         }
     }
 
+    // O aviso de erro das telas de ação é texto normal: precisa de 4,5 para 1 sobre o fundo da tela.
+    @Test
+    fun avisoDeErroTemContrasteMinimoDeQuatroEMeioSobreATela() {
+        val razao = razaoDeContraste(COR_DO_AVISO_DE_ERRO, FUNDO_DA_TELA)
+        assertTrue("contraste $razao abaixo de 4,5", razao >= 4.5)
+    }
+
     @Test
     fun razaoDeContrasteBateComOsValoresConhecidosDoWcag() {
         // Preto sobre branco é o máximo (21 para 1) e cor igual dá 1 para 1.

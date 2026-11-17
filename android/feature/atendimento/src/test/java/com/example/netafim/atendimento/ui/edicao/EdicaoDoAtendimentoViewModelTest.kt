@@ -191,6 +191,38 @@ class EdicaoDoAtendimentoViewModelTest {
     }
 
     @Test
+    fun dispensarErroLimpaOAvisoEMantemAEscolha() = runTest {
+        repositorio.resultadoDaAlteracao = ResultadoDaAcao.SemPermissao
+        val viewModel = abrirEdicao(SituacaoDoProjeto.FORA_GARANTIA)
+        viewModel.escolher(SituacaoDoProjeto.GARANTIA)
+        viewModel.salvar()
+        assertEquals(ErroAoSalvar.SemPermissao, viewModel.erro.value)
+
+        viewModel.dispensarErro()
+
+        assertNull(viewModel.erro.value)
+        assertEquals(SituacaoDoProjeto.GARANTIA, viewModel.escolhida.value)
+        assertTrue(viewModel.podeSalvar.value)
+    }
+
+    @Test
+    fun novoSalvamentoComSucessoLimpaOErroAnterior() = runTest {
+        repositorio.resultadoDaAlteracao = ResultadoDaAcao.FalhaDeRede
+        val viewModel = abrirEdicao(SituacaoDoProjeto.FORA_GARANTIA)
+        viewModel.escolher(SituacaoDoProjeto.GARANTIA)
+        viewModel.salvar()
+        assertEquals(ErroAoSalvar.SemConexao, viewModel.erro.value)
+
+        // Sem mexer na escolha, só tenta de novo.
+        repositorio.resultadoDaAlteracao = ResultadoDaAcao.Sucesso
+        viewModel.salvar()
+
+        assertNull(viewModel.erro.value)
+        assertTrue(viewModel.salvo.value)
+        assertEquals(2, repositorio.alteracoes.size)
+    }
+
+    @Test
     fun oOriginalNaoMudaQuandoORepositorioTrazVersaoNovaDuranteAEdicao() = runTest {
         val viewModel = abrirEdicao(SituacaoDoProjeto.FORA_GARANTIA)
         viewModel.escolher(SituacaoDoProjeto.GARANTIA)
