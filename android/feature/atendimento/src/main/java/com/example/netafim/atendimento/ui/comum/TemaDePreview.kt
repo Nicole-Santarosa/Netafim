@@ -12,6 +12,7 @@ import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.OrigemAtendimento
 import com.example.netafim.core.modelo.SituacaoDeSincronizacao
+import com.example.netafim.core.modelo.SituacaoDoProjeto
 import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 
@@ -62,8 +63,8 @@ internal fun itemDePreview(
 )
 
 // Monta um atendimento completo para os previews dos detalhes, em cima do itemDePreview. O local do item é
-// o nome da fazenda e a cidade juntos, como o repositório entrega. O que o detalhe não desenha (situação do
-// projeto, tipo de venda, conflito e erro de envio) fica vazio.
+// o nome da fazenda e a cidade juntos, como o repositório entrega. O que o detalhe não desenha fica vazio
+// (tipo de venda, conflito e erro de envio), e a situação do projeto só entra quando o preview a informa.
 internal fun atendimentoDePreview(
     status: StatusAtendimento,
     protocolo: String? = "OS-0498",
@@ -73,6 +74,7 @@ internal fun atendimentoDePreview(
     cidade: String? = null,
     culturas: List<Cultura> = emptyList(),
     historico: List<EventoDoHistorico> = emptyList(),
+    situacaoProjeto: SituacaoDoProjeto? = null,
 ) = Atendimento(
     item = itemDePreview(
         id = "1",
@@ -87,10 +89,9 @@ internal fun atendimentoDePreview(
     nomeFazenda = nomeFazenda,
     cidade = cidade,
     culturas = culturas,
-    situacaoProjeto = null,
+    situacaoProjeto = situacaoProjeto,
     tipoVenda = null,
     historico = historico,
     conflito = null,
     erroDeEnvio = null,
 )
-

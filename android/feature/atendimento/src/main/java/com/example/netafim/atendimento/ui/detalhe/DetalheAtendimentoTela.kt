@@ -55,17 +55,20 @@ fun DetalheAtendimentoTela(
     modifier: Modifier = Modifier,
     acoes: @Composable ColumnScope.() -> Unit = {},
 ) {
+    val protocolo = atendimento.item.protocolo
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
         BarraDoAtendimento(
-            // Sem protocolo (atendimento criado sem conexão) o servidor ainda não o gerou.
-            titulo = stringResource(
-                R.string.atendimento_detalhe_titulo,
-                atendimento.item.protocolo ?: stringResource(R.string.atendimento_protocolo_pendente),
-            ),
+            // Sem protocolo (atendimento criado sem conexão) o servidor ainda não o gerou: o título usa a
+            // versão própria, e não o texto de protocolo pendente dentro de "Atendimento %s".
+            titulo = if (protocolo == null) {
+                stringResource(R.string.atendimento_detalhe_titulo_sem_protocolo)
+            } else {
+                stringResource(R.string.atendimento_detalhe_titulo, protocolo)
+            },
             aoVoltar = aoVoltar,
             subtitulo = stringResource(
                 R.string.atendimento_detalhe_subtitulo,

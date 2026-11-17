@@ -67,14 +67,14 @@ import com.example.netafim.atendimento.dominio.FormularioAbertura
 import com.example.netafim.atendimento.dominio.LIMITE_CIDADE
 import com.example.netafim.atendimento.dominio.LIMITE_CONTATO
 import com.example.netafim.atendimento.dominio.LIMITE_NOME_FAZENDA
-import com.example.netafim.atendimento.dominio.OpcaoCultura
-import com.example.netafim.atendimento.dominio.OpcaoDistribuidor
 import com.example.netafim.atendimento.dominio.comCulturaAlternada
 import com.example.netafim.atendimento.dominio.comMotivo
 import com.example.netafim.atendimento.dominio.tipoVendaEfetivo
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
+import com.example.netafim.core.modelo.Cultura
+import com.example.netafim.core.modelo.Distribuidor
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.TipoVenda
 
@@ -85,8 +85,8 @@ import com.example.netafim.core.modelo.TipoVenda
 fun AbrirAtendimentoTela(
     formulario: FormularioAbertura,
     erros: ErrosFormulario,
-    culturas: List<OpcaoCultura>,
-    distribuidores: List<OpcaoDistribuidor>,
+    culturas: List<Cultura>,
+    distribuidores: List<Distribuidor>,
     enviando: Boolean,
     aoAlterar: (FormularioAbertura) -> Unit,
     aoEnviar: () -> Unit,
@@ -315,7 +315,7 @@ private fun ChipDeSelecao(texto: String, marcado: Boolean, habilitado: Boolean, 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SecaoCulturas(
-    culturas: List<OpcaoCultura>,
+    culturas: List<Cultura>,
     marcadas: Set<Int>,
     erro: ErroCampo?,
     habilitado: Boolean,
@@ -403,7 +403,7 @@ private fun CampoDeTexto(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CampoDistribuidor(
-    distribuidores: List<OpcaoDistribuidor>,
+    distribuidores: List<Distribuidor>,
     escolhido: Int?,
     erro: ErroCampo?,
     habilitado: Boolean,
@@ -460,13 +460,13 @@ private fun SecaoTipoVenda(escolhido: TipoVenda?, habilitado: Boolean, aoEscolhe
         Spacer(Modifier.size(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ChipDeSelecao(
-                texto = stringResource(R.string.atendimento_abrir_tipo_venda_projeto),
+                texto = stringResource(TipoVenda.PROJETO.rotulo()),
                 marcado = escolhido == TipoVenda.PROJETO,
                 habilitado = habilitado,
                 aoClicar = { aoEscolher(TipoVenda.PROJETO) },
             )
             ChipDeSelecao(
-                texto = stringResource(R.string.atendimento_abrir_tipo_venda_regular),
+                texto = stringResource(TipoVenda.VENDA_REGULAR.rotulo()),
                 marcado = escolhido == TipoVenda.VENDA_REGULAR,
                 habilitado = habilitado,
                 aoClicar = { aoEscolher(TipoVenda.VENDA_REGULAR) },
@@ -506,17 +506,17 @@ private fun BotaoEnviar(enviando: Boolean, aoEnviar: () -> Unit) {
 
 // Dados fictícios só para os previews.
 private val culturasDoPreview = listOf(
-    OpcaoCultura(1, "Cacau"),
-    OpcaoCultura(2, "Café"),
-    OpcaoCultura(3, "Cana-de-açúcar"),
-    OpcaoCultura(4, "Citrus"),
-    OpcaoCultura(5, "Grãos"),
-    OpcaoCultura(6, "Outros"),
+    Cultura(1, "Cacau"),
+    Cultura(2, "Café"),
+    Cultura(3, "Cana-de-açúcar"),
+    Cultura(4, "Citrus"),
+    Cultura(5, "Grãos"),
+    Cultura(6, "Outros"),
 )
 private val distribuidoresDoPreview = listOf(
-    OpcaoDistribuidor(10, "Distribuidora Exemplo Norte"),
-    OpcaoDistribuidor(11, "Revenda Exemplo Centro"),
-    OpcaoDistribuidor(12, "Agro Exemplo Sul"),
+    Distribuidor(10, "Distribuidora Exemplo Norte"),
+    Distribuidor(11, "Revenda Exemplo Centro"),
+    Distribuidor(12, "Agro Exemplo Sul"),
 )
 private val formularioPreenchido = FormularioAbertura(
     motivo = MotivoAtendimento.DIGITAL_FARMING,

@@ -65,6 +65,8 @@
 
     <!-- Detalhe do atendimento -->
     <string name="atendimento_detalhe_titulo">Atendimento %s</string>
+    <!-- Título do detalhe enquanto o servidor ainda não gerou o protocolo -->
+    <string name="atendimento_detalhe_titulo_sem_protocolo">Atendimento (pendente de sincronização)</string>
     <string name="atendimento_detalhe_subtitulo">%1$s · %2$s</string>
     <string name="atendimento_detalhe_motivo">Motivo: %s</string>
     <string name="atendimento_etapa_aberto_titulo">Aberto</string>

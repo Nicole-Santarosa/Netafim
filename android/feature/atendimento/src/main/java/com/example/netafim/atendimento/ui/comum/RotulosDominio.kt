@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.SeloStatus
 import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.TipoVenda
 
 // Liga cada valor do domínio ao texto do strings.xml. O domínio só carrega códigos e regras,
 // então o rótulo que o usuário lê é resolvido aqui, na camada de interface.
@@ -25,4 +26,12 @@ fun MotivoAtendimento.rotulo(): Int = when (this) {
     MotivoAtendimento.PROGRAMACAO_FEIRAS -> R.string.atendimento_motivo_programacao_feiras
     MotivoAtendimento.TREINAMENTO -> R.string.atendimento_motivo_treinamento
     MotivoAtendimento.DESCONHECIDO -> R.string.atendimento_desconhecido
+}
+
+// Texto de cada tipo de venda. Reaproveita as strings que os chips da abertura já usavam.
+@StringRes
+fun TipoVenda.rotulo(): Int = when (this) {
+    TipoVenda.PROJETO -> R.string.atendimento_abrir_tipo_venda_projeto
+    TipoVenda.VENDA_REGULAR -> R.string.atendimento_abrir_tipo_venda_regular
+    TipoVenda.DESCONHECIDO -> R.string.atendimento_desconhecido
 }

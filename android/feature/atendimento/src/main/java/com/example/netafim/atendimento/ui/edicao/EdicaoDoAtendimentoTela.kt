@@ -40,15 +40,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
-import com.example.netafim.atendimento.dominio.DadosDaEdicao
 import com.example.netafim.atendimento.dominio.ErroAoSalvar
 import com.example.netafim.atendimento.dominio.podeSalvar
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.CampoDeLeitura
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
+import com.example.netafim.atendimento.ui.comum.atendimentoDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
+import com.example.netafim.core.modelo.Atendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.SituacaoDoProjeto
+import com.example.netafim.core.modelo.StatusAtendimento
 
 // Edição reduzida do atendimento para o Admin da Netafim: mostra o atendimento em leitura e deixa trocar só
 // a situação do projeto. Tela sem estado: a escolha, o "salvando" e o erro chegam por parâmetro e cada ação
@@ -57,7 +59,7 @@ import com.example.netafim.core.modelo.SituacaoDoProjeto
 // técnico ficam fora desta versão.
 @Composable
 fun EdicaoDoAtendimentoTela(
-    dados: DadosDaEdicao,
+    atendimento: Atendimento,
     escolhida: SituacaoDoProjeto?,
     salvando: Boolean,
     erro: ErroAoSalvar?,
@@ -83,9 +85,11 @@ fun EdicaoDoAtendimentoTela(
 
             // Campo em leitura: número da OS e motivo, como no protótipo ("OS-0477 · Digital Farming").
             // O separador é pontuação, por isso fica aqui e não no strings.xml.
+            // Sem protocolo (atendimento criado sem conexão) entra o texto de protocolo pendente.
             CampoDeLeitura(
                 rotulo = stringResource(R.string.atendimento_edicao_atendimento),
-                valor = "${dados.protocolo} · ${stringResource(dados.motivo.rotulo())}",
+                valor = "${atendimento.item.protocolo ?: stringResource(R.string.atendimento_protocolo_pendente)} · " +
+                    stringResource(atendimento.item.motivo.rotulo()),
             )
 
             // O único campo editável. Com a situação já gravada o seletor abre com ela marcada; sem
@@ -100,7 +104,7 @@ fun EdicaoDoAtendimentoTela(
 
             Spacer(Modifier.height(if (erro != null) 16.dp else 34.dp))
             BotaoSalvar(
-                habilitado = podeSalvar(dados.situacaoOriginal, escolhida, salvando),
+                habilitado = podeSalvar(atendimento.situacaoProjeto, escolhida, salvando),
                 salvando = salvando,
                 aoSalvar = aoSalvar,
             )
@@ -252,23 +256,24 @@ private fun BotaoSalvar(habilitado: Boolean, salvando: Boolean, aoSalvar: () -> 
 }
 
 // Dados fictícios dos previews.
-private val dadosDoPreview = DadosDaEdicao(
-    id = "1",
-    protocolo = "OS-0477",
-    motivo = MotivoAtendimento.DIGITAL_FARMING,
-    situacaoOriginal = SituacaoDoProjeto.FORA_GARANTIA,
-)
+private fun atendimentoDoPreview(situacao: SituacaoDoProjeto? = SituacaoDoProjeto.FORA_GARANTIA) =
+    atendimentoDePreview(
+        status = StatusAtendimento.EM_ATENDIMENTO,
+        protocolo = "OS-0477",
+        motivo = MotivoAtendimento.DIGITAL_FARMING,
+        situacaoProjeto = situacao,
+    )
 
 @Composable
 private fun TelaDePreview(
-    dados: DadosDaEdicao = dadosDoPreview,
-    escolhida: SituacaoDoProjeto? = dados.situacaoOriginal,
+    atendimento: Atendimento = atendimentoDoPreview(),
+    escolhida: SituacaoDoProjeto? = atendimento.situacaoProjeto,
     salvando: Boolean = false,
     erro: ErroAoSalvar? = null,
 ) {
     TemaDePreview {
         EdicaoDoAtendimentoTela(
-            dados = dados,
+            atendimento = atendimento,
             escolhida = escolhida,
             salvando = salvando,
             erro = erro,
@@ -298,7 +303,7 @@ private fun EdicaoSalvandoPreview() = TelaDePreview(escolhida = SituacaoDoProjet
 @Preview(showBackground = true, widthDp = 360, heightDp = 780)
 @Composable
 private fun EdicaoSemSituacaoPreview() =
-    TelaDePreview(dados = dadosDoPreview.copy(situacaoOriginal = null))
+    TelaDePreview(atendimento = atendimentoDoPreview(situacao = null))
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 780)
 @Composable
