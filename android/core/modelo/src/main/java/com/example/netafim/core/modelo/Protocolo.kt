@@ -13,7 +13,12 @@ private fun digitosDoProtocolo(protocolo: String): String? =
 // com a mesma quantidade, vale a ordem dos dígitos. O mesmo número com zeros diferentes (OS-0050 e
 // OS-50) dá empate. Protocolo fora do formato volta a ser comparado como texto entre si; diante de um
 // protocolo válido, o válido vem primeiro. Assim a ordem continua total e o sort nunca vê um ciclo.
-fun compararProtocolos(a: String, b: String): Int {
+// Protocolo nulo (atendimento criado offline que ainda não subiu) ou vazio vem depois de qualquer protocolo,
+// e dois ausentes empatam. Por isso só serve como último critério de desempate: quem ordena deve comparar
+// antes os critérios principais (status, data) e deixar o protocolo por último.
+fun compararProtocolos(a: String?, b: String?): Int {
+    if (a.isNullOrBlank()) return if (b.isNullOrBlank()) 0 else 1
+    if (b.isNullOrBlank()) return -1
     val numeroA = digitosDoProtocolo(a)
     val numeroB = digitosDoProtocolo(b)
     return when {
@@ -26,4 +31,4 @@ fun compararProtocolos(a: String, b: String): Int {
 }
 
 // O mesmo critério como Comparator, para usar no thenBy das ordenações das listas.
-val ComparadorDeProtocolo: Comparator<String> = Comparator(::compararProtocolos)
+val ComparadorDeProtocolo: Comparator<String?> = Comparator(::compararProtocolos)

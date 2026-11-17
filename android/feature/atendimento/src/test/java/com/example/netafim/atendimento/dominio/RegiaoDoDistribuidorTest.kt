@@ -21,7 +21,9 @@ class RegiaoDoDistribuidorTest {
     private fun ids(lista: List<ItemDaFila>) = lista.map { it.id }
 
     // Um item para cada um dos oito status, para conferir os filtros.
-    private fun umDeCadaStatus() = StatusAtendimento.entries.map { item(it.name, status = it) }
+    private fun umDeCadaStatus() = StatusAtendimento.entries
+        .filter { it != StatusAtendimento.DESCONHECIDO }
+        .map { item(it.name, status = it) }
 
     // ---- aceita
 

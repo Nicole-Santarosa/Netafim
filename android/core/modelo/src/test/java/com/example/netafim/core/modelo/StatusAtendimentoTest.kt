@@ -2,7 +2,6 @@ package com.example.netafim.core.modelo
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -24,11 +23,11 @@ class StatusAtendimentoTest {
     }
 
     @Test
-    fun deCodigoDevolveNuloParaCodigoDesconhecido() {
-        assertNull(StatusAtendimento.deCodigo("pausado"))
-        assertNull(StatusAtendimento.deCodigo(""))
+    fun deCodigoDevolveDesconhecidoParaCodigoNaoReconhecido() {
+        assertEquals(StatusAtendimento.DESCONHECIDO, StatusAtendimento.deCodigo("pausado"))
+        assertEquals(StatusAtendimento.DESCONHECIDO, StatusAtendimento.deCodigo(""))
         // O código é sensível a maiúsculas: a API sempre manda minúsculas.
-        assertNull(StatusAtendimento.deCodigo("ABERTO"))
+        assertEquals(StatusAtendimento.DESCONHECIDO, StatusAtendimento.deCodigo("ABERTO"))
     }
 
     @Test

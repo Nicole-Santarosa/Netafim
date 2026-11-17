@@ -43,7 +43,7 @@ class LinhaDoTempoTest {
             StatusAtendimento.ENCERRADO_SEM_AVALIACAO to concluido,
             StatusAtendimento.CANCELADO to cancelado,
         )
-        assertEquals(StatusAtendimento.entries.size, esperado.size)
+        assertEquals(StatusAtendimento.entries.count { it != StatusAtendimento.DESCONHECIDO }, esperado.size)
         esperado.forEach { (status, etapas) -> assertEquals(status.name, etapas, linhaDoTempo(status)) }
     }
 
@@ -85,21 +85,24 @@ class LinhaDoTempoTest {
 
     @Test
     fun canceladoComCodigoAnteriorDesconhecidoMantemOComportamentoAntigo() {
-        // A camada de dados converte o código com deCodigo, que devolve nulo para o que o app não conhece.
+        // A camada de dados converte o código com deCodigo, que devolve DESCONHECIDO para o que o app não conhece.
         val anterior = StatusAtendimento.deCodigo("status_novo_do_servidor")
-        assertNull(anterior)
+        assertEquals(StatusAtendimento.DESCONHECIDO, anterior)
         assertEquals(cancelado, linhaDoTempo(StatusAtendimento.CANCELADO, anterior))
     }
 
     @Test
     fun statusAnteriorEIgnoradoQuandoOStatusNaoECancelado() {
-        StatusAtendimento.entries.filter { it != StatusAtendimento.CANCELADO }.forEach { status ->
-            assertEquals(
-                status.name,
-                linhaDoTempo(status),
-                linhaDoTempo(status, StatusAtendimento.EM_ATENDIMENTO),
-            )
-        }
+        // Só os status reais: o selo do desconhecido é provisório e cai no cinza do cancelado.
+        StatusAtendimento.entries
+            .filter { it != StatusAtendimento.CANCELADO && it != StatusAtendimento.DESCONHECIDO }
+            .forEach { status ->
+                assertEquals(
+                    status.name,
+                    linhaDoTempo(status),
+                    linhaDoTempo(status, StatusAtendimento.EM_ATENDIMENTO),
+                )
+            }
     }
 
     @Test

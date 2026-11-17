@@ -1,20 +1,9 @@
 package com.example.netafim.atendimento.dominio
 
 import com.example.netafim.core.modelo.ComparadorDeProtocolo
+import com.example.netafim.core.modelo.OrigemAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
-
-// Origem do atendimento: quem abriu a solicitação. Os códigos são os do contrato da API (schema Origem).
-enum class OrigemAtendimento(val codigo: String) {
-    NETAFIM("netafim"),
-    DISTRIBUIDOR("distribuidor"),
-    CLIENTE_FINAL("cliente_final");
-
-    companion object {
-        // Devolve null para um código que o app não conhece, para a tela decidir o que fazer em vez de quebrar.
-        fun deCodigo(codigo: String): OrigemAtendimento? = entries.firstOrNull { it.codigo == codigo }
-    }
-}
 
 // Um atendimento na lista do Admin da Netafim: o que cada linha precisa mostrar.
 data class ItemDaListaAdmin(

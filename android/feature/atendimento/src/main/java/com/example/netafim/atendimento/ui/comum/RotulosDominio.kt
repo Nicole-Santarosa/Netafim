@@ -23,4 +23,5 @@ fun MotivoAtendimento.rotulo(): Int = when (this) {
     MotivoAtendimento.POS_VENDA -> R.string.atendimento_motivo_pos_venda
     MotivoAtendimento.PROGRAMACAO_FEIRAS -> R.string.atendimento_motivo_programacao_feiras
     MotivoAtendimento.TREINAMENTO -> R.string.atendimento_motivo_treinamento
+    MotivoAtendimento.DESCONHECIDO -> R.string.atendimento_desconhecido
 }

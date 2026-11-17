@@ -25,6 +25,9 @@
     <string name="atendimento_selo_concluido">Concluído</string>
     <string name="atendimento_selo_cancelado">Cancelado</string>
 
+    <!-- Valor que o app não reconhece, vindo de um servidor mais novo -->
+    <string name="atendimento_desconhecido">Desconhecido</string>
+
     <!-- Motivo do atendimento -->
     <string name="atendimento_motivo_digital_farming">Digital Farming</string>
     <string name="atendimento_motivo_duvidas">Dúvidas</string>

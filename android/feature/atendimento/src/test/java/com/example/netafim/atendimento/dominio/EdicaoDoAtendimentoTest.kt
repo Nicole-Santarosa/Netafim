@@ -1,5 +1,6 @@
 package com.example.netafim.atendimento.dominio
 
+import com.example.netafim.core.modelo.SituacaoDoProjeto
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -18,15 +19,10 @@ class EdicaoDoAtendimentoTest {
     }
 
     @Test
-    fun deCodigoNuloDevolveNulo() {
-        assertNull(SituacaoDoProjeto.deCodigo(null))
-    }
-
-    @Test
-    fun deCodigoDesconhecidoDevolveNulo() {
-        assertNull(SituacaoDoProjeto.deCodigo("vencida"))
-        assertNull(SituacaoDoProjeto.deCodigo(""))
-        assertNull(SituacaoDoProjeto.deCodigo("GARANTIA"))
+    fun deCodigoDesconhecidoDevolveDesconhecido() {
+        assertEquals(SituacaoDoProjeto.DESCONHECIDO, SituacaoDoProjeto.deCodigo("vencida"))
+        assertEquals(SituacaoDoProjeto.DESCONHECIDO, SituacaoDoProjeto.deCodigo(""))
+        assertEquals(SituacaoDoProjeto.DESCONHECIDO, SituacaoDoProjeto.deCodigo("GARANTIA"))
     }
 
     // ---- podeSalvar
@@ -46,7 +42,8 @@ class EdicaoDoAtendimentoTest {
 
     @Test
     fun semSituacaoGravadaQualquerEscolhaLibera() {
-        SituacaoDoProjeto.entries.forEach {
+        // As escolhas reais: o seletor nunca oferece DESCONHECIDO.
+        SituacaoDoProjeto.entries.filter { it != SituacaoDoProjeto.DESCONHECIDO }.forEach {
             assertTrue(it.name, podeSalvar(original = null, escolhida = it, salvando = false))
         }
     }

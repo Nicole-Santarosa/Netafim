@@ -42,13 +42,13 @@ import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.DadosDaEdicao
 import com.example.netafim.atendimento.dominio.ErroAoSalvar
-import com.example.netafim.atendimento.dominio.SituacaoDoProjeto
 import com.example.netafim.atendimento.dominio.podeSalvar
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.CampoDeLeitura
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
 import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.SituacaoDoProjeto
 
 // Edição reduzida do atendimento para o Admin da Netafim: mostra o atendimento em leitura e deixa trocar só
 // a situação do projeto. Tela sem estado: a escolha, o "salvando" e o erro chegam por parâmetro e cada ação
@@ -127,7 +127,8 @@ private fun SeletorDaSituacao(
         modifier = Modifier.selectableGroup(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        SituacaoDoProjeto.entries.forEach { situacao ->
+        // DESCONHECIDO não é uma opção: o seletor só oferece o que o servidor aceita receber.
+        SituacaoDoProjeto.entries.filter { it != SituacaoDoProjeto.DESCONHECIDO }.forEach { situacao ->
             OpcaoDaSituacao(
                 situacao = situacao,
                 selecionada = situacao == escolhida,

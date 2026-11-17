@@ -18,6 +18,9 @@ kotlin {
 }
 
 dependencies {
+    // Flow aparece na interface pública do repositório, então quem usa o módulo também precisa da biblioteca.
+    api(libs.kotlinx.coroutines.core)
+
     // Testes unitários (rodam na JVM).
     testImplementation(libs.junit)
 }

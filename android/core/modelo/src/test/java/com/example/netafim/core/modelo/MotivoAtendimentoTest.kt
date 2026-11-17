@@ -2,7 +2,6 @@ package com.example.netafim.core.modelo
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 class MotivoAtendimentoTest {
@@ -39,8 +38,8 @@ class MotivoAtendimentoTest {
     }
 
     @Test
-    fun deCodigoReconheceOMotivoEDevolveNuloParaDesconhecido() {
+    fun deCodigoReconheceOMotivoEDevolveDesconhecidoParaOutros() {
         assertEquals(MotivoAtendimento.POS_VENDA, MotivoAtendimento.deCodigo("pos_venda"))
-        assertNull(MotivoAtendimento.deCodigo("outro"))
+        assertEquals(MotivoAtendimento.DESCONHECIDO, MotivoAtendimento.deCodigo("outro"))
     }
 }

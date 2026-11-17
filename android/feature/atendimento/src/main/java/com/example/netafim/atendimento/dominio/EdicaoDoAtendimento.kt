@@ -1,20 +1,7 @@
 package com.example.netafim.atendimento.dominio
 
 import com.example.netafim.core.modelo.MotivoAtendimento
-
-// Situação do projeto do atendimento. Os códigos são os do contrato da API (schema SituacaoProjeto)
-// e os mesmos do CHECK do banco. Rótulos ficam na camada de interface.
-enum class SituacaoDoProjeto(val codigo: String) {
-    GARANTIA("garantia"),
-    FORA_GARANTIA("fora_garantia"),
-    INSTALACAO("instalacao");
-
-    companion object {
-        // Nulo (atendimento sem situação gravada) e código que o app não conhece devolvem nulo, para a
-        // tela abrir o seletor sem nada marcado em vez de quebrar.
-        fun deCodigo(codigo: String?): SituacaoDoProjeto? = entries.firstOrNull { it.codigo == codigo }
-    }
-}
+import com.example.netafim.core.modelo.SituacaoDoProjeto
 
 // O que a tela de edição mostra em leitura. A versão do atendimento não entra aqui: quem manda o
 // PATCH (a camada de dados) guarda a versão lida e a envia junto; a tela só desenha e devolve a escolha.

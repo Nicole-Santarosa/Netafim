@@ -54,4 +54,31 @@ class ProtocoloTest {
             lista.sortedWith(ComparadorDeProtocolo),
         )
     }
+
+    @Test
+    fun protocoloNuloVemDepoisDeQualquerProtocolo() {
+        assertTrue(compararProtocolos(null, "OS-0001") > 0)
+        assertTrue(compararProtocolos("OS-0001", null) < 0)
+        // Até um protocolo fora do formato vem antes do nulo.
+        assertTrue(compararProtocolos(null, "ABC") > 0)
+        assertTrue(compararProtocolos("ABC", null) < 0)
+    }
+
+    @Test
+    fun protocoloVazioContaComoNulo() {
+        assertTrue(compararProtocolos("", "OS-0001") > 0)
+        assertTrue(compararProtocolos("OS-0001", "  ") < 0)
+        assertEquals(0, compararProtocolos("", null))
+    }
+
+    @Test
+    fun doisProtocolosNulosEmpatam() {
+        assertEquals(0, compararProtocolos(null, null))
+    }
+
+    @Test
+    fun ordenarUmaListaComProtocoloNuloPoeOsNulosNoFim() {
+        val lista = listOf("OS-0002", null, "OS-0001", "")
+        assertEquals(listOf("OS-0001", "OS-0002", null, ""), lista.sortedWith(ComparadorDeProtocolo))
+    }
 }

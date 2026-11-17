@@ -1,9 +1,9 @@
 package com.example.netafim.atendimento.dominio
 
+import com.example.netafim.core.modelo.OrigemAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -29,9 +29,9 @@ class ListaDoAdminTest {
     }
 
     @Test
-    fun deCodigoDesconhecidoDevolveNull() {
-        assertNull(OrigemAtendimento.deCodigo("revenda"))
-        assertNull(OrigemAtendimento.deCodigo(""))
+    fun deCodigoDesconhecidoDevolveDesconhecido() {
+        assertEquals(OrigemAtendimento.DESCONHECIDO, OrigemAtendimento.deCodigo("revenda"))
+        assertEquals(OrigemAtendimento.DESCONHECIDO, OrigemAtendimento.deCodigo(""))
     }
 
     // ---- aceita

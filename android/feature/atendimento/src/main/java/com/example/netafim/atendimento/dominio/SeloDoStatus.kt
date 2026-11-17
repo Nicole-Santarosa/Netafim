@@ -19,4 +19,7 @@ val StatusAtendimento.selo: SeloStatus
         StatusAtendimento.RESOLVIDO, StatusAtendimento.ENCERRADO, StatusAtendimento.ENCERRADO_SEM_AVALIACAO ->
             SeloStatus.CONCLUIDO
         StatusAtendimento.CANCELADO -> SeloStatus.CANCELADO
+        // Provisório: ainda não existe um selo neutro. O cinza do cancelado é o mais discreto, e como
+        // DESCONHECIDO não entra na fila nem nos chips Em andamento e Concluídos, só aparece em Todos.
+        StatusAtendimento.DESCONHECIDO -> SeloStatus.CANCELADO
     }
