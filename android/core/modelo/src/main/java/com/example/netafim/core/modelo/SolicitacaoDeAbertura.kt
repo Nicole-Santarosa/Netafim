@@ -3,7 +3,8 @@ package com.example.netafim.core.modelo
 import java.time.Instant
 
 // Dados para abrir um atendimento. Os tipos são os mesmos do formulário de abertura do app: texto não
-// informado fica vazio (o repositório não envia campo vazio) e as escolhas de lista vão como ids.
+// informado fica vazio (o repositório não envia campo vazio), as escolhas de lista vão como ids e a área ou
+// setor vai como enum (nula fora da origem Netafim).
 data class SolicitacaoDeAbertura(
     // UUID gerado pelo aparelho. Reenviar o mesmo id não duplica o atendimento.
     val id: String,
@@ -14,7 +15,8 @@ data class SolicitacaoDeAbertura(
     val nomeProdutor: String,
     val nomeFazenda: String,
     val cidade: String,
-    val areaSetor: String,
+    // Só a origem Netafim informa a área; nas outras ela é nula.
+    val areaSetor: AreaDoSetor?,
     val contato: String,
     val tipoVenda: TipoVenda?,
     val culturas: Set<Int>,
@@ -27,5 +29,12 @@ data class SolicitacaoDeAbertura(
         require(origem != OrigemAtendimento.DESCONHECIDO) { "A origem do atendimento não pode ser DESCONHECIDO." }
         require(motivo != MotivoAtendimento.DESCONHECIDO) { "O motivo do atendimento não pode ser DESCONHECIDO." }
         require(tipoVenda != TipoVenda.DESCONHECIDO) { "O tipo de venda não pode ser DESCONHECIDO." }
+        // Mesma regra do banco (ck_atend_area_netafim): a Netafim sempre diz de que área vem. As outras origens
+        // não têm área; recusar aqui evita mandar um dado que não pertence ao canal.
+        if (origem == OrigemAtendimento.NETAFIM) {
+            require(areaSetor != null) { "A origem Netafim exige a área ou setor." }
+        } else {
+            require(areaSetor == null) { "Só a origem Netafim informa a área ou setor." }
+        }
     }
 }

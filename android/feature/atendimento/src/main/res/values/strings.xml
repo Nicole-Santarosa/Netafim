@@ -62,6 +62,15 @@
     <string name="atendimento_abrir_erro_distribuidor">Escolha o distribuidor que te atende</string>
     <string name="atendimento_abrir_erro_contato">Informe um telefone para contato</string>
     <string name="atendimento_abrir_erro_muito_longo">Use no máximo %d caracteres</string>
+    <string name="atendimento_abrir_nome_produtor">Nome do produtor</string>
+    <string name="atendimento_abrir_erro_nome_produtor">Informe o nome do produtor</string>
+    <string name="atendimento_abrir_area_setor">Área / setor</string>
+    <string name="atendimento_abrir_erro_area_setor">Escolha a área ou setor</string>
+    <string name="atendimento_area_comercial">Comercial</string>
+    <string name="atendimento_area_engenharia">Engenharia</string>
+    <string name="atendimento_area_instalacao">Instalação</string>
+    <string name="atendimento_area_marketing">Marketing</string>
+    <string name="atendimento_area_pos_venda">Pós Venda</string>
 
     <!-- Detalhe do atendimento -->
     <string name="atendimento_detalhe_titulo">Atendimento %s</string>

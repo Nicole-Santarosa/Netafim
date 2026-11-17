@@ -3,6 +3,7 @@ package com.example.netafim.atendimento.ui.comum
 import androidx.annotation.StringRes
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.SeloStatus
+import com.example.netafim.core.modelo.AreaDoSetor
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.TipoVenda
 
@@ -34,4 +35,14 @@ fun TipoVenda.rotulo(): Int = when (this) {
     TipoVenda.PROJETO -> R.string.atendimento_abrir_tipo_venda_projeto
     TipoVenda.VENDA_REGULAR -> R.string.atendimento_abrir_tipo_venda_regular
     TipoVenda.DESCONHECIDO -> R.string.atendimento_desconhecido
+}
+
+// Texto de cada área ou setor da Netafim, para o seletor da abertura.
+@StringRes
+fun AreaDoSetor.rotulo(): Int = when (this) {
+    AreaDoSetor.COMERCIAL -> R.string.atendimento_area_comercial
+    AreaDoSetor.ENGENHARIA -> R.string.atendimento_area_engenharia
+    AreaDoSetor.INSTALACAO -> R.string.atendimento_area_instalacao
+    AreaDoSetor.MARKETING -> R.string.atendimento_area_marketing
+    AreaDoSetor.POS_VENDA -> R.string.atendimento_area_pos_venda
 }

@@ -12,6 +12,7 @@ class SolicitacaoDeAberturaTest {
         origem: OrigemAtendimento = OrigemAtendimento.CLIENTE_FINAL,
         motivo: MotivoAtendimento = MotivoAtendimento.POS_VENDA,
         tipoVenda: TipoVenda? = null,
+        areaSetor: AreaDoSetor? = null,
     ) = SolicitacaoDeAbertura(
         id = "7b1f0c9e-3f5a-4a52-9f0e-6f3c2a1d8b40",
         origem = origem,
@@ -21,7 +22,7 @@ class SolicitacaoDeAberturaTest {
         nomeProdutor = "",
         nomeFazenda = "Fazenda Boa Vista",
         cidade = "Ribeirão Preto",
-        areaSetor = "",
+        areaSetor = areaSetor,
         contato = "16999990000",
         tipoVenda = tipoVenda,
         culturas = setOf(1, 2),
@@ -62,5 +63,40 @@ class SolicitacaoDeAberturaTest {
             solicitacao(tipoVenda = TipoVenda.DESCONHECIDO)
         }
         assertEquals("O tipo de venda não pode ser DESCONHECIDO.", erro.message)
+    }
+
+    @Test
+    fun netafimComAreaEAceita() {
+        val pedido = solicitacao(origem = OrigemAtendimento.NETAFIM, areaSetor = AreaDoSetor.ENGENHARIA)
+        assertEquals(AreaDoSetor.ENGENHARIA, pedido.areaSetor)
+    }
+
+    @Test
+    fun netafimSemAreaERecusada() {
+        val erro = assertThrows(IllegalArgumentException::class.java) {
+            solicitacao(origem = OrigemAtendimento.NETAFIM, areaSetor = null)
+        }
+        assertEquals("A origem Netafim exige a área ou setor.", erro.message)
+    }
+
+    @Test
+    fun outrasOrigensNaoPodemTerArea() {
+        listOf(OrigemAtendimento.CLIENTE_FINAL, OrigemAtendimento.DISTRIBUIDOR).forEach { origem ->
+            val erro = assertThrows(origem.name, IllegalArgumentException::class.java) {
+                solicitacao(origem = origem, areaSetor = AreaDoSetor.COMERCIAL)
+            }
+            assertEquals("Só a origem Netafim informa a área ou setor.", erro.message)
+            // Sem área, as duas são aceitas.
+            assertNull(solicitacao(origem = origem, areaSetor = null).areaSetor)
+        }
+    }
+
+    @Test
+    fun codigosDaAreaSaoOsDaApi() {
+        // Os cinco códigos que o contrato e o CHECK do banco aceitam, na mesma ordem.
+        assertEquals(
+            listOf("comercial", "engenharia", "instalacao", "marketing", "pos_venda"),
+            AreaDoSetor.entries.map { it.codigo },
+        )
     }
 }

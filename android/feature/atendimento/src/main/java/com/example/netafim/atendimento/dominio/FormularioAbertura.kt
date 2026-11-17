@@ -1,5 +1,6 @@
 package com.example.netafim.atendimento.dominio
 
+import com.example.netafim.core.modelo.AreaDoSetor
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.OrigemAtendimento
 import com.example.netafim.core.modelo.SolicitacaoDeAbertura
@@ -7,17 +8,21 @@ import com.example.netafim.core.modelo.TipoVenda
 import java.time.Instant
 
 // Limites de tamanho do contrato da API (schema AberturaAtendimento): cidade aceita até 100
-// caracteres, nome_fazenda_informado até 150 e contato_solicitante até 20.
+// caracteres, nome_fazenda_informado e nome_produtor até 150 e contato_solicitante até 20.
 const val LIMITE_CIDADE = 100
 const val LIMITE_NOME_FAZENDA = 150
+const val LIMITE_NOME_PRODUTOR = 150
 const val LIMITE_CONTATO = 20
 
-// Dados que o cliente preenche na abertura (protótipo do cliente). Todos começam vazios.
-// Os campos de identificação (id do atendimento, origem, id do cliente) não são do formulário:
-// o app os preenche com o aparelho e a sessão.
-// Os obrigatórios seguem o formulário de solicitação da Netafim para o cliente final, que é o
-// mesmo que a API passou a exigir: distribuidor, cidade, nome da fazenda, ao menos uma cultura e
-// o motivo, além do contato, que o contrato sempre pediu.
+// Dados que o usuário preenche na abertura. Todos começam vazios.
+// Os campos de identificação (id do atendimento, origem, id do cliente, distribuidor de origem do
+// distribuidor) não são do formulário: o app os preenche com o aparelho e a sessão.
+// O mesmo formulário serve às três origens, mas cada uma só preenche (e só é cobrada por) uma parte dele,
+// conforme o formulário de solicitação da Netafim:
+// - cliente final: distribuidor da região, cidade, nome da fazenda, cultura e motivo;
+// - distribuidor: nome do produtor, cidade, cultura e motivo;
+// - Netafim: área ou setor, nome do produtor, cidade, cultura e motivo.
+// Em todas o contato também é obrigatório (contato_solicitante não aceita nulo no banco).
 data class FormularioAbertura(
     val motivo: MotivoAtendimento? = null,
     // Ids do catálogo de culturas (GET /culturas). Ao menos um.
@@ -27,9 +32,13 @@ data class FormularioAbertura(
     // Vai no campo nome_fazenda_informado da API.
     val nomeFazenda: String = "",
     val contato: String = "",
-    // Distribuidor escolhido na lista. Obrigatório para o cliente final.
+    // Distribuidor escolhido na lista. Só o cliente final escolhe.
     val idDistribuidor: Int? = null,
     val tipoVenda: TipoVenda? = null,
+    // Vai no campo nome_produtor da API. Só o distribuidor e a Netafim informam.
+    val nomeProdutor: String = "",
+    // Vai no campo area_setor da API. Só a Netafim informa.
+    val areaSetor: AreaDoSetor? = null,
 )
 
 enum class ErroCampo {
@@ -37,7 +46,7 @@ enum class ErroCampo {
     MUITO_LONGO,
 }
 
-// Um erro opcional por campo validado. Culturas e distribuidor só têm o erro de obrigatório,
+// Um erro opcional por campo validado. Culturas, distribuidor e área só têm o erro de obrigatório,
 // porque são escolhas de lista. O tipo de venda não gera erro: sem escolha vale o padrão.
 data class ErrosFormulario(
     val motivo: ErroCampo? = null,
@@ -46,27 +55,52 @@ data class ErrosFormulario(
     val culturas: ErroCampo? = null,
     val distribuidor: ErroCampo? = null,
     val contato: ErroCampo? = null,
+    val nomeProdutor: ErroCampo? = null,
+    val areaSetor: ErroCampo? = null,
 ) {
     val valido: Boolean
-        get() = motivo == null && cidade == null && nomeFazenda == null &&
-            culturas == null && distribuidor == null && contato == null
+        get() = motivo == null && cidade == null && nomeFazenda == null && culturas == null &&
+            distribuidor == null && contato == null && nomeProdutor == null && areaSetor == null
 }
 
-fun validar(formulario: FormularioAbertura): ErrosFormulario = ErrosFormulario(
-    // O motivo é obrigatório no contrato da API. DESCONHECIDO não é uma escolha possível (o seletor só oferece
-    // os motivos do cliente), mas se chegasse aqui contaria como motivo não escolhido.
-    motivo = if (formulario.motivo == null || formulario.motivo == MotivoAtendimento.DESCONHECIDO) {
-        ErroCampo.OBRIGATORIO
-    } else {
-        null
-    },
-    cidade = validarTexto(formulario.cidade, LIMITE_CIDADE, obrigatorio = true),
-    nomeFazenda = validarTexto(formulario.nomeFazenda, LIMITE_NOME_FAZENDA, obrigatorio = true),
-    culturas = if (formulario.culturas.isEmpty()) ErroCampo.OBRIGATORIO else null,
-    distribuidor = if (formulario.idDistribuidor == null) ErroCampo.OBRIGATORIO else null,
-    // O contato é obrigatório no contrato (contato_solicitante).
-    contato = validarTexto(formulario.contato, LIMITE_CONTATO, obrigatorio = true),
-)
+// Valida o formulário para a origem de quem está abrindo. Motivo, cidade, cultura e contato valem para todas
+// as origens; o resto é cobrado só da origem a que pertence. Campo que não é da origem é ignorado, mesmo que
+// tenha sobrado algum valor nele (inclusive um texto longo demais): ele não é desenhado na tela nem enviado,
+// então não pode travar o envio.
+// Uma origem DESCONHECIDO não tem campos próprios: só os comuns são cobrados (e comoSolicitacao a recusa).
+fun validar(formulario: FormularioAbertura, origem: OrigemAtendimento): ErrosFormulario {
+    val ehCliente = origem == OrigemAtendimento.CLIENTE_FINAL
+    val ehNetafim = origem == OrigemAtendimento.NETAFIM
+    val pedeProdutor = ehNetafim || origem == OrigemAtendimento.DISTRIBUIDOR
+    return ErrosFormulario(
+        // O motivo é obrigatório no contrato da API. DESCONHECIDO não é uma escolha possível (o seletor só
+        // oferece os motivos da abertura), mas se chegasse aqui contaria como motivo não escolhido.
+        motivo = if (formulario.motivo == null || formulario.motivo == MotivoAtendimento.DESCONHECIDO) {
+            ErroCampo.OBRIGATORIO
+        } else {
+            null
+        },
+        cidade = validarTexto(formulario.cidade, LIMITE_CIDADE, obrigatorio = true),
+        culturas = if (formulario.culturas.isEmpty()) ErroCampo.OBRIGATORIO else null,
+        // O contato é obrigatório no contrato (contato_solicitante).
+        contato = validarTexto(formulario.contato, LIMITE_CONTATO, obrigatorio = true),
+        // Só do cliente final.
+        nomeFazenda = if (ehCliente) {
+            validarTexto(formulario.nomeFazenda, LIMITE_NOME_FAZENDA, obrigatorio = true)
+        } else {
+            null
+        },
+        distribuidor = if (ehCliente && formulario.idDistribuidor == null) ErroCampo.OBRIGATORIO else null,
+        // Do distribuidor e da Netafim.
+        nomeProdutor = if (pedeProdutor) {
+            validarTexto(formulario.nomeProdutor, LIMITE_NOME_PRODUTOR, obrigatorio = true)
+        } else {
+            null
+        },
+        // Só da Netafim.
+        areaSetor = if (ehNetafim && formulario.areaSetor == null) ErroCampo.OBRIGATORIO else null,
+    )
+}
 
 // Tipo de venda só vale para Digital Farming. Nesse motivo, se o cliente não escolheu, vale PROJETO; um
 // DESCONHECIDO, que o seletor não oferece, também cai no padrão para nunca chegar à solicitação.
@@ -100,35 +134,42 @@ fun FormularioAbertura.comMotivo(motivo: MotivoAtendimento): FormularioAbertura 
 fun FormularioAbertura.comCulturaAlternada(idCultura: Int): FormularioAbertura =
     copy(culturas = if (idCultura in culturas) culturas - idCultura else culturas + idCultura)
 
-// Converte o formulário na solicitação que o repositório recebe. Só converte formulário válido: a própria
-// função roda validar antes e devolve nulo se houver qualquer erro, então não existe como obter uma
-// solicitação de um formulário que a tela barraria. Como validar também recusa motivo DESCONHECIDO e
-// tipoVendaEfetivo nunca devolve DESCONHECIDO, o require do core não chega a recusar o resultado, desde que a
-// origem recebida seja um valor real.
-// O id (UUID do aparelho), a origem, o idCliente (da sessão) e o abertoEm (relógio do aparelho) vêm de fora: a
-// função não gera nenhum deles, para ser previsível nos testes. Campos que o formulário do cliente não
-// coleta (nome do produtor e área ou setor) vão vazios, que é como o core representa "não informado"; o texto
-// digitado é aparado, que é o que o app deve enviar e o que validar mediu.
+// Converte o formulário na solicitação que o repositório recebe. Só converte formulário válido para a
+// origem: a própria função roda validar antes e devolve nulo se houver qualquer erro, então não existe como
+// obter uma solicitação de um formulário que a tela barraria. Como validar também recusa motivo DESCONHECIDO,
+// tipoVendaEfetivo nunca devolve DESCONHECIDO e a área só vai (e sempre vai) na origem Netafim, o require do
+// core não chega a recusar o resultado. Origem DESCONHECIDO devolve nulo pelo mesmo motivo.
+// O id (UUID do aparelho), a origem com os ids que vêm da sessão e o abertoEm (relógio do aparelho) vêm de
+// fora: a função não gera nenhum deles, para ser previsível nos testes.
+// Cada origem manda só o que é dela; o resto vai vazio (texto) ou nulo, que é como o core representa "não
+// informado", mesmo que o formulário tenha sobrado com algum valor:
+// - cliente final: nome da fazenda e o distribuidor escolhido no formulário;
+// - distribuidor: nome do produtor e o distribuidor de origem que veio da sessão;
+// - Netafim: nome do produtor e área ou setor.
+// O texto digitado é aparado, que é o que o app deve enviar e o que validar mediu.
 fun comoSolicitacao(
     formulario: FormularioAbertura,
     id: String,
-    origem: OrigemAtendimento,
-    idCliente: Int?,
+    origem: OrigemDaAbertura,
     abertoEm: Instant,
 ): SolicitacaoDeAbertura? {
-    if (!validar(formulario).valido) return null
+    if (origem.origem == OrigemAtendimento.DESCONHECIDO) return null
+    if (!validar(formulario, origem.origem).valido) return null
     // Depois de validar, o motivo existe; o null aqui é só para o compilador.
     val motivo = formulario.motivo ?: return null
+    val ehCliente = origem.origem == OrigemAtendimento.CLIENTE_FINAL
+    val ehNetafim = origem.origem == OrigemAtendimento.NETAFIM
     return SolicitacaoDeAbertura(
         id = id,
-        origem = origem,
+        origem = origem.origem,
         motivo = motivo,
-        idCliente = idCliente,
-        idDistribuidorOrigem = formulario.idDistribuidor,
-        nomeProdutor = "",
-        nomeFazenda = formulario.nomeFazenda.trim(),
+        idCliente = origem.idCliente,
+        // O cliente escolhe na lista; o distribuidor é ele mesmo (sessão); a Netafim não tem.
+        idDistribuidorOrigem = if (ehCliente) formulario.idDistribuidor else origem.idDistribuidorOrigem,
+        nomeProdutor = if (ehCliente) "" else formulario.nomeProdutor.trim(),
+        nomeFazenda = if (ehCliente) formulario.nomeFazenda.trim() else "",
         cidade = formulario.cidade.trim(),
-        areaSetor = "",
+        areaSetor = if (ehNetafim) formulario.areaSetor else null,
         contato = formulario.contato.trim(),
         tipoVenda = tipoVendaEfetivo(formulario),
         culturas = formulario.culturas,

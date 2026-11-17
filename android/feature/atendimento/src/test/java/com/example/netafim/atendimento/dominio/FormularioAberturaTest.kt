@@ -24,9 +24,13 @@ class FormularioAberturaTest {
         tipoVenda = null,
     )
 
+    // Os testes deste arquivo são do formulário do cliente final, que era o único antes da abertura por
+    // origem. As regras das outras origens ficam em FormularioPorOrigemTest.
+    private fun validarCliente(formulario: FormularioAbertura) = validar(formulario, OrigemAtendimento.CLIENTE_FINAL)
+
     @Test
     fun formularioCompletoEValido() {
-        val erros = validar(completo)
+        val erros = validarCliente(completo)
         assertTrue(erros.valido)
         assertNull(erros.motivo)
         assertNull(erros.cidade)
@@ -38,40 +42,40 @@ class FormularioAberturaTest {
 
     @Test
     fun motivoNuloEObrigatorio() {
-        val erros = validar(completo.copy(motivo = null))
+        val erros = validarCliente(completo.copy(motivo = null))
         assertEquals(ErroCampo.OBRIGATORIO, erros.motivo)
         assertFalse(erros.valido)
     }
 
     @Test
     fun cidadeVaziaOuSoComEspacosFalha() {
-        assertEquals(ErroCampo.OBRIGATORIO, validar(completo.copy(cidade = "")).cidade)
-        assertEquals(ErroCampo.OBRIGATORIO, validar(completo.copy(cidade = "   ")).cidade)
-        assertFalse(validar(completo.copy(cidade = "")).valido)
+        assertEquals(ErroCampo.OBRIGATORIO, validarCliente(completo.copy(cidade = "")).cidade)
+        assertEquals(ErroCampo.OBRIGATORIO, validarCliente(completo.copy(cidade = "   ")).cidade)
+        assertFalse(validarCliente(completo.copy(cidade = "")).valido)
     }
 
     @Test
     fun nomeDaFazendaVazioOuSoComEspacosFalha() {
-        assertEquals(ErroCampo.OBRIGATORIO, validar(completo.copy(nomeFazenda = "")).nomeFazenda)
-        assertEquals(ErroCampo.OBRIGATORIO, validar(completo.copy(nomeFazenda = "   ")).nomeFazenda)
-        assertFalse(validar(completo.copy(nomeFazenda = "")).valido)
+        assertEquals(ErroCampo.OBRIGATORIO, validarCliente(completo.copy(nomeFazenda = "")).nomeFazenda)
+        assertEquals(ErroCampo.OBRIGATORIO, validarCliente(completo.copy(nomeFazenda = "   ")).nomeFazenda)
+        assertFalse(validarCliente(completo.copy(nomeFazenda = "")).valido)
     }
 
     @Test
     fun semCulturaFalha() {
-        val erros = validar(completo.copy(culturas = emptySet()))
+        val erros = validarCliente(completo.copy(culturas = emptySet()))
         assertEquals(ErroCampo.OBRIGATORIO, erros.culturas)
         assertFalse(erros.valido)
     }
 
     @Test
     fun umaCulturaSoJaBasta() {
-        assertNull(validar(completo.copy(culturas = setOf(1))).culturas)
+        assertNull(validarCliente(completo.copy(culturas = setOf(1))).culturas)
     }
 
     @Test
     fun semDistribuidorFalha() {
-        val erros = validar(completo.copy(idDistribuidor = null))
+        val erros = validarCliente(completo.copy(idDistribuidor = null))
         assertEquals(ErroCampo.OBRIGATORIO, erros.distribuidor)
         assertFalse(erros.valido)
     }
@@ -79,7 +83,7 @@ class FormularioAberturaTest {
     @Test
     fun formularioVazioApontaTodosOsObrigatorios() {
         // O vazio é o que a tela mostra antes de o cliente preencher; todos os erros vêm de uma vez.
-        val erros = validar(FormularioAbertura())
+        val erros = validarCliente(FormularioAbertura())
         assertEquals(ErroCampo.OBRIGATORIO, erros.motivo)
         assertEquals(ErroCampo.OBRIGATORIO, erros.cidade)
         assertEquals(ErroCampo.OBRIGATORIO, erros.nomeFazenda)
@@ -90,17 +94,17 @@ class FormularioAberturaTest {
 
     @Test
     fun contatoVazioOuSoComEspacosFalha() {
-        assertEquals(ErroCampo.OBRIGATORIO, validar(completo.copy(contato = "")).contato)
-        assertEquals(ErroCampo.OBRIGATORIO, validar(completo.copy(contato = "  ")).contato)
+        assertEquals(ErroCampo.OBRIGATORIO, validarCliente(completo.copy(contato = "")).contato)
+        assertEquals(ErroCampo.OBRIGATORIO, validarCliente(completo.copy(contato = "  ")).contato)
     }
 
     @Test
     fun limiteDaCidade() {
         assertEquals(100, LIMITE_CIDADE)
-        assertNull(validar(completo.copy(cidade = "a".repeat(LIMITE_CIDADE))).cidade)
+        assertNull(validarCliente(completo.copy(cidade = "a".repeat(LIMITE_CIDADE))).cidade)
         assertEquals(
             ErroCampo.MUITO_LONGO,
-            validar(completo.copy(cidade = "a".repeat(LIMITE_CIDADE + 1))).cidade,
+            validarCliente(completo.copy(cidade = "a".repeat(LIMITE_CIDADE + 1))).cidade,
         )
     }
 
@@ -108,29 +112,29 @@ class FormularioAberturaTest {
     fun limiteDoNomeDaFazenda() {
         // 150 é o maxLength de nome_fazenda_informado no contrato da API.
         assertEquals(150, LIMITE_NOME_FAZENDA)
-        assertNull(validar(completo.copy(nomeFazenda = "a".repeat(LIMITE_NOME_FAZENDA))).nomeFazenda)
+        assertNull(validarCliente(completo.copy(nomeFazenda = "a".repeat(LIMITE_NOME_FAZENDA))).nomeFazenda)
         assertEquals(
             ErroCampo.MUITO_LONGO,
-            validar(completo.copy(nomeFazenda = "a".repeat(LIMITE_NOME_FAZENDA + 1))).nomeFazenda,
+            validarCliente(completo.copy(nomeFazenda = "a".repeat(LIMITE_NOME_FAZENDA + 1))).nomeFazenda,
         )
     }
 
     @Test
     fun limiteDoContato() {
-        assertNull(validar(completo.copy(contato = "1".repeat(LIMITE_CONTATO))).contato)
+        assertNull(validarCliente(completo.copy(contato = "1".repeat(LIMITE_CONTATO))).contato)
         assertEquals(
             ErroCampo.MUITO_LONGO,
-            validar(completo.copy(contato = "1".repeat(LIMITE_CONTATO + 1))).contato,
+            validarCliente(completo.copy(contato = "1".repeat(LIMITE_CONTATO + 1))).contato,
         )
     }
 
     @Test
     fun tamanhoContaDepoisDeAparar() {
         // No limite mais espaços nas pontas: ainda passa.
-        assertNull(validar(completo.copy(contato = "  " + "1".repeat(LIMITE_CONTATO) + "  ")).contato)
-        assertNull(validar(completo.copy(cidade = " " + "a".repeat(LIMITE_CIDADE) + " ")).cidade)
+        assertNull(validarCliente(completo.copy(contato = "  " + "1".repeat(LIMITE_CONTATO) + "  ")).contato)
+        assertNull(validarCliente(completo.copy(cidade = " " + "a".repeat(LIMITE_CIDADE) + " ")).cidade)
         assertNull(
-            validar(completo.copy(nomeFazenda = " " + "a".repeat(LIMITE_NOME_FAZENDA) + " ")).nomeFazenda,
+            validarCliente(completo.copy(nomeFazenda = " " + "a".repeat(LIMITE_NOME_FAZENDA) + " ")).nomeFazenda,
         )
     }
 
@@ -155,7 +159,10 @@ class FormularioAberturaTest {
 
     @Test
     fun motivoDesconhecidoContaComoMotivoNaoEscolhido() {
-        assertEquals(ErroCampo.OBRIGATORIO, validar(completo.copy(motivo = MotivoAtendimento.DESCONHECIDO)).motivo)
+        assertEquals(
+            ErroCampo.OBRIGATORIO,
+            validarCliente(completo.copy(motivo = MotivoAtendimento.DESCONHECIDO)).motivo,
+        )
     }
 
     @Test
@@ -169,8 +176,14 @@ class FormularioAberturaTest {
     private val id = "7b1f0c9e-3f5a-4a52-9f0e-6f3c2a1d8b40"
     private val agora = Instant.parse("2026-11-16T12:00:00Z")
 
-    private fun converter(formulario: FormularioAbertura, origem: OrigemAtendimento = OrigemAtendimento.CLIENTE_FINAL) =
-        comoSolicitacao(formulario, id, origem, idCliente = 12, abertoEm = agora)
+    private val origemDoCliente = OrigemDaAbertura(
+        OrigemAtendimento.CLIENTE_FINAL,
+        idCliente = 12,
+        idDistribuidorOrigem = null,
+    )
+
+    private fun converter(formulario: FormularioAbertura) =
+        comoSolicitacao(formulario, id, origemDoCliente, abertoEm = agora)
 
     @Test
     fun formularioValidoViraSolicitacaoComOsDadosDeFora() {
@@ -193,7 +206,7 @@ class FormularioAberturaTest {
     fun camposQueOFormularioNaoColetaVaoVazios() {
         val solicitacao = converter(completo)!!
         assertEquals("", solicitacao.nomeProdutor)
-        assertEquals("", solicitacao.areaSetor)
+        assertNull(solicitacao.areaSetor)
     }
 
     @Test
@@ -246,7 +259,7 @@ class FormularioAberturaTest {
             for (tipo in tipos) {
                 val formulario = completo.copy(motivo = motivo, tipoVenda = tipo)
                 val solicitacao = converter(formulario)
-                if (validar(formulario).valido) {
+                if (validarCliente(formulario).valido) {
                     assertNotNull("$motivo $tipo", solicitacao)
                     convertidos++
                 } else {

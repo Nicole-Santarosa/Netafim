@@ -4,15 +4,18 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.netafim.atendimento.dominio.ErroAoSalvar
 import com.example.netafim.atendimento.dominio.ErroCampo
 import com.example.netafim.atendimento.dominio.FormularioAbertura
+import com.example.netafim.atendimento.dominio.OrigemDaAbertura
 import com.example.netafim.atendimento.dominio.comoSolicitacao
 import com.example.netafim.atendimento.ui.lista.RepositorioDeAtendimentosFalso
 import com.example.netafim.atendimento.ui.lista.SessaoFalsa
 import com.example.netafim.atendimento.ui.lista.manterColetando
+import com.example.netafim.core.modelo.AreaDoSetor
 import com.example.netafim.core.modelo.Cultura
 import com.example.netafim.core.modelo.Distribuidor
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.OrigemAtendimento
 import com.example.netafim.core.modelo.ResultadoDaAcao
+import com.example.netafim.core.modelo.SolicitacaoDeAbertura
 import com.example.netafim.core.modelo.sessao.TipoDeOrganizacao
 import java.time.Instant
 import kotlinx.coroutines.CompletableDeferred
@@ -151,8 +154,7 @@ class AbrirAtendimentoViewModelTest {
         val esperada = comoSolicitacao(
             formulario = formularioValido,
             id = idFixo,
-            origem = OrigemAtendimento.CLIENTE_FINAL,
-            idCliente = 42,
+            origem = OrigemDaAbertura(OrigemAtendimento.CLIENTE_FINAL, idCliente = 42, idDistribuidorOrigem = null),
             abertoEm = instanteFixo,
         )
         assertEquals(listOf(esperada), repositorio.aberturas)
@@ -161,30 +163,134 @@ class AbrirAtendimentoViewModelTest {
         assertEquals(3, repositorio.aberturas.single().idDistribuidorOrigem)
     }
 
+    // Formulários válidos do distribuidor e da Netafim: cada um só com os campos da sua origem.
+    private val formularioDoDistribuidor = FormularioAbertura(
+        motivo = MotivoAtendimento.DUVIDAS,
+        culturas = setOf(2),
+        cidade = "Bauru",
+        contato = "14988880000",
+        nomeProdutor = "José da Silva",
+    )
+    private val formularioDaNetafim = formularioDoDistribuidor.copy(
+        nomeProdutor = "Maria Souza",
+        areaSetor = AreaDoSetor.POS_VENDA,
+    )
+
     @Test
-    fun usuarioDaNetafimAbreComoOrigemNetafimSemCliente() = runTest {
-        sessao.entrarComo(SessaoFalsa.umUsuario(tipo = TipoDeOrganizacao.NETAFIM, idDaOrganizacao = null))
+    fun aOrigemExpostaSegueOTipoDoUsuario() = runTest {
         val viewModel = criar()
-        viewModel.alterar(formularioValido)
+        manterColetando(viewModel.origem)
+        assertEquals(
+            OrigemDaAbertura(OrigemAtendimento.CLIENTE_FINAL, idCliente = 42, idDistribuidorOrigem = null),
+            viewModel.origem.value,
+        )
 
-        viewModel.enviar()
+        sessao.entrarComo(SessaoFalsa.umUsuario(tipo = TipoDeOrganizacao.DISTRIBUIDOR, idDaOrganizacao = 7))
+        assertEquals(
+            OrigemDaAbertura(OrigemAtendimento.DISTRIBUIDOR, idCliente = null, idDistribuidorOrigem = 7),
+            viewModel.origem.value,
+        )
 
-        val solicitacao = repositorio.aberturas.single()
-        assertEquals(OrigemAtendimento.NETAFIM, solicitacao.origem)
-        assertNull(solicitacao.idCliente)
+        sessao.entrarComo(SessaoFalsa.umUsuario(tipo = TipoDeOrganizacao.NETAFIM, idDaOrganizacao = null))
+        assertEquals(
+            OrigemDaAbertura(OrigemAtendimento.NETAFIM, idCliente = null, idDistribuidorOrigem = null),
+            viewModel.origem.value,
+        )
     }
 
     @Test
-    fun usuarioDeDistribuidorAbreComoOrigemDistribuidorSemCliente() = runTest {
-        sessao.entrarComo(SessaoFalsa.umUsuario(tipo = TipoDeOrganizacao.DISTRIBUIDOR, idDaOrganizacao = 7))
+    fun aOrigemENulaSemUsuarioOuSemOrganizacao() = runTest {
+        sessao.entrarComo(null)
         val viewModel = criar()
-        viewModel.alterar(formularioValido)
+        manterColetando(viewModel.origem)
+        assertNull(viewModel.origem.value)
+
+        sessao.entrarComo(SessaoFalsa.umUsuario(tipo = TipoDeOrganizacao.CLIENTE, idDaOrganizacao = null))
+        assertNull(viewModel.origem.value)
+
+        sessao.entrarComo(SessaoFalsa.umUsuario(tipo = TipoDeOrganizacao.DISTRIBUIDOR, idDaOrganizacao = null))
+        assertNull(viewModel.origem.value)
+    }
+
+    @Test
+    fun usuarioDaNetafimMandaProdutorEArea() = runTest {
+        sessao.entrarComo(SessaoFalsa.umUsuario(tipo = TipoDeOrganizacao.NETAFIM, idDaOrganizacao = null))
+        val viewModel = criar()
+        viewModel.alterar(formularioDaNetafim)
 
         viewModel.enviar()
 
-        val solicitacao = repositorio.aberturas.single()
-        assertEquals(OrigemAtendimento.DISTRIBUIDOR, solicitacao.origem)
-        assertNull(solicitacao.idCliente)
+        val esperada = SolicitacaoDeAbertura(
+            id = idFixo,
+            origem = OrigemAtendimento.NETAFIM,
+            motivo = MotivoAtendimento.DUVIDAS,
+            idCliente = null,
+            idDistribuidorOrigem = null,
+            nomeProdutor = "Maria Souza",
+            nomeFazenda = "",
+            cidade = "Bauru",
+            areaSetor = AreaDoSetor.POS_VENDA,
+            contato = "14988880000",
+            tipoVenda = null,
+            culturas = setOf(2),
+            abertoEm = instanteFixo,
+        )
+        assertEquals(listOf(esperada), repositorio.aberturas)
+    }
+
+    @Test
+    fun usuarioDeDistribuidorMandaProdutorEOProprioDistribuidor() = runTest {
+        sessao.entrarComo(SessaoFalsa.umUsuario(tipo = TipoDeOrganizacao.DISTRIBUIDOR, idDaOrganizacao = 7))
+        val viewModel = criar()
+        viewModel.alterar(formularioDoDistribuidor)
+
+        viewModel.enviar()
+
+        val esperada = SolicitacaoDeAbertura(
+            id = idFixo,
+            origem = OrigemAtendimento.DISTRIBUIDOR,
+            motivo = MotivoAtendimento.DUVIDAS,
+            idCliente = null,
+            idDistribuidorOrigem = 7,
+            nomeProdutor = "José da Silva",
+            nomeFazenda = "",
+            cidade = "Bauru",
+            areaSetor = null,
+            contato = "14988880000",
+            tipoVenda = null,
+            culturas = setOf(2),
+            abertoEm = instanteFixo,
+        )
+        assertEquals(listOf(esperada), repositorio.aberturas)
+    }
+
+    @Test
+    fun formularioIncompletoDeCadaOrigemNaoChamaORepositorio() = runTest {
+        // Distribuidor com o formulário do cliente: falta o nome do produtor.
+        sessao.entrarComo(SessaoFalsa.umUsuario(tipo = TipoDeOrganizacao.DISTRIBUIDOR, idDaOrganizacao = 7))
+        val doDistribuidor = criar()
+        doDistribuidor.alterar(formularioValido)
+        doDistribuidor.enviar()
+        assertEquals(ErroCampo.OBRIGATORIO, doDistribuidor.erros.value.nomeProdutor)
+        // A fazenda e o distribuidor não são dele: não aparecem como erro.
+        assertNull(doDistribuidor.erros.value.nomeFazenda)
+
+        // Netafim com o formulário do distribuidor: falta a área.
+        sessao.entrarComo(SessaoFalsa.umUsuario(tipo = TipoDeOrganizacao.NETAFIM, idDaOrganizacao = null))
+        val daNetafim = criar()
+        daNetafim.alterar(formularioDoDistribuidor)
+        daNetafim.enviar()
+        assertEquals(ErroCampo.OBRIGATORIO, daNetafim.erros.value.areaSetor)
+
+        // Cliente com o formulário da Netafim: faltam a fazenda e o distribuidor.
+        sessao.entrarComo(SessaoFalsa.umUsuario(tipo = TipoDeOrganizacao.CLIENTE, idDaOrganizacao = 42))
+        val doCliente = criar()
+        doCliente.alterar(formularioDaNetafim)
+        doCliente.enviar()
+        assertEquals(ErroCampo.OBRIGATORIO, doCliente.erros.value.nomeFazenda)
+        assertEquals(ErroCampo.OBRIGATORIO, doCliente.erros.value.distribuidor)
+
+        assertTrue(repositorio.aberturas.isEmpty())
     }
 
     @Test

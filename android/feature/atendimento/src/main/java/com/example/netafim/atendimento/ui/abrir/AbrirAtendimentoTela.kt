@@ -67,23 +67,29 @@ import com.example.netafim.atendimento.dominio.FormularioAbertura
 import com.example.netafim.atendimento.dominio.LIMITE_CIDADE
 import com.example.netafim.atendimento.dominio.LIMITE_CONTATO
 import com.example.netafim.atendimento.dominio.LIMITE_NOME_FAZENDA
+import com.example.netafim.atendimento.dominio.LIMITE_NOME_PRODUTOR
 import com.example.netafim.atendimento.dominio.comCulturaAlternada
 import com.example.netafim.atendimento.dominio.comMotivo
 import com.example.netafim.atendimento.dominio.tipoVendaEfetivo
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
+import com.example.netafim.core.modelo.AreaDoSetor
 import com.example.netafim.core.modelo.Cultura
 import com.example.netafim.core.modelo.Distribuidor
 import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.OrigemAtendimento
 import com.example.netafim.core.modelo.TipoVenda
 
-// Formulário de abertura de atendimento do cliente. Tela sem estado: mostra o formulário e os erros
-// que receber e devolve cada mudança por aoAlterar. Quem valida e quem envia é o chamador.
-// "enviando" desabilita o botão e os campos enquanto a solicitação está a caminho.
+// Formulário de abertura de atendimento. Tela sem estado: mostra o formulário e os erros que receber e
+// devolve cada mudança por aoAlterar. Quem valida e quem envia é o chamador.
+// "origem" diz quem está abrindo e, com isso, quais campos aparecem (cada origem tem os seus, conforme o
+// formulário de solicitação da Netafim). "enviando" desabilita o botão e os campos enquanto a solicitação
+// está a caminho.
 @Composable
 fun AbrirAtendimentoTela(
     formulario: FormularioAbertura,
+    origem: OrigemAtendimento,
     erros: ErrosFormulario,
     culturas: List<Cultura>,
     distribuidores: List<Distribuidor>,
@@ -109,15 +115,44 @@ fun AbrirAtendimentoTela(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            // A ordem segue o formulário de solicitação da Netafim: distribuidor, cidade, nome da
-            // fazenda, cultura e motivo. Contato e tipo de venda vêm depois, como já estavam.
-            CampoDistribuidor(
-                distribuidores = distribuidores,
-                escolhido = formulario.idDistribuidor,
-                erro = erros.distribuidor,
-                habilitado = habilitado,
-                aoEscolher = { aoAlterar(formulario.copy(idDistribuidor = it)) },
-            )
+            // A ordem segue o formulário de solicitação da Netafim de cada origem:
+            // - cliente final: distribuidor, cidade, nome da fazenda, cultura e motivo;
+            // - distribuidor: nome do produtor, cidade, cultura e motivo;
+            // - Netafim: área ou setor, nome do produtor, cidade, cultura e motivo.
+            // Contato e tipo de venda vêm depois em todas, como já estavam.
+            val ehCliente = origem == OrigemAtendimento.CLIENTE_FINAL
+            val ehNetafim = origem == OrigemAtendimento.NETAFIM
+            if (ehCliente) {
+                CampoDistribuidor(
+                    distribuidores = distribuidores,
+                    escolhido = formulario.idDistribuidor,
+                    erro = erros.distribuidor,
+                    habilitado = habilitado,
+                    aoEscolher = { aoAlterar(formulario.copy(idDistribuidor = it)) },
+                )
+            }
+            if (ehNetafim) {
+                SecaoAreaSetor(
+                    escolhida = formulario.areaSetor,
+                    erro = erros.areaSetor,
+                    habilitado = habilitado,
+                    aoEscolher = { aoAlterar(formulario.copy(areaSetor = it)) },
+                )
+            }
+            // O distribuidor e a Netafim abrem em nome de um produtor; o cliente final é o próprio produtor.
+            if (ehNetafim || origem == OrigemAtendimento.DISTRIBUIDOR) {
+                CampoDeTexto(
+                    rotulo = stringResource(R.string.atendimento_abrir_nome_produtor),
+                    valor = formulario.nomeProdutor,
+                    aoMudar = { aoAlterar(formulario.copy(nomeProdutor = it)) },
+                    erro = erros.nomeProdutor,
+                    textoObrigatorio = R.string.atendimento_abrir_erro_nome_produtor,
+                    limite = LIMITE_NOME_PRODUTOR,
+                    teclado = KeyboardType.Text,
+                    acao = ImeAction.Next,
+                    habilitado = habilitado,
+                )
+            }
             CampoDeTexto(
                 rotulo = stringResource(R.string.atendimento_abrir_cidade),
                 valor = formulario.cidade,
@@ -129,17 +164,20 @@ fun AbrirAtendimentoTela(
                 acao = ImeAction.Next,
                 habilitado = habilitado,
             )
-            CampoDeTexto(
-                rotulo = stringResource(R.string.atendimento_abrir_nome_fazenda),
-                valor = formulario.nomeFazenda,
-                aoMudar = { aoAlterar(formulario.copy(nomeFazenda = it)) },
-                erro = erros.nomeFazenda,
-                textoObrigatorio = R.string.atendimento_abrir_erro_nome_fazenda,
-                limite = LIMITE_NOME_FAZENDA,
-                teclado = KeyboardType.Text,
-                acao = ImeAction.Next,
-                habilitado = habilitado,
-            )
+            // Nome da fazenda só no formulário do cliente final.
+            if (ehCliente) {
+                CampoDeTexto(
+                    rotulo = stringResource(R.string.atendimento_abrir_nome_fazenda),
+                    valor = formulario.nomeFazenda,
+                    aoMudar = { aoAlterar(formulario.copy(nomeFazenda = it)) },
+                    erro = erros.nomeFazenda,
+                    textoObrigatorio = R.string.atendimento_abrir_erro_nome_fazenda,
+                    limite = LIMITE_NOME_FAZENDA,
+                    teclado = KeyboardType.Text,
+                    acao = ImeAction.Next,
+                    habilitado = habilitado,
+                )
+            }
             SecaoCulturas(
                 culturas = culturas,
                 marcadas = formulario.culturas,
@@ -451,6 +489,41 @@ private fun CampoDistribuidor(
     }
 }
 
+// Área ou setor da Netafim: um chip de seleção única por área, quebrando de linha quando não cabem. Só
+// aparece para a origem Netafim. Usa os mesmos chips das culturas e do tipo de venda.
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SecaoAreaSetor(
+    escolhida: AreaDoSetor?,
+    erro: ErroCampo?,
+    habilitado: Boolean,
+    aoEscolher: (AreaDoSetor) -> Unit,
+) {
+    Column {
+        Rotulo(stringResource(R.string.atendimento_abrir_area_setor))
+        Spacer(Modifier.size(8.dp))
+        // selectableGroup faz o leitor de tela anunciar as áreas como um grupo de opções.
+        FlowRow(
+            modifier = Modifier.selectableGroup(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            AreaDoSetor.entries.forEach { area ->
+                ChipDeSelecao(
+                    texto = stringResource(area.rotulo()),
+                    marcado = area == escolhida,
+                    habilitado = habilitado,
+                    aoClicar = { aoEscolher(area) },
+                )
+            }
+        }
+        // Área só tem o erro de obrigatório; o limite não entra na mensagem.
+        if (erro != null) {
+            MensagemDeErro(textoDoErro(erro, R.string.atendimento_abrir_erro_area_setor, limite = 0))
+        }
+    }
+}
+
 // Tipo de venda: dois chips de seleção única. O valor mostrado como marcado já considera o padrão
 // (Projeto quando o cliente ainda não escolheu), vindo de tipoVendaEfetivo.
 @Composable
@@ -528,15 +601,34 @@ private val formularioPreenchido = FormularioAbertura(
     tipoVenda = TipoVenda.PROJETO,
 )
 
+// Formulários preenchidos do distribuidor e da Netafim, cada um só com os campos da sua origem.
+private val formularioDoDistribuidor = FormularioAbertura(
+    motivo = MotivoAtendimento.POS_VENDA,
+    culturas = setOf(1),
+    cidade = "Bauru",
+    contato = "14988880000",
+    nomeProdutor = "José da Silva",
+)
+private val formularioDaNetafim = FormularioAbertura(
+    motivo = MotivoAtendimento.TREINAMENTO,
+    culturas = setOf(3, 5),
+    cidade = "Ribeirão Preto",
+    contato = "16977770000",
+    nomeProdutor = "Maria Souza",
+    areaSetor = AreaDoSetor.ENGENHARIA,
+)
+
 @Composable
 private fun TelaDePreview(
     formulario: FormularioAbertura,
+    origem: OrigemAtendimento = OrigemAtendimento.CLIENTE_FINAL,
     erros: ErrosFormulario = ErrosFormulario(),
     enviando: Boolean = false,
 ) {
     TemaDePreview {
         AbrirAtendimentoTela(
             formulario = formulario,
+            origem = origem,
             erros = erros,
             culturas = culturasDoPreview,
             distribuidores = distribuidoresDoPreview,
@@ -602,4 +694,37 @@ private fun AbrirAtendimentoErrosDosCamposNovosPreview() {
 @Composable
 private fun AbrirAtendimentoEnviandoPreview() {
     TelaDePreview(formulario = formularioPreenchido, enviando = true)
+}
+
+// Abertura pelo distribuidor: nome do produtor no lugar da fazenda e sem escolha de distribuidor.
+@Preview(showBackground = true, heightDp = 1100)
+@Composable
+private fun AbrirAtendimentoDistribuidorPreview() {
+    TelaDePreview(formulario = formularioDoDistribuidor, origem = OrigemAtendimento.DISTRIBUIDOR)
+}
+
+// Abertura pela Netafim: área ou setor e nome do produtor, sem fazenda e sem distribuidor.
+@Preview(showBackground = true, heightDp = 1100)
+@Composable
+private fun AbrirAtendimentoNetafimPreview() {
+    TelaDePreview(formulario = formularioDaNetafim, origem = OrigemAtendimento.NETAFIM)
+}
+
+// O que o validar devolve para o formulário vazio da Netafim: a área e o nome do produtor aparecem com erro
+// junto dos campos comuns, e nada de fazenda nem de distribuidor.
+@Preview(showBackground = true, heightDp = 1100)
+@Composable
+private fun AbrirAtendimentoNetafimComErrosPreview() {
+    TelaDePreview(
+        formulario = FormularioAbertura(),
+        origem = OrigemAtendimento.NETAFIM,
+        erros = ErrosFormulario(
+            motivo = ErroCampo.OBRIGATORIO,
+            cidade = ErroCampo.OBRIGATORIO,
+            culturas = ErroCampo.OBRIGATORIO,
+            contato = ErroCampo.OBRIGATORIO,
+            nomeProdutor = ErroCampo.OBRIGATORIO,
+            areaSetor = ErroCampo.OBRIGATORIO,
+        ),
+    )
 }

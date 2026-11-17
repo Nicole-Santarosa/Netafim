@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.netafim.atendimento.dominio.ErroAoSalvar
 import com.example.netafim.atendimento.dominio.ErrosFormulario
 import com.example.netafim.atendimento.dominio.FormularioAbertura
+import com.example.netafim.atendimento.dominio.OrigemDaAbertura
 import com.example.netafim.atendimento.dominio.comoOrigemDaAbertura
 import com.example.netafim.atendimento.dominio.comoSolicitacao
 import com.example.netafim.atendimento.dominio.erroDoResultado
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -46,6 +48,18 @@ class AbrirAtendimentoViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(ESPERA_SEM_TELA_MS), emptyList())
     val distribuidores: StateFlow<List<Distribuidor>> = repositorio.observarDistribuidores()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(ESPERA_SEM_TELA_MS), emptyList())
+
+    // Origem da abertura de quem está logado, para a tela saber que campos desenhar (cada origem tem o seu
+    // conjunto). Nula quando ninguém está logado ou quando o usuário não pode abrir (cliente ou distribuidor
+    // sem organização). O valor inicial já é o da sessão atual, para a tela não piscar o formulário errado
+    // antes da primeira coleta.
+    val origem: StateFlow<OrigemDaAbertura?> = sessao.usuario
+        .map { it?.comoOrigemDaAbertura() }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(ESPERA_SEM_TELA_MS),
+            sessao.usuario.value?.comoOrigemDaAbertura(),
+        )
 
     private val _formulario = MutableStateFlow(FormularioAbertura())
     val formulario: StateFlow<FormularioAbertura> = _formulario.asStateFlow()
@@ -78,29 +92,32 @@ class AbrirAtendimentoViewModel(
 
     fun alterar(novo: FormularioAbertura) {
         _formulario.value = novo
-        if (tentouEnviar) _erros.value = validar(novo)
+        // Sem origem (ninguém logado ou usuário que não pode abrir) não há contra o que validar.
+        val origem = sessao.usuario.value?.comoOrigemDaAbertura() ?: return
+        if (tentouEnviar) _erros.value = validar(novo, origem.origem)
     }
 
     fun enviar() {
         // Sem usuário logado não há origem nem solicitante: não faz nada e não chama o repositório.
         val usuario = sessao.usuario.value ?: return
 
-        val formulario = _formulario.value
         tentouEnviar = true
-        val erros = validar(formulario)
-        _erros.value = erros
-        if (!erros.valido) return
-
-        // A origem e a empresa saem do usuário. Cliente sem organização não pode abrir (a API recusaria com
-        // 403): mostra "sem permissão" sem chamar o repositório.
+        // A origem e os ids da sessão saem do usuário, e vêm antes da validação porque é a origem que diz
+        // quais campos são obrigatórios. Cliente ou distribuidor sem organização não pode abrir (a API
+        // recusaria): mostra "sem permissão" sem chamar o repositório.
         val origem = usuario.comoOrigemDaAbertura()
         if (origem == null) {
             _erro.value = ErroAoSalvar.SemPermissao
             return
         }
 
+        val formulario = _formulario.value
+        val erros = validar(formulario, origem.origem)
+        _erros.value = erros
+        if (!erros.valido) return
+
         // Envio duplo: liga a trava e confere a anterior num passo só, e por isso fica depois das saídas acima
-        // (formulário inválido ou cliente sem organização não podem deixar a trava ligada). Com um envio em
+        // (usuário sem organização ou formulário inválido não podem deixar a trava ligada). Com um envio em
         // andamento o segundo toque é ignorado.
         if (!_enviando.compareAndSet(false, true)) return
 
@@ -108,8 +125,7 @@ class AbrirAtendimentoViewModel(
         val solicitacao = comoSolicitacao(
             formulario = formulario,
             id = id,
-            origem = origem.origem,
-            idCliente = origem.idCliente,
+            origem = origem,
             abertoEm = relogio(),
         )
         if (solicitacao == null) {

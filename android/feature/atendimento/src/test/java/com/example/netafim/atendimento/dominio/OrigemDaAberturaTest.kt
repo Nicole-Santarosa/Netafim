@@ -22,20 +22,31 @@ class OrigemDaAberturaTest {
     fun netafimAbreComoOrigemNetafimSemCliente() {
         // A Netafim não tem organização dona: o id vem nulo.
         val origem = usuario(TipoDeOrganizacao.NETAFIM, idDaOrganizacao = null).comoOrigemDaAbertura()
-        assertEquals(OrigemDaAbertura(OrigemAtendimento.NETAFIM, idCliente = null), origem)
+        assertEquals(OrigemDaAbertura(OrigemAtendimento.NETAFIM, idCliente = null, idDistribuidorOrigem = null), origem)
     }
 
     @Test
-    fun distribuidorAbreComoOrigemDistribuidorSemCliente() {
-        // O id do distribuidor existe, mas não vira idCliente: o distribuidor de origem vem do formulário.
+    fun distribuidorAbreComoOrigemDistribuidorComAPropriaOrganizacaoComoOrigem() {
+        // A organização do distribuidor vira o distribuidor de origem, nunca o idCliente.
         val origem = usuario(TipoDeOrganizacao.DISTRIBUIDOR, idDaOrganizacao = 7).comoOrigemDaAbertura()
-        assertEquals(OrigemDaAbertura(OrigemAtendimento.DISTRIBUIDOR, idCliente = null), origem)
+        assertEquals(
+            OrigemDaAbertura(OrigemAtendimento.DISTRIBUIDOR, idCliente = null, idDistribuidorOrigem = 7),
+            origem,
+        )
+    }
+
+    @Test
+    fun distribuidorSemOrganizacaoNaoTemOrigemDeAbertura() {
+        assertNull(usuario(TipoDeOrganizacao.DISTRIBUIDOR, idDaOrganizacao = null).comoOrigemDaAbertura())
     }
 
     @Test
     fun clienteAbreComoClienteFinalComAPropriaOrganizacaoComoCliente() {
         val origem = usuario(TipoDeOrganizacao.CLIENTE, idDaOrganizacao = 42).comoOrigemDaAbertura()
-        assertEquals(OrigemDaAbertura(OrigemAtendimento.CLIENTE_FINAL, idCliente = 42), origem)
+        assertEquals(
+            OrigemDaAbertura(OrigemAtendimento.CLIENTE_FINAL, idCliente = 42, idDistribuidorOrigem = null),
+            origem,
+        )
     }
 
     @Test
