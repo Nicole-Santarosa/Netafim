@@ -1,6 +1,9 @@
 package com.example.netafim.atendimento.dominio
 
+import com.example.netafim.core.modelo.ItemDeAtendimento
+import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.OrigemAtendimento
+import com.example.netafim.core.modelo.SituacaoDeSincronizacao
 import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 import org.junit.Assert.assertEquals
@@ -15,9 +18,22 @@ class ListaDoAdminTest {
         nome: String = "Cliente $id",
         origem: OrigemAtendimento = OrigemAtendimento.NETAFIM,
         aberto: String = "2026-11-01T12:00:00Z",
-    ) = ItemDaListaAdmin(id, protocolo, nome, origem, StatusAtendimento.DESTINADO, Instant.parse(aberto))
+    ) = ItemDeAtendimento(
+        id = id,
+        protocolo = protocolo,
+        motivo = MotivoAtendimento.POS_VENDA,
+        status = StatusAtendimento.DESTINADO,
+        origem = origem,
+        abertoEm = Instant.parse(aberto),
+        nomeCliente = nome,
+        local = null,
+        idTecnicoResponsavel = null,
+        sincronizacao = SituacaoDeSincronizacao.SINCRONIZADO,
+    )
 
-    private fun ids(lista: List<ItemDaListaAdmin>) = lista.map { it.id }
+    private fun ids(lista: List<ItemDeAtendimento>) = lista.map { it.id }
+
+    private val semProtocolo = "Pendente de sincronização"
 
     // ---- OrigemAtendimento.deCodigo
 
@@ -126,6 +142,19 @@ class ListaDoAdminTest {
 
     @Test
     fun textoDaLinhaJuntaProtocoloEClienteComPontoMedio() {
-        assertEquals("OS-0506 · Vanderlei Zucchi Rodas", textoDaLinha(item("1", "OS-0506", "Vanderlei Zucchi Rodas")))
+        val item = item("1", "OS-0506", "Vanderlei Zucchi Rodas")
+        assertEquals("OS-0506 · Vanderlei Zucchi Rodas", textoDaLinha(item, semProtocolo))
+    }
+
+    @Test
+    fun textoDaLinhaSemProtocoloUsaOTextoRecebido() {
+        val item = item("1", "OS-0506", "Vanderlei").copy(protocolo = null)
+        assertEquals("Pendente de sincronização · Vanderlei", textoDaLinha(item, semProtocolo))
+    }
+
+    @Test
+    fun textoDaLinhaSemNomeDoClienteMostraSoOProtocolo() {
+        assertEquals("OS-0506", textoDaLinha(item("1", "OS-0506").copy(nomeCliente = null), semProtocolo))
+        assertEquals("OS-0506", textoDaLinha(item("1", "OS-0506").copy(nomeCliente = "  "), semProtocolo))
     }
 }

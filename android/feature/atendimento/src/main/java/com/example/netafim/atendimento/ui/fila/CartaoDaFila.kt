@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Check
@@ -38,15 +39,16 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.netafim.atendimento.dominio.ItemDaFila
+import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.SeloStatus
 import com.example.netafim.atendimento.dominio.selo
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.coresDoSelo
+import com.example.netafim.atendimento.ui.comum.itemDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
+import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
-import java.time.Instant
 
 // Cartão de um atendimento na fila do técnico. O cartão inteiro é clicável e é lido como um item só
 // pelo leitor de tela; ícones, pino e seta são decorativos.
@@ -56,7 +58,7 @@ import java.time.Instant
 // agendado) e a lista da região do distribuidor passa o rótulo normal do selo.
 @Composable
 fun CartaoDaFila(
-    item: ItemDaFila,
+    item: ItemDeAtendimento,
     aoClicar: () -> Unit,
     modifier: Modifier = Modifier,
     selo: (@Composable () -> Unit)? = null,
@@ -78,12 +80,14 @@ fun CartaoDaFila(
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = item.protocolo,
+                        // Sem protocolo (atendimento criado sem conexão) o servidor ainda não o gerou.
+                        text = item.protocolo ?: stringResource(R.string.atendimento_protocolo_pendente),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                     )
-                    Text(text = item.nomeCliente, style = MaterialTheme.typography.bodyMedium)
-                    if (item.local != null) LinhaDeLocal(item.local)
+                    // O item vem de outro módulo, então o compilador não faz smart cast: let entrega o valor não nulo.
+                    item.nomeCliente?.let { Text(text = it, style = MaterialTheme.typography.bodyMedium) }
+                    item.local?.let { LinhaDeLocal(it) }
                 }
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -105,7 +109,8 @@ fun CartaoDaFila(
 }
 
 // Círculo de 44dp com o ícone do selo do status: relógio para aberto, chave para em atendimento, visto
-// para concluído e X para cancelado. Fundo e ícone usam as cores do selo.
+// para concluído, X para cancelado e interrogação para o status que o app não conhece. Fundo e ícone usam
+// as cores do selo.
 @Composable
 private fun CirculoDoStatus(status: StatusAtendimento) {
     val cores = coresDoSelo(status.selo)
@@ -114,6 +119,7 @@ private fun CirculoDoStatus(status: StatusAtendimento) {
         SeloStatus.EM_ATENDIMENTO -> Icons.Filled.Build
         SeloStatus.CONCLUIDO -> Icons.Filled.Check
         SeloStatus.CANCELADO -> Icons.Filled.Close
+        SeloStatus.DESCONHECIDO -> Icons.AutoMirrored.Filled.Help
     }
     Box(
         modifier = Modifier
@@ -166,21 +172,21 @@ private fun EtiquetaDoMotivo(motivo: MotivoAtendimento) {
     }
 }
 
-private val itemDePreview = ItemDaFila(
+private val itemDoPreview = itemDePreview(
     id = "1",
     protocolo = "OS-0506",
     nomeCliente = "Vanderlei Zucchi Rodas",
     local = "Arealva, SP",
     motivo = MotivoAtendimento.DIGITAL_FARMING,
     status = StatusAtendimento.AGENDADO,
-    abertoEm = Instant.parse("2026-11-08T15:00:00Z"),
+    abertoEm = "2026-11-08T15:00:00Z",
 )
 
 @Preview(showBackground = true)
 @Composable
 private fun CartaoDaFilaPreview() {
     TemaDePreview {
-        CartaoDaFila(item = itemDePreview, aoClicar = {}, modifier = Modifier.padding(20.dp))
+        CartaoDaFila(item = itemDoPreview, aoClicar = {}, modifier = Modifier.padding(20.dp))
     }
 }
 
@@ -190,7 +196,7 @@ private fun CartaoDaFilaPreview() {
 private fun CartaoDaFilaComSeloPreview() {
     TemaDePreview {
         CartaoDaFila(
-            item = itemDePreview,
+            item = itemDoPreview,
             aoClicar = {},
             modifier = Modifier.padding(20.dp),
             selo = { Text(text = "Selo de exemplo", style = MaterialTheme.typography.labelMedium) },

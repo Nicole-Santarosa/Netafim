@@ -5,6 +5,7 @@ import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LinhaDoTempoTest {
@@ -30,6 +31,11 @@ class LinhaDoTempoTest {
         TipoEtapa.ABERTO to SituacaoEtapa.FEITA,
         TipoEtapa.CANCELADO to SituacaoEtapa.ATUAL,
     )
+    private val desconhecido = etapas(
+        TipoEtapa.ABERTO to SituacaoEtapa.PENDENTE,
+        TipoEtapa.EM_ATENDIMENTO to SituacaoEtapa.PENDENTE,
+        TipoEtapa.CONCLUIDO to SituacaoEtapa.PENDENTE,
+    )
 
     @Test
     fun linhaDoTempoDeCadaUmDosOitoStatus() {
@@ -42,8 +48,9 @@ class LinhaDoTempoTest {
             StatusAtendimento.ENCERRADO to concluido,
             StatusAtendimento.ENCERRADO_SEM_AVALIACAO to concluido,
             StatusAtendimento.CANCELADO to cancelado,
+            StatusAtendimento.DESCONHECIDO to desconhecido,
         )
-        assertEquals(StatusAtendimento.entries.count { it != StatusAtendimento.DESCONHECIDO }, esperado.size)
+        assertEquals(StatusAtendimento.entries.size, esperado.size)
         esperado.forEach { (status, etapas) -> assertEquals(status.name, etapas, linhaDoTempo(status)) }
     }
 
@@ -78,6 +85,17 @@ class LinhaDoTempoTest {
     }
 
     @Test
+    fun statusDesconhecidoDeixaTodasAsEtapasPendentesSemAtualNemFeita() {
+        // O app não sabe em que ponto o atendimento está: não pode marcar nenhuma etapa como atual nem concluída.
+        val linha = linhaDoTempo(StatusAtendimento.DESCONHECIDO)
+        assertEquals(desconhecido, linha)
+        assertEquals(3, linha.size)
+        assertTrue(linha.all { it.situacao == SituacaoEtapa.PENDENTE })
+        // Nem o status anterior do cancelamento muda isso: o parâmetro só vale para o cancelado.
+        assertEquals(desconhecido, linhaDoTempo(StatusAtendimento.DESCONHECIDO, StatusAtendimento.EM_ATENDIMENTO))
+    }
+
+    @Test
     fun canceladoSemStatusAnteriorMantemOComportamentoAntigo() {
         assertEquals(cancelado, linhaDoTempo(StatusAtendimento.CANCELADO))
         assertEquals(cancelado, linhaDoTempo(StatusAtendimento.CANCELADO, null))
@@ -93,16 +111,13 @@ class LinhaDoTempoTest {
 
     @Test
     fun statusAnteriorEIgnoradoQuandoOStatusNaoECancelado() {
-        // Só os status reais: o selo do desconhecido é provisório e cai no cinza do cancelado.
-        StatusAtendimento.entries
-            .filter { it != StatusAtendimento.CANCELADO && it != StatusAtendimento.DESCONHECIDO }
-            .forEach { status ->
-                assertEquals(
-                    status.name,
-                    linhaDoTempo(status),
-                    linhaDoTempo(status, StatusAtendimento.EM_ATENDIMENTO),
-                )
-            }
+        StatusAtendimento.entries.filter { it != StatusAtendimento.CANCELADO }.forEach { status ->
+            assertEquals(
+                status.name,
+                linhaDoTempo(status),
+                linhaDoTempo(status, StatusAtendimento.EM_ATENDIMENTO),
+            )
+        }
     }
 
     @Test

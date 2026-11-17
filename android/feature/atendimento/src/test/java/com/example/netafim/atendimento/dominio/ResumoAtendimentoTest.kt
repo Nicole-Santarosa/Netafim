@@ -1,6 +1,9 @@
 package com.example.netafim.atendimento.dominio
 
+import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.OrigemAtendimento
+import com.example.netafim.core.modelo.SituacaoDeSincronizacao
 import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 import java.time.LocalDate
@@ -13,12 +16,17 @@ class ResumoAtendimentoTest {
     private val saoPaulo = ZoneId.of("America/Sao_Paulo")
     private val agora = Instant.parse("2026-11-11T15:00:00Z")
 
-    private fun resumo(status: StatusAtendimento, abertoEm: String) = ResumoAtendimento(
+    private fun resumo(status: StatusAtendimento, abertoEm: String) = ItemDeAtendimento(
         id = "x",
         protocolo = "OS-0001",
         motivo = MotivoAtendimento.DUVIDAS,
         status = status,
+        origem = OrigemAtendimento.CLIENTE_FINAL,
         abertoEm = Instant.parse(abertoEm),
+        nomeCliente = null,
+        local = null,
+        idTecnicoResponsavel = null,
+        sincronizacao = SituacaoDeSincronizacao.SINCRONIZADO,
     )
 
     @Test
@@ -64,6 +72,13 @@ class ResumoAtendimentoTest {
     fun canceladoMostraADataDeAbertura() {
         val r = resumo(StatusAtendimento.CANCELADO, "2026-09-30T15:00:00Z")
         assertEquals(ApoioDoCartao.AbertoEm(LocalDate.of(2026, 9, 30)), apoioDoCartao(r, agora, saoPaulo))
+    }
+
+    @Test
+    fun statusDesconhecidoMostraADataENaoContaDias() {
+        // Sem saber se o atendimento segue em andamento, "há N dias" afirmaria algo que o app não sabe.
+        val r = resumo(StatusAtendimento.DESCONHECIDO, "2026-11-01T15:00:00Z")
+        assertEquals(ApoioDoCartao.AbertoEm(LocalDate.of(2026, 11, 1)), apoioDoCartao(r, agora, saoPaulo))
     }
 
     @Test

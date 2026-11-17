@@ -1,6 +1,9 @@
 package com.example.netafim.atendimento.dominio
 
+import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.OrigemAtendimento
+import com.example.netafim.core.modelo.SituacaoDeSincronizacao
 import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 import org.junit.Assert.assertEquals
@@ -17,9 +20,25 @@ class FilaDoTecnicoTest {
         local: String? = "Cidade $id",
         status: StatusAtendimento = StatusAtendimento.DESTINADO,
         aberto: String = "2026-11-01T12:00:00Z",
-    ) = ItemDaFila(id, protocolo, cliente, local, MotivoAtendimento.DUVIDAS, status, Instant.parse(aberto))
+    ) = ItemDeAtendimento(
+        id = id,
+        protocolo = protocolo,
+        motivo = MotivoAtendimento.DUVIDAS,
+        status = status,
+        origem = OrigemAtendimento.CLIENTE_FINAL,
+        abertoEm = Instant.parse(aberto),
+        nomeCliente = cliente,
+        local = local,
+        idTecnicoResponsavel = null,
+        sincronizacao = SituacaoDeSincronizacao.SINCRONIZADO,
+    )
 
-    private fun ids(lista: List<ItemDaFila>) = lista.map { it.id }
+    private fun ids(lista: List<ItemDeAtendimento>) = lista.map { it.id }
+
+    // Ordem da fila: a regra mora em ordenarPelaFilaDoTecnico (:core:modelo) e filtrarFila a aplica. Estes
+    // testes conferem o resultado pela função da tela, com todos os itens dentro da fila (status destinado
+    // por padrão) e sem busca.
+    private fun ordenada(itens: List<ItemDeAtendimento>) = filtrarFila(itens, FiltroDaFila.TODOS, "")
 
     @Test
     fun estaNaFilaSoParaDestinadoAgendadoEEmAtendimento() {
@@ -106,6 +125,27 @@ class FilaDoTecnicoTest {
     }
 
     @Test
+    fun itemSemProtocoloNemNomeDoClienteNaoQuebraABusca() {
+        // Item criado sem conexão: o servidor ainda não gerou o protocolo e o cliente pode não ter nome.
+        val itens = listOf(
+            ItemDeAtendimento(
+                id = "1",
+                protocolo = null,
+                motivo = MotivoAtendimento.DUVIDAS,
+                status = StatusAtendimento.DESTINADO,
+                origem = OrigemAtendimento.CLIENTE_FINAL,
+                abertoEm = Instant.parse("2026-11-01T12:00:00Z"),
+                nomeCliente = null,
+                local = "Arealva, SP",
+                idTecnicoResponsavel = null,
+                sincronizacao = SituacaoDeSincronizacao.PENDENTE_DE_ENVIO,
+            ),
+        )
+        assertEquals(listOf("1"), ids(filtrarFila(itens, FiltroDaFila.TODOS, "arealva")))
+        assertTrue(filtrarFila(itens, FiltroDaFila.TODOS, "os-").isEmpty())
+    }
+
+    @Test
     fun itensForaDaFilaNuncaAparecem() {
         val fora = listOf(
             StatusAtendimento.ABERTO,
@@ -125,7 +165,7 @@ class FilaDoTecnicoTest {
             item("a", status = StatusAtendimento.DESTINADO, aberto = "2026-10-01T12:00:00Z"),
             item("b", status = StatusAtendimento.EM_ATENDIMENTO, aberto = "2026-11-05T12:00:00Z"),
         )
-        assertEquals(listOf("b", "a"), ids(ordenarFila(itens)))
+        assertEquals(listOf("b", "a"), ids(ordenada(itens)))
     }
 
     @Test
@@ -135,7 +175,7 @@ class FilaDoTecnicoTest {
             item("antigo", aberto = "2026-11-01T12:00:00Z"),
             item("meio", aberto = "2026-11-05T12:00:00Z"),
         )
-        assertEquals(listOf("antigo", "meio", "novo"), ids(ordenarFila(itens)))
+        assertEquals(listOf("antigo", "meio", "novo"), ids(ordenada(itens)))
     }
 
     @Test
@@ -145,7 +185,7 @@ class FilaDoTecnicoTest {
             item("2", protocolo = "OS-0500"),
             item("3", protocolo = "OS-0550"),
         )
-        assertEquals(listOf("2", "3", "1"), ids(ordenarFila(itens)))
+        assertEquals(listOf("2", "3", "1"), ids(ordenada(itens)))
     }
 
     @Test
@@ -154,13 +194,13 @@ class FilaDoTecnicoTest {
             item("dez-mil", protocolo = "OS-10000"),
             item("nove-mil", protocolo = "OS-9999"),
         )
-        assertEquals(listOf("nove-mil", "dez-mil"), ids(ordenarFila(itens)))
+        assertEquals(listOf("nove-mil", "dez-mil"), ids(ordenada(itens)))
     }
 
     @Test
     fun protocoloFeitoDeTextoNaoDerrubaAOrdenacaoDaFila() {
         val itens = listOf(item("b", protocolo = "XYZ"), item("a", protocolo = "ABC"))
-        assertEquals(listOf("a", "b"), ids(ordenarFila(itens)))
+        assertEquals(listOf("a", "b"), ids(ordenada(itens)))
     }
 
     @Test
@@ -172,7 +212,7 @@ class FilaDoTecnicoTest {
             item("antigo", protocolo = "OS-0950", aberto = "2026-10-01T12:00:00Z"),
         )
         // Em atendimento primeiro, depois a abertura mais antiga e só então o protocolo (empate mantém a entrada).
-        assertEquals(listOf("em-curso", "antigo", "primeiro", "segundo"), ids(ordenarFila(itens)))
+        assertEquals(listOf("em-curso", "antigo", "primeiro", "segundo"), ids(ordenada(itens)))
     }
 
     @Test

@@ -13,6 +13,7 @@ fun SeloStatus.rotulo(): Int = when (this) {
     SeloStatus.EM_ATENDIMENTO -> R.string.atendimento_selo_em_atendimento
     SeloStatus.CONCLUIDO -> R.string.atendimento_selo_concluido
     SeloStatus.CANCELADO -> R.string.atendimento_selo_cancelado
+    SeloStatus.DESCONHECIDO -> R.string.atendimento_desconhecido
 }
 
 @StringRes

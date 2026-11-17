@@ -24,9 +24,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
-import com.example.netafim.atendimento.dominio.ResumoAtendimento
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
+import com.example.netafim.atendimento.ui.comum.itemDePreview
+import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
@@ -37,7 +38,7 @@ import java.time.ZoneId
 // texto de apoio dos cartões ser previsível nos testes e nos previews.
 @Composable
 fun MeusAtendimentosTela(
-    atendimentos: List<ResumoAtendimento>,
+    atendimentos: List<ItemDeAtendimento>,
     agora: Instant,
     zona: ZoneId,
     aoAbrirNovo: () -> Unit,
@@ -75,12 +76,12 @@ fun MeusAtendimentosTela(
                 contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(items = atendimentos, key = { it.id }) { resumo ->
+                items(items = atendimentos, key = { it.id }) { item ->
                     CartaoAtendimento(
-                        resumo = resumo,
+                        item = item,
                         agora = agora,
                         zona = zona,
-                        aoClicar = { aoAbrirDetalhe(resumo.id) },
+                        aoClicar = { aoAbrirDetalhe(item.id) },
                     )
                 }
             }
@@ -124,10 +125,10 @@ private fun MeusAtendimentosTelaPreview() {
     TemaDePreview {
         MeusAtendimentosTela(
             atendimentos = listOf(
-                ResumoAtendimento("1", "OS-0498", MotivoAtendimento.DUVIDAS, StatusAtendimento.ENCERRADO, Instant.parse("2026-10-20T15:00:00Z")),
-                ResumoAtendimento("2", "OS-0506", MotivoAtendimento.POS_VENDA, StatusAtendimento.ABERTO, Instant.parse("2026-11-08T15:00:00Z")),
-                ResumoAtendimento("3", "OS-0477", MotivoAtendimento.DIGITAL_FARMING, StatusAtendimento.EM_ATENDIMENTO, Instant.parse("2026-11-11T12:00:00Z")),
-                ResumoAtendimento("4", "OS-0431", MotivoAtendimento.TREINAMENTO, StatusAtendimento.CANCELADO, Instant.parse("2026-09-30T15:00:00Z")),
+                itemDePreview("1", "OS-0498", MotivoAtendimento.DUVIDAS, StatusAtendimento.ENCERRADO, "2026-10-20T15:00:00Z"),
+                itemDePreview("2", "OS-0506", MotivoAtendimento.POS_VENDA, StatusAtendimento.ABERTO, "2026-11-08T15:00:00Z"),
+                itemDePreview("3", "OS-0477", MotivoAtendimento.DIGITAL_FARMING, StatusAtendimento.EM_ATENDIMENTO, "2026-11-11T12:00:00Z"),
+                itemDePreview("4", "OS-0431", MotivoAtendimento.TREINAMENTO, StatusAtendimento.CANCELADO, "2026-09-30T15:00:00Z"),
             ),
             agora = agoraDoPreview,
             zona = zonaDoPreview,

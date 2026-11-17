@@ -1,22 +1,9 @@
 package com.example.netafim.atendimento.dominio
 
-import com.example.netafim.core.modelo.ComparadorDeProtocolo
-import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
-import com.example.netafim.core.modelo.normalizarParaBusca
-import java.time.Instant
-
-// Um atendimento na fila do técnico: o que o cartão da fila precisa mostrar.
-// O local é opcional: o atendimento pode ter sido aberto sem cidade nem fazenda.
-data class ItemDaFila(
-    val id: String,
-    val protocolo: String,
-    val nomeCliente: String,
-    val local: String?,
-    val motivo: MotivoAtendimento,
-    val status: StatusAtendimento,
-    val abertoEm: Instant,
-)
+import com.example.netafim.core.modelo.buscarNosItens
+import com.example.netafim.core.modelo.ordenarPelaFilaDoTecnico
 
 // A fila do técnico traz só o que está destinado a ele e ainda não foi resolvido: destinado, agendado
 // e em atendimento. Aberto (ainda sem destino) e os status de conclusão ou cancelamento ficam de fora.
@@ -43,29 +30,12 @@ fun FiltroDaFila.aceita(status: StatusAtendimento): Boolean {
     }
 }
 
-// Aplica o filtro e a busca e devolve o resultado já ordenado por ordenarFila. O item serve também à
-// lista da região do distribuidor (ver RegiaoDoDistribuidor.kt).
-// A busca apara os espaços das pontas, ignora maiúsculas e acentos e procura no protocolo, no nome do
-// cliente e no local. Busca vazia ou só de espaços não filtra nada. Itens fora da fila nunca entram.
-fun filtrarFila(itens: List<ItemDaFila>, filtro: FiltroDaFila, busca: String): List<ItemDaFila> {
-    val termo = normalizarParaBusca(busca)
-    val encontrados = itens.filter { item ->
-        filtro.aceita(item.status) && (termo.isEmpty() || combinaComABusca(item, termo))
-    }
-    return ordenarFila(encontrados)
-}
-
-internal fun combinaComABusca(item: ItemDaFila, termo: String): Boolean =
-    listOfNotNull(item.protocolo, item.nomeCliente, item.local)
-        .any { normalizarParaBusca(it).contains(termo) }
-
-// Ordem da fila: primeiro o que está em atendimento (trabalho em curso); depois os demais, do mais
-// antigo para o mais novo; no empate, pelo número do protocolo.
-// Essa ordem é uma decisão do Rafael para a fila, ainda não confirmada com o grupo.
-fun ordenarFila(itens: List<ItemDaFila>): List<ItemDaFila> =
-    itens.sortedWith(
-        compareBy<ItemDaFila>(
-            { if (it.status == StatusAtendimento.EM_ATENDIMENTO) 0 else 1 },
-            { it.abertoEm },
-        ).thenBy(ComparadorDeProtocolo) { it.protocolo },
-    )
+// Aplica o filtro e a busca e devolve o resultado já na ordem da fila do técnico. O item é o mesmo da lista
+// da região do distribuidor (ver RegiaoDoDistribuidor.kt).
+// A busca e a ordem são as do :core:modelo (buscarNosItens e ordenarPelaFilaDoTecnico): a busca apara os
+// espaços das pontas, ignora maiúsculas e acentos e procura no protocolo, no nome do cliente e no local;
+// busca vazia ou só de espaços não filtra nada. A ordem põe o que está em atendimento primeiro e depois
+// os mais antigos, com desempate pelo número do protocolo; essa ordem é uma decisão do Rafael para a fila,
+// ainda não confirmada com o grupo. Itens fora da fila nunca entram.
+fun filtrarFila(itens: List<ItemDeAtendimento>, filtro: FiltroDaFila, busca: String): List<ItemDeAtendimento> =
+    ordenarPelaFilaDoTecnico(buscarNosItens(itens.filter { filtro.aceita(it.status) }, busca))

@@ -1,11 +1,11 @@
 package com.example.netafim.atendimento.dominio
 
 import com.example.netafim.core.modelo.ComparadorDeProtocolo
+import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
-import com.example.netafim.core.modelo.normalizarParaBusca
+import com.example.netafim.core.modelo.buscarNosItens
 
-// Lista de atendimentos da região do distribuidor. Reaproveita o ItemDaFila da fila do técnico: o mesmo
-// item (protocolo, cliente, local, motivo, status e data de abertura) serve às duas listas.
+// Lista de atendimentos da região do distribuidor. Usa o mesmo ItemDeAtendimento da fila do técnico.
 
 // Filtros da lista da região. Diferente da fila do técnico, aqui aparecem atendimentos de qualquer
 // status, inclusive os concluídos e os cancelados.
@@ -23,21 +23,18 @@ fun FiltroDaRegiao.aceita(status: StatusAtendimento): Boolean = when (this) {
     FiltroDaRegiao.CONCLUIDOS -> status.selo == SeloStatus.CONCLUIDO
 }
 
-// Aplica o filtro e a busca e devolve o resultado já ordenado por ordenarRegiao. A busca tem as mesmas
-// regras da fila do técnico: apara os espaços, ignora maiúsculas e acentos e procura no protocolo, no
+// Aplica o filtro e a busca e devolve o resultado já ordenado por ordenarRegiao. A busca é a do
+// :core:modelo (buscarNosItens): apara os espaços, ignora maiúsculas e acentos e procura no protocolo, no
 // nome do cliente e no local. Busca vazia ou só de espaços não filtra nada.
-fun filtrarRegiao(itens: List<ItemDaFila>, filtro: FiltroDaRegiao, busca: String): List<ItemDaFila> {
-    val termo = normalizarParaBusca(busca)
-    val encontrados = itens.filter { item ->
-        filtro.aceita(item.status) && (termo.isEmpty() || combinaComABusca(item, termo))
-    }
-    return ordenarRegiao(encontrados)
-}
+fun filtrarRegiao(itens: List<ItemDeAtendimento>, filtro: FiltroDaRegiao, busca: String): List<ItemDeAtendimento> =
+    ordenarRegiao(buscarNosItens(itens.filter { filtro.aceita(it.status) }, busca))
 
 // Ordem da lista da região: do mais recente para o mais antigo pela data de abertura; no empate, pelo
 // número do protocolo. É uma decisão do Rafael para a lista da região (a região acompanha o
 // que acabou de chegar, diferente da fila do técnico) e ainda não foi confirmada com o grupo.
-fun ordenarRegiao(itens: List<ItemDaFila>): List<ItemDaFila> =
+// Fica aqui e não usa ordenarPelosMaisRecentes do core porque o desempate do core é pelo id, não pelo
+// protocolo: as duas só diferem quando duas aberturas têm exatamente o mesmo instante.
+fun ordenarRegiao(itens: List<ItemDeAtendimento>): List<ItemDeAtendimento> =
     itens.sortedWith(
-        compareByDescending<ItemDaFila> { it.abertoEm }.thenBy(ComparadorDeProtocolo) { it.protocolo },
+        compareByDescending<ItemDeAtendimento> { it.abertoEm }.thenBy(ComparadorDeProtocolo) { it.protocolo },
     )

@@ -1,6 +1,9 @@
 package com.example.netafim.atendimento.dominio
 
+import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.OrigemAtendimento
+import com.example.netafim.core.modelo.SituacaoDeSincronizacao
 import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 import org.junit.Assert.assertEquals
@@ -16,9 +19,20 @@ class RegiaoDoDistribuidorTest {
         local: String? = "Cidade $id",
         status: StatusAtendimento = StatusAtendimento.DESTINADO,
         aberto: String = "2026-11-01T12:00:00Z",
-    ) = ItemDaFila(id, protocolo, cliente, local, MotivoAtendimento.DUVIDAS, status, Instant.parse(aberto))
+    ) = ItemDeAtendimento(
+        id = id,
+        protocolo = protocolo,
+        motivo = MotivoAtendimento.DUVIDAS,
+        status = status,
+        origem = OrigemAtendimento.CLIENTE_FINAL,
+        abertoEm = Instant.parse(aberto),
+        nomeCliente = cliente,
+        local = local,
+        idTecnicoResponsavel = null,
+        sincronizacao = SituacaoDeSincronizacao.SINCRONIZADO,
+    )
 
-    private fun ids(lista: List<ItemDaFila>) = lista.map { it.id }
+    private fun ids(lista: List<ItemDeAtendimento>) = lista.map { it.id }
 
     // Um item para cada um dos oito status, para conferir os filtros.
     private fun umDeCadaStatus() = StatusAtendimento.entries
@@ -64,6 +78,14 @@ class RegiaoDoDistribuidorTest {
         assertTrue(FiltroDaRegiao.TODOS.aceita(StatusAtendimento.CANCELADO))
         assertEquals(false, FiltroDaRegiao.EM_ANDAMENTO.aceita(StatusAtendimento.CANCELADO))
         assertEquals(false, FiltroDaRegiao.CONCLUIDOS.aceita(StatusAtendimento.CANCELADO))
+    }
+
+    @Test
+    fun statusDesconhecidoSoApareceEmTodos() {
+        // O app não sabe se o atendimento está em andamento ou concluído, então só o filtro Todos o mostra.
+        assertTrue(FiltroDaRegiao.TODOS.aceita(StatusAtendimento.DESCONHECIDO))
+        assertEquals(false, FiltroDaRegiao.EM_ANDAMENTO.aceita(StatusAtendimento.DESCONHECIDO))
+        assertEquals(false, FiltroDaRegiao.CONCLUIDOS.aceita(StatusAtendimento.DESCONHECIDO))
     }
 
     // ---- filtrarRegiao

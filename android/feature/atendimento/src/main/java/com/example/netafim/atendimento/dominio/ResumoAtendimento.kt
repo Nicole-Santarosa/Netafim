@@ -1,19 +1,9 @@
 package com.example.netafim.atendimento.dominio
 
-import com.example.netafim.core.modelo.MotivoAtendimento
-import com.example.netafim.core.modelo.StatusAtendimento
+import com.example.netafim.core.modelo.ItemDeAtendimento
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-
-// Dados de um atendimento que a lista "Meus atendimentos" precisa para montar o cartão.
-data class ResumoAtendimento(
-    val id: String,
-    val protocolo: String,
-    val motivo: MotivoAtendimento,
-    val status: StatusAtendimento,
-    val abertoEm: Instant,
-)
 
 // O que a linha de apoio do cartão deve dizer sobre a abertura. O texto em si fica no strings.xml.
 sealed interface ApoioDoCartao {
@@ -26,12 +16,14 @@ sealed interface ApoioDoCartao {
 // porque o tempo de espera é o que importa para quem acompanha.
 // Atendimento já concluído ou cancelado mostra a data de abertura: o relógio parou, então "há N dias"
 // continuaria crescendo e daria a impressão de que o atendimento segue pendente.
-fun apoioDoCartao(resumo: ResumoAtendimento, agora: Instant, zona: ZoneId): ApoioDoCartao =
-    when (resumo.status.selo) {
+// Status desconhecido: o app não sabe se o atendimento segue em andamento, então não conta dias (daria a
+// entender que está pendente) e mostra a data de abertura, que é um fato.
+fun apoioDoCartao(item: ItemDeAtendimento, agora: Instant, zona: ZoneId): ApoioDoCartao =
+    when (item.status.selo) {
         SeloStatus.ABERTO, SeloStatus.EM_ATENDIMENTO -> {
-            val dias = diasEmAberto(resumo.abertoEm, agora, zona)
+            val dias = diasEmAberto(item.abertoEm, agora, zona)
             if (dias == 0) ApoioDoCartao.AbertoHoje else ApoioDoCartao.AbertoHaDias(dias)
         }
-        SeloStatus.CONCLUIDO, SeloStatus.CANCELADO ->
-            ApoioDoCartao.AbertoEm(resumo.abertoEm.atZone(zona).toLocalDate())
+        SeloStatus.CONCLUIDO, SeloStatus.CANCELADO, SeloStatus.DESCONHECIDO ->
+            ApoioDoCartao.AbertoEm(item.abertoEm.atZone(zona).toLocalDate())
     }

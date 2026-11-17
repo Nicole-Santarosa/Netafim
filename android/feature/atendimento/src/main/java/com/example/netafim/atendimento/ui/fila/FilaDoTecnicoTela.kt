@@ -16,22 +16,22 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.FiltroDaFila
-import com.example.netafim.atendimento.dominio.ItemDaFila
 import com.example.netafim.atendimento.dominio.filtrarFila
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.CampoDeBusca
 import com.example.netafim.atendimento.ui.comum.LinhaDeFiltros
 import com.example.netafim.atendimento.ui.comum.MensagemDeEstadoVazio
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
+import com.example.netafim.atendimento.ui.comum.itemDePreview
+import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
-import java.time.Instant
 
 // Fila de atendimentos do técnico. Tela sem estado: os itens chegam já filtrados e ordenados (ver
 // filtrarFila) e a tela só desenha; busca e filtro voltam ao chamador pelas lambdas.
 @Composable
 fun FilaDoTecnicoTela(
-    itens: List<ItemDaFila>,
+    itens: List<ItemDeAtendimento>,
     filtro: FiltroDaFila,
     busca: String,
     aoMudarFiltro: (FiltroDaFila) -> Unit,
@@ -85,9 +85,9 @@ fun FilaDoTecnicoTela(
 
 // Dados fictícios só para os previews.
 private val itensDoPreview = listOf(
-    ItemDaFila("1", "OS-0506", "Vanderlei Zucchi Rodas", "Arealva, SP", MotivoAtendimento.DIGITAL_FARMING, StatusAtendimento.AGENDADO, Instant.parse("2026-11-08T15:00:00Z")),
-    ItemDaFila("2", "OS-0477", "Citrosuco", "Boa Esperança do Sul, SP", MotivoAtendimento.DIGITAL_FARMING, StatusAtendimento.EM_ATENDIMENTO, Instant.parse("2026-11-01T15:00:00Z")),
-    ItemDaFila("3", "OS-0512", "Fazenda Santa Rita", "Ribeirão Preto, SP", MotivoAtendimento.POS_VENDA, StatusAtendimento.DESTINADO, Instant.parse("2026-11-10T15:00:00Z")),
+    itemDePreview("1", "OS-0506", MotivoAtendimento.DIGITAL_FARMING, StatusAtendimento.AGENDADO, "2026-11-08T15:00:00Z", "Vanderlei Zucchi Rodas", "Arealva, SP"),
+    itemDePreview("2", "OS-0477", MotivoAtendimento.DIGITAL_FARMING, StatusAtendimento.EM_ATENDIMENTO, "2026-11-01T15:00:00Z", "Citrosuco", "Boa Esperança do Sul, SP"),
+    itemDePreview("3", "OS-0512", MotivoAtendimento.POS_VENDA, StatusAtendimento.DESTINADO, "2026-11-10T15:00:00Z", "Fazenda Santa Rita", "Ribeirão Preto, SP"),
 )
 
 @Composable

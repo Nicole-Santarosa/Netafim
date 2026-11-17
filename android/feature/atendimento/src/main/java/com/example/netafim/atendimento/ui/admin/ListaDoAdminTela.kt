@@ -27,7 +27,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.FiltroDeOrigem
-import com.example.netafim.atendimento.dominio.ItemDaListaAdmin
 import com.example.netafim.atendimento.dominio.filtrarListaAdmin
 import com.example.netafim.atendimento.dominio.selo
 import com.example.netafim.atendimento.dominio.textoDaLinha
@@ -35,18 +34,20 @@ import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.LinhaDeFiltros
 import com.example.netafim.atendimento.ui.comum.MensagemDeEstadoVazio
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
+import com.example.netafim.atendimento.ui.comum.itemDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
 import com.example.netafim.atendimento.ui.fila.SeloDaFila
+import com.example.netafim.core.modelo.ItemDeAtendimento
+import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.OrigemAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
-import java.time.Instant
 
 // Lista de atendimentos do Admin da Netafim, com filtro por origem. Tela sem estado: os itens chegam já
 // filtrados e ordenados (ver filtrarListaAdmin) e a tela só desenha; o filtro volta ao chamador pela
 // lambda. Não há busca nesta tela.
 @Composable
 fun ListaDoAdminTela(
-    itens: List<ItemDaListaAdmin>,
+    itens: List<ItemDeAtendimento>,
     filtro: FiltroDeOrigem,
     aoMudarFiltro: (FiltroDeOrigem) -> Unit,
     aoAbrir: (String) -> Unit,
@@ -102,7 +103,7 @@ fun ListaDoAdminTela(
 // quando informado, o conteúdo passado aparece no lugar do selo de status do atendimento.
 @Composable
 private fun LinhaDoAdmin(
-    item: ItemDaListaAdmin,
+    item: ItemDeAtendimento,
     aoClicar: () -> Unit,
     selo: (@Composable () -> Unit)? = null,
 ) {
@@ -115,7 +116,7 @@ private fun LinhaDoAdmin(
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = textoDaLinha(item),
+                text = textoDaLinha(item, stringResource(R.string.atendimento_protocolo_pendente)),
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
@@ -134,18 +135,29 @@ private fun LinhaDoAdmin(
     }
 }
 
+// A lista do Admin só desenha protocolo, cliente, origem (no filtro) e status; o motivo não aparece, então
+// os previews usam um valor fixo para ele.
+private fun itemAdminDePreview(
+    id: String,
+    protocolo: String,
+    nomeCliente: String,
+    origem: OrigemAtendimento,
+    status: StatusAtendimento,
+    abertoEm: String,
+) = itemDePreview(id, protocolo, MotivoAtendimento.POS_VENDA, status, abertoEm, nomeCliente, origem = origem)
+
 // Dados fictícios só para os previews, com datas fora de ordem para provar a ordenação.
 private val itensDoPreview = listOf(
-    ItemDaListaAdmin("1", "OS-0477", "Citrosuco", OrigemAtendimento.DISTRIBUIDOR, StatusAtendimento.EM_ATENDIMENTO, Instant.parse("2026-11-01T15:00:00Z")),
-    ItemDaListaAdmin("2", "OS-0512", "Fazenda Santa Rita", OrigemAtendimento.CLIENTE_FINAL, StatusAtendimento.DESTINADO, Instant.parse("2026-11-10T15:00:00Z")),
-    ItemDaListaAdmin("3", "OS-0430", "Agropecuária Bom Jesus", OrigemAtendimento.NETAFIM, StatusAtendimento.ENCERRADO, Instant.parse("2026-10-20T15:00:00Z")),
-    ItemDaListaAdmin("4", "OS-0498", "Citrosuco", OrigemAtendimento.DISTRIBUIDOR, StatusAtendimento.CANCELADO, Instant.parse("2026-10-28T15:00:00Z")),
-    ItemDaListaAdmin("5", "OS-0506", "Vanderlei Zucchi Rodas", OrigemAtendimento.CLIENTE_FINAL, StatusAtendimento.AGENDADO, Instant.parse("2026-11-08T15:00:00Z")),
+    itemAdminDePreview("1", "OS-0477", "Citrosuco", OrigemAtendimento.DISTRIBUIDOR, StatusAtendimento.EM_ATENDIMENTO, "2026-11-01T15:00:00Z"),
+    itemAdminDePreview("2", "OS-0512", "Fazenda Santa Rita", OrigemAtendimento.CLIENTE_FINAL, StatusAtendimento.DESTINADO, "2026-11-10T15:00:00Z"),
+    itemAdminDePreview("3", "OS-0430", "Agropecuária Bom Jesus", OrigemAtendimento.NETAFIM, StatusAtendimento.ENCERRADO, "2026-10-20T15:00:00Z"),
+    itemAdminDePreview("4", "OS-0498", "Citrosuco", OrigemAtendimento.DISTRIBUIDOR, StatusAtendimento.CANCELADO, "2026-10-28T15:00:00Z"),
+    itemAdminDePreview("5", "OS-0506", "Vanderlei Zucchi Rodas", OrigemAtendimento.CLIENTE_FINAL, StatusAtendimento.AGENDADO, "2026-11-08T15:00:00Z"),
 )
 
 @Composable
 private fun TelaDePreview(
-    itens: List<ItemDaListaAdmin> = itensDoPreview,
+    itens: List<ItemDeAtendimento> = itensDoPreview,
     filtro: FiltroDeOrigem = FiltroDeOrigem.TODAS,
 ) {
     TemaDePreview {
@@ -185,13 +197,13 @@ private fun ListaDoAdminVaziaComFiltroPreview() = TelaDePreview(filtro = FiltroD
 @Composable
 private fun ListaDoAdminNomeLongoPreview() = TelaDePreview(
     itens = listOf(
-        ItemDaListaAdmin(
+        itemAdminDePreview(
             "1",
             "OS-0506",
             "Cooperativa Agropecuária dos Produtores Rurais de Citros do Vale do Rio Grande",
             OrigemAtendimento.DISTRIBUIDOR,
             StatusAtendimento.EM_ATENDIMENTO,
-            Instant.parse("2026-11-08T15:00:00Z"),
+            "2026-11-08T15:00:00Z",
         ),
     ),
 )

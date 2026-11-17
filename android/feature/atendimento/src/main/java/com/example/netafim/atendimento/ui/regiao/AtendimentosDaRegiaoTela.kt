@@ -16,7 +16,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.FiltroDaRegiao
-import com.example.netafim.atendimento.dominio.ItemDaFila
 import com.example.netafim.atendimento.dominio.filtrarRegiao
 import com.example.netafim.atendimento.dominio.selo
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
@@ -24,18 +23,19 @@ import com.example.netafim.atendimento.ui.comum.CampoDeBusca
 import com.example.netafim.atendimento.ui.comum.LinhaDeFiltros
 import com.example.netafim.atendimento.ui.comum.MensagemDeEstadoVazio
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
+import com.example.netafim.atendimento.ui.comum.itemDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
 import com.example.netafim.atendimento.ui.fila.CartaoDaFila
+import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
-import java.time.Instant
 
 // Atendimentos da região do distribuidor. Mesmo desenho da fila do técnico, com filtros próprios e
 // atendimentos de qualquer status. Tela sem estado: os itens chegam já filtrados e ordenados (ver
 // filtrarRegiao) e a tela só desenha; busca e filtro voltam ao chamador pelas lambdas.
 @Composable
 fun AtendimentosDaRegiaoTela(
-    itens: List<ItemDaFila>,
+    itens: List<ItemDeAtendimento>,
     filtro: FiltroDaRegiao,
     busca: String,
     aoMudarFiltro: (FiltroDaRegiao) -> Unit,
@@ -95,16 +95,16 @@ fun AtendimentosDaRegiaoTela(
 
 // Dados fictícios só para os previews, com datas fora de ordem para provar a ordenação.
 private val itensDoPreview = listOf(
-    ItemDaFila("1", "OS-0477", "Citrosuco", "Boa Esperança do Sul, SP", MotivoAtendimento.DIGITAL_FARMING, StatusAtendimento.EM_ATENDIMENTO, Instant.parse("2026-11-01T15:00:00Z")),
-    ItemDaFila("2", "OS-0512", "Fazenda Santa Rita", "Ribeirão Preto, SP", MotivoAtendimento.POS_VENDA, StatusAtendimento.DESTINADO, Instant.parse("2026-11-10T15:00:00Z")),
-    ItemDaFila("3", "OS-0430", "Agrícola Boa Vista", "Araraquara, SP", MotivoAtendimento.ENTREGA_TECNICA, StatusAtendimento.ENCERRADO, Instant.parse("2026-10-20T15:00:00Z")),
-    ItemDaFila("4", "OS-0498", "Sítio Três Irmãos", null, MotivoAtendimento.DUVIDAS, StatusAtendimento.CANCELADO, Instant.parse("2026-10-28T15:00:00Z")),
-    ItemDaFila("5", "OS-0506", "Vanderlei Zucchi Rodas", "Arealva, SP", MotivoAtendimento.DIGITAL_FARMING, StatusAtendimento.AGENDADO, Instant.parse("2026-11-08T15:00:00Z")),
+    itemDePreview("1", "OS-0477", MotivoAtendimento.DIGITAL_FARMING, StatusAtendimento.EM_ATENDIMENTO, "2026-11-01T15:00:00Z", "Citrosuco", "Boa Esperança do Sul, SP"),
+    itemDePreview("2", "OS-0512", MotivoAtendimento.POS_VENDA, StatusAtendimento.DESTINADO, "2026-11-10T15:00:00Z", "Fazenda Santa Rita", "Ribeirão Preto, SP"),
+    itemDePreview("3", "OS-0430", MotivoAtendimento.ENTREGA_TECNICA, StatusAtendimento.ENCERRADO, "2026-10-20T15:00:00Z", "Agrícola Boa Vista", "Araraquara, SP"),
+    itemDePreview("4", "OS-0498", MotivoAtendimento.DUVIDAS, StatusAtendimento.CANCELADO, "2026-10-28T15:00:00Z", "Sítio Três Irmãos"),
+    itemDePreview("5", "OS-0506", MotivoAtendimento.DIGITAL_FARMING, StatusAtendimento.AGENDADO, "2026-11-08T15:00:00Z", "Vanderlei Zucchi Rodas", "Arealva, SP"),
 )
 
 @Composable
 private fun TelaDePreview(
-    itens: List<ItemDaFila> = itensDoPreview,
+    itens: List<ItemDeAtendimento> = itensDoPreview,
     filtro: FiltroDaRegiao = FiltroDaRegiao.TODOS,
     busca: String = "",
 ) {

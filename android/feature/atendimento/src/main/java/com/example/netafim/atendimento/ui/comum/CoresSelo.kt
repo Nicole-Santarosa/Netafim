@@ -14,6 +14,9 @@ fun coresDoSelo(selo: SeloStatus): CoresDoSelo = when (selo) {
     SeloStatus.EM_ATENDIMENTO -> CoresDoSelo(fundo = 0xFFFFF3D2, texto = 0xFF8A5A00, bolinha = 0xFFFFBC03)
     SeloStatus.CONCLUIDO -> CoresDoSelo(fundo = 0xFFECF6D9, texto = 0xFF3F6B0F, bolinha = 0xFF96CC2F)
     SeloStatus.CANCELADO -> CoresDoSelo(fundo = 0xFFE9E9E4, texto = 0xFF21211F, bolinha = 0xFFA0A09C)
+    // Cinza mais claro que o do cancelado, para o desconhecido não parecer um status de encerramento.
+    // Segue em hexadecimal como os outros: esta função não é composable e o contraste é conferido em teste.
+    SeloStatus.DESCONHECIDO -> CoresDoSelo(fundo = 0xFFF1F1EE, texto = 0xFF4A4A46, bolinha = 0xFF8E8E8A)
 }
 
 // Razão de contraste entre duas cores pela fórmula do WCAG 2: (L1 + 0,05) / (L2 + 0,05),

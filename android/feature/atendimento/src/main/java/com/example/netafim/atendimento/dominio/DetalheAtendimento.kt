@@ -37,7 +37,9 @@ enum class SituacaoEtapa {
 
 data class EtapaDaLinha(val tipo: TipoEtapa, val situacao: SituacaoEtapa)
 
-// Monta a linha do tempo a partir do selo do status (os oito status caem em quatro selos).
+// Monta a linha do tempo a partir do selo do status (os oito status reais caem em quatro selos).
+// Status desconhecido: as três etapas ficam pendentes, sem nenhuma atual nem feita, porque o app não sabe
+// em que ponto o atendimento está e não deve afirmar progresso.
 // O cancelamento não existe no protótipo do cliente: a regra do cancelado abaixo é uma decisão do grupo
 // ainda para ser conferida. Quem foi cancelado durante o atendimento (statusAntesDoCancelamento igual a
 // em atendimento) mantém essa etapa como feita; a partir de aberto, destinado ou agendado, ou sem saber
@@ -61,6 +63,11 @@ fun linhaDoTempo(
         EtapaDaLinha(TipoEtapa.ABERTO, SituacaoEtapa.FEITA),
         EtapaDaLinha(TipoEtapa.EM_ATENDIMENTO, SituacaoEtapa.FEITA),
         EtapaDaLinha(TipoEtapa.CONCLUIDO, SituacaoEtapa.FEITA),
+    )
+    SeloStatus.DESCONHECIDO -> listOf(
+        EtapaDaLinha(TipoEtapa.ABERTO, SituacaoEtapa.PENDENTE),
+        EtapaDaLinha(TipoEtapa.EM_ATENDIMENTO, SituacaoEtapa.PENDENTE),
+        EtapaDaLinha(TipoEtapa.CONCLUIDO, SituacaoEtapa.PENDENTE),
     )
     SeloStatus.CANCELADO -> if (statusAntesDoCancelamento == StatusAtendimento.EM_ATENDIMENTO) {
         listOf(

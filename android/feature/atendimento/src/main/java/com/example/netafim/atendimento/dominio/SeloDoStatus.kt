@@ -8,9 +8,11 @@ enum class SeloStatus {
     EM_ATENDIMENTO,
     CONCLUIDO,
     CANCELADO,
+    // Status que o app ainda não conhece (servidor mais novo que o aplicativo).
+    DESCONHECIDO,
 }
 
-// Agrupa os oito status nos quatro selos que as listas mostram.
+// Agrupa os oito status reais nos quatro selos das listas; o status desconhecido tem selo neutro próprio.
 // Fica aqui e não no StatusAtendimento porque o selo é coisa da tela; o status em si é domínio puro.
 val StatusAtendimento.selo: SeloStatus
     get() = when (this) {
@@ -19,7 +21,7 @@ val StatusAtendimento.selo: SeloStatus
         StatusAtendimento.RESOLVIDO, StatusAtendimento.ENCERRADO, StatusAtendimento.ENCERRADO_SEM_AVALIACAO ->
             SeloStatus.CONCLUIDO
         StatusAtendimento.CANCELADO -> SeloStatus.CANCELADO
-        // Provisório: ainda não existe um selo neutro. O cinza do cancelado é o mais discreto, e como
-        // DESCONHECIDO não entra na fila nem nos chips Em andamento e Concluídos, só aparece em Todos.
-        StatusAtendimento.DESCONHECIDO -> SeloStatus.CANCELADO
+        // O app guarda o registro, mas não sabe em que etapa ele está. Por isso não herda o selo de nenhuma
+        // etapa conhecida: ter selo neutro evita dizer "Cancelado" ou "Aberto" sobre algo que não sabemos.
+        StatusAtendimento.DESCONHECIDO -> SeloStatus.DESCONHECIDO
     }

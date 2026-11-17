@@ -25,6 +25,9 @@
     <string name="atendimento_selo_concluido">Concluído</string>
     <string name="atendimento_selo_cancelado">Cancelado</string>
 
+    <!-- Lugar do protocolo enquanto o servidor não o gerou (atendimento criado sem conexão) -->
+    <string name="atendimento_protocolo_pendente">Pendente de sincronização</string>
+
     <!-- Valor que o app não reconhece, vindo de um servidor mais novo -->
     <string name="atendimento_desconhecido">Desconhecido</string>
 

@@ -6,9 +6,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -26,12 +26,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.ApoioDoCartao
-import com.example.netafim.atendimento.dominio.ResumoAtendimento
 import com.example.netafim.atendimento.dominio.apoioDoCartao
 import com.example.netafim.atendimento.dominio.selo
 import com.example.netafim.atendimento.ui.comum.SeloStatusChip
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
+import com.example.netafim.atendimento.ui.comum.itemDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
+import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
@@ -45,7 +46,7 @@ private val formatoData: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/
 // motivo à esquerda e selo de status à direita. O cartão inteiro é clicável.
 @Composable
 fun CartaoAtendimento(
-    resumo: ResumoAtendimento,
+    item: ItemDeAtendimento,
     agora: Instant,
     zona: ZoneId,
     aoClicar: () -> Unit,
@@ -64,13 +65,14 @@ fun CartaoAtendimento(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = resumo.protocolo,
+                // Sem protocolo (atendimento criado sem conexão) o servidor ainda não o gerou.
+                text = item.protocolo ?: stringResource(R.string.atendimento_protocolo_pendente),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = textoDeApoio(apoioDoCartao(resumo, agora, zona)),
+                text = textoDeApoio(apoioDoCartao(item, agora, zona)),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -80,8 +82,8 @@ fun CartaoAtendimento(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ChipDoMotivo(resumo.motivo)
-                SeloStatusChip(selo = resumo.status.selo)
+                ChipDoMotivo(item.motivo)
+                SeloStatusChip(selo = item.status.selo)
             }
         }
     }
@@ -118,12 +120,12 @@ private fun ChipDoMotivo(motivo: MotivoAtendimento) {
 private fun CartaoAtendimentoPreview() {
     TemaDePreview {
         CartaoAtendimento(
-            resumo = ResumoAtendimento(
+            item = itemDePreview(
                 id = "1",
                 protocolo = "OS-0506",
                 motivo = MotivoAtendimento.POS_VENDA,
                 status = StatusAtendimento.ABERTO,
-                abertoEm = Instant.parse("2026-11-08T15:00:00Z"),
+                abertoEm = "2026-11-08T15:00:00Z",
             ),
             agora = Instant.parse("2026-11-11T15:00:00Z"),
             zona = ZoneId.of("America/Sao_Paulo"),
