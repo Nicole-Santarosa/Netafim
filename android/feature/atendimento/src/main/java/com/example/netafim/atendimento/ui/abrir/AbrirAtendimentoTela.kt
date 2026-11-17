@@ -67,16 +67,16 @@ import com.example.netafim.atendimento.dominio.FormularioAbertura
 import com.example.netafim.atendimento.dominio.LIMITE_CIDADE
 import com.example.netafim.atendimento.dominio.LIMITE_CONTATO
 import com.example.netafim.atendimento.dominio.LIMITE_NOME_FAZENDA
-import com.example.netafim.atendimento.dominio.MotivoAtendimento
 import com.example.netafim.atendimento.dominio.OpcaoCultura
 import com.example.netafim.atendimento.dominio.OpcaoDistribuidor
-import com.example.netafim.atendimento.dominio.TipoVenda
 import com.example.netafim.atendimento.dominio.comCulturaAlternada
 import com.example.netafim.atendimento.dominio.comMotivo
 import com.example.netafim.atendimento.dominio.tipoVendaEfetivo
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
+import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.TipoVenda
 
 // Formulário de abertura de atendimento do cliente. Tela sem estado: mostra o formulário e os erros
 // que receber e devolve cada mudança por aoAlterar. Quem valida e quem envia é o chamador.

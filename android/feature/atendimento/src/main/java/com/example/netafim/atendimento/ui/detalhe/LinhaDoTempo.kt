@@ -34,10 +34,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.dominio.EtapaDaLinha
 import com.example.netafim.atendimento.dominio.SituacaoEtapa
-import com.example.netafim.atendimento.dominio.StatusAtendimento
 import com.example.netafim.atendimento.dominio.TipoEtapa
 import com.example.netafim.atendimento.dominio.linhaDoTempo
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
+import com.example.netafim.core.modelo.StatusAtendimento
 
 // Linha do tempo vertical do atendimento: um círculo por etapa, ligado ao próximo por uma linha de 2dp.
 @Composable

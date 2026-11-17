@@ -2,8 +2,8 @@ package com.example.netafim.atendimento.ui.comum
 
 import androidx.annotation.StringRes
 import com.example.netafim.atendimento.R
-import com.example.netafim.atendimento.dominio.MotivoAtendimento
 import com.example.netafim.atendimento.dominio.SeloStatus
+import com.example.netafim.core.modelo.MotivoAtendimento
 
 // Liga cada valor do domínio ao texto do strings.xml. O domínio só carrega códigos e regras,
 // então o rótulo que o usuário lê é resolvido aqui, na camada de interface.

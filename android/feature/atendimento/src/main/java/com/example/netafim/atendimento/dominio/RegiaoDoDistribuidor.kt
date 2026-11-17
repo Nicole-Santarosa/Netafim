@@ -1,5 +1,9 @@
 package com.example.netafim.atendimento.dominio
 
+import com.example.netafim.core.modelo.ComparadorDeProtocolo
+import com.example.netafim.core.modelo.StatusAtendimento
+import com.example.netafim.core.modelo.normalizarParaBusca
+
 // Lista de atendimentos da região do distribuidor. Reaproveita o ItemDaFila da fila do técnico: o mesmo
 // item (protocolo, cliente, local, motivo, status e data de abertura) serve às duas listas.
 

@@ -17,9 +17,8 @@ import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.FiltroDaRegiao
 import com.example.netafim.atendimento.dominio.ItemDaFila
-import com.example.netafim.atendimento.dominio.MotivoAtendimento
-import com.example.netafim.atendimento.dominio.StatusAtendimento
 import com.example.netafim.atendimento.dominio.filtrarRegiao
+import com.example.netafim.atendimento.dominio.selo
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.CampoDeBusca
 import com.example.netafim.atendimento.ui.comum.LinhaDeFiltros
@@ -27,6 +26,8 @@ import com.example.netafim.atendimento.ui.comum.MensagemDeEstadoVazio
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
 import com.example.netafim.atendimento.ui.fila.CartaoDaFila
+import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 
 // Atendimentos da região do distribuidor. Mesmo desenho da fila do técnico, com filtros próprios e

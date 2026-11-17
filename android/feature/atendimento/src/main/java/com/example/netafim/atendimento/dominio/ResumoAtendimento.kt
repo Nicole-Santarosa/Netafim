@@ -1,5 +1,7 @@
 package com.example.netafim.atendimento.dominio
 
+import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId

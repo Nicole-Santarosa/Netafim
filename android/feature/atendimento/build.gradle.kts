@@ -38,6 +38,9 @@ android {
 }
 
 dependencies {
+    // Modelos e regras puras (status, motivo, protocolo e busca).
+    implementation(project(":core:modelo"))
+
     // Compose: o BOM fixa as versões de todas as bibliotecas Compose, por isso as demais não têm versão.
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

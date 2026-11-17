@@ -1,4 +1,4 @@
-package com.example.netafim.atendimento.dominio
+package com.example.netafim.core.modelo
 
 // Protocolo no formato do banco: "OS-" e pelo menos quatro dígitos (OS-0477, OS-10000). Quatro dígitos é o
 // mínimo, não o máximo: depois de OS-9999 vem OS-10000, e comparar como texto poria o 10000 antes do 9999.

@@ -39,12 +39,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.dominio.ItemDaFila
-import com.example.netafim.atendimento.dominio.MotivoAtendimento
 import com.example.netafim.atendimento.dominio.SeloStatus
-import com.example.netafim.atendimento.dominio.StatusAtendimento
+import com.example.netafim.atendimento.dominio.selo
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.coresDoSelo
 import com.example.netafim.atendimento.ui.comum.rotulo
+import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 
 // Cartão de um atendimento na fila do técnico. O cartão inteiro é clicável e é lido como um item só

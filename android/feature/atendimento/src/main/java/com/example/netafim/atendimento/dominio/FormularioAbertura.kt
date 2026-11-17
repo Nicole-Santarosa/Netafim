@@ -1,5 +1,8 @@
 package com.example.netafim.atendimento.dominio
 
+import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.TipoVenda
+
 // Limites de tamanho do contrato da API (schema AberturaAtendimento): cidade aceita até 100
 // caracteres, nome_fazenda_informado até 150 e contato_solicitante até 20.
 const val LIMITE_CIDADE = 100

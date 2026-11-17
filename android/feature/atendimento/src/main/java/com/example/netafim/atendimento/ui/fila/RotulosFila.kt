@@ -3,8 +3,9 @@ package com.example.netafim.atendimento.ui.fila
 import androidx.annotation.StringRes
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.FiltroDaFila
-import com.example.netafim.atendimento.dominio.StatusAtendimento
+import com.example.netafim.atendimento.dominio.selo
 import com.example.netafim.atendimento.ui.comum.rotulo
+import com.example.netafim.core.modelo.StatusAtendimento
 
 // Na fila do técnico, destinado e agendado aparecem os dois como "Novo" (ainda não iniciado) e em
 // atendimento mantém o nome. Para os outros status, que não entram na fila, vale o rótulo normal do selo.

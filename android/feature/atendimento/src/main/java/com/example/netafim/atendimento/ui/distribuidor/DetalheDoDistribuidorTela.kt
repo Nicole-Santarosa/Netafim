@@ -21,12 +21,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.DetalheDoDistribuidor
-import com.example.netafim.atendimento.dominio.MotivoAtendimento
-import com.example.netafim.atendimento.dominio.StatusAtendimento
+import com.example.netafim.atendimento.dominio.selo
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.CampoDeLeitura
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
+import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.StatusAtendimento
 
 // Detalhe do atendimento para o distribuidor. Tela sem estado e só de leitura: o distribuidor acompanha
 // o atendimento da região e não altera nada, então não há nenhum botão nem lambda de ação.

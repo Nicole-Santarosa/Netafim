@@ -27,3 +27,4 @@ rootProject.name = "NetafimPosVenda"
 include(":app")
 include(":feature:acesso")
 include(":feature:atendimento")
+include(":core:modelo")

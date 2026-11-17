@@ -42,13 +42,13 @@ import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.DadosDaEdicao
 import com.example.netafim.atendimento.dominio.ErroAoSalvar
-import com.example.netafim.atendimento.dominio.MotivoAtendimento
 import com.example.netafim.atendimento.dominio.SituacaoDoProjeto
 import com.example.netafim.atendimento.dominio.podeSalvar
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.CampoDeLeitura
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
+import com.example.netafim.core.modelo.MotivoAtendimento
 
 // Edição reduzida do atendimento para o Admin da Netafim: mostra o atendimento em leitura e deixa trocar só
 // a situação do projeto. Tela sem estado: a escolha, o "salvando" e o erro chegam por parâmetro e cada ação

@@ -1,4 +1,4 @@
-package com.example.netafim.atendimento.dominio
+package com.example.netafim.core.modelo
 
 // Motivo do atendimento. Os códigos são os do contrato da API (schema Motivo).
 enum class MotivoAtendimento(val codigo: String) {

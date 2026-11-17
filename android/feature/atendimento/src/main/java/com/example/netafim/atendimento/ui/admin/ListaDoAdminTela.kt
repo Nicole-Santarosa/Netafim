@@ -29,8 +29,8 @@ import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.FiltroDeOrigem
 import com.example.netafim.atendimento.dominio.ItemDaListaAdmin
 import com.example.netafim.atendimento.dominio.OrigemAtendimento
-import com.example.netafim.atendimento.dominio.StatusAtendimento
 import com.example.netafim.atendimento.dominio.filtrarListaAdmin
+import com.example.netafim.atendimento.dominio.selo
 import com.example.netafim.atendimento.dominio.textoDaLinha
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.LinhaDeFiltros
@@ -38,6 +38,7 @@ import com.example.netafim.atendimento.ui.comum.MensagemDeEstadoVazio
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
 import com.example.netafim.atendimento.ui.fila.SeloDaFila
+import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 
 // Lista de atendimentos do Admin da Netafim, com filtro por origem. Tela sem estado: os itens chegam já

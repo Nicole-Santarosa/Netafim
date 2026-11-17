@@ -17,8 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.example.netafim.atendimento.dominio.StatusAtendimento
+import com.example.netafim.atendimento.dominio.selo
 import com.example.netafim.atendimento.ui.comum.coresDoSelo
+import com.example.netafim.core.modelo.StatusAtendimento
 
 // Selo de status da fila: pílula de 22dp com ponto de 5dp e o texto. É próprio da fila porque o texto
 // vem de rotuloNaFila ("Novo" para destinado e agendado) e as medidas são menores que as do

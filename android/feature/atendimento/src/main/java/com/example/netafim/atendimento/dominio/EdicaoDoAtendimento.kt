@@ -1,5 +1,7 @@
 package com.example.netafim.atendimento.dominio
 
+import com.example.netafim.core.modelo.MotivoAtendimento
+
 // Situação do projeto do atendimento. Os códigos são os do contrato da API (schema SituacaoProjeto)
 // e os mesmos do CHECK do banco. Rótulos ficam na camada de interface.
 enum class SituacaoDoProjeto(val codigo: String) {

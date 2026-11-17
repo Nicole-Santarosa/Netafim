@@ -1,6 +1,9 @@
 package com.example.netafim.atendimento.dominio
 
-import java.text.Normalizer
+import com.example.netafim.core.modelo.ComparadorDeProtocolo
+import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.StatusAtendimento
+import com.example.netafim.core.modelo.normalizarParaBusca
 import java.time.Instant
 
 // Um atendimento na fila do técnico: o que o cartão da fila precisa mostrar.
@@ -55,13 +58,6 @@ fun filtrarFila(itens: List<ItemDaFila>, filtro: FiltroDaFila, busca: String): L
 internal fun combinaComABusca(item: ItemDaFila, termo: String): Boolean =
     listOfNotNull(item.protocolo, item.nomeCliente, item.local)
         .any { normalizarParaBusca(it).contains(termo) }
-
-// Minúsculas, sem acentos e sem espaços nas pontas: "Ribeirão" e "ribeirao" ficam iguais.
-// A forma NFD separa a letra do acento, e o replace tira só as marcas de acento.
-internal fun normalizarParaBusca(texto: String): String =
-    Normalizer.normalize(texto.trim(), Normalizer.Form.NFD)
-        .replace(Regex("\\p{Mn}+"), "")
-        .lowercase()
 
 // Ordem da fila: primeiro o que está em atendimento (trabalho em curso); depois os demais, do mais
 // antigo para o mais novo; no empate, pelo número do protocolo.

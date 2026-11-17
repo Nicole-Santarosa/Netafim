@@ -33,13 +33,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.DetalheAtendimento
-import com.example.netafim.atendimento.dominio.MotivoAtendimento
-import com.example.netafim.atendimento.dominio.StatusAtendimento
 import com.example.netafim.atendimento.dominio.linhaDeLocal
 import com.example.netafim.atendimento.dominio.linhaDoTempo
+import com.example.netafim.atendimento.dominio.selo
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
+import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 
 // Detalhe de um atendimento para o cliente: linha do tempo e informações. Tela sem estado.

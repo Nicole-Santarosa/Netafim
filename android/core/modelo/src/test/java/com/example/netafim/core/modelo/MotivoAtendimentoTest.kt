@@ -1,4 +1,4 @@
-package com.example.netafim.atendimento.dominio
+package com.example.netafim.core.modelo
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

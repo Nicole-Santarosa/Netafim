@@ -1,5 +1,6 @@
 package com.example.netafim.atendimento.dominio
 
+import com.example.netafim.core.modelo.StatusAtendimento
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

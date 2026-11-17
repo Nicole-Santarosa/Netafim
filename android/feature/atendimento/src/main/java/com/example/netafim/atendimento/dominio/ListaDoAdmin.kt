@@ -1,5 +1,7 @@
 package com.example.netafim.atendimento.dominio
 
+import com.example.netafim.core.modelo.ComparadorDeProtocolo
+import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 
 // Origem do atendimento: quem abriu a solicitação. Os códigos são os do contrato da API (schema Origem).

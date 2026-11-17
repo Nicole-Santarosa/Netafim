@@ -1,5 +1,8 @@
 package com.example.netafim.atendimento.dominio
 
+import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.StatusAtendimento
+
 // O que a tela de detalhe do técnico mostra de um atendimento. O local é opcional (o atendimento pode
 // ter sido aberto sem cidade nem fazenda) e as culturas podem vir vazias.
 data class DetalheDoTecnico(

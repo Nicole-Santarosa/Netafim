@@ -24,14 +24,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.DetalheDoTecnico
-import com.example.netafim.atendimento.dominio.MotivoAtendimento
-import com.example.netafim.atendimento.dominio.StatusAtendimento
 import com.example.netafim.atendimento.dominio.culturasEmTexto
 import com.example.netafim.atendimento.dominio.podeIniciar
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.CampoDeLeitura
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
+import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.StatusAtendimento
 
 // Detalhe do atendimento para o técnico. Tela sem estado: mostra os dados que receber e só chama
 // aoIniciar quando o técnico toca no botão. O que acontece depois do clique (chamada ao servidor e

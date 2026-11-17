@@ -1,5 +1,7 @@
 package com.example.netafim.atendimento.dominio
 
+import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 
 // Dados de um atendimento que a tela de detalhe do cliente mostra.
