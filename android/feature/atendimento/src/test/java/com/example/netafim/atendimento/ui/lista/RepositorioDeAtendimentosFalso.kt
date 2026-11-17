@@ -12,9 +12,9 @@ import com.example.netafim.core.modelo.SolicitacaoDeAbertura
 import com.example.netafim.core.modelo.buscarNosItens
 import com.example.netafim.core.modelo.ordenar
 import com.example.netafim.core.modelo.sessao.SessaoDoUsuario
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 // Dublê de teste do contrato AtendimentoRepository. NÃO é a implementação real (a do Room e da
@@ -22,10 +22,10 @@ import kotlinx.coroutines.flow.map
 // diante de um repositório que cumpre o contrato: a lista sai já filtrada, buscada e ordenada, e muda quando
 // os dados mudam.
 //
-// O falso só aplica o que as telas de lista usam: status, origem, somenteMeusComoTecnico (pelo usuário da
-// sessão, que é quem o repositório de verdade consultaria), busca e ordem. O critério origemDoRegistro não
-// é aplicado porque o item de lista não carrega essa informação. A leitura de um atendimento só (detalhe)
-// não é usada pelas listas e devolve sempre nulo.
+// Nas listas o falso aplica status, origem, somenteMeusComoTecnico (pelo usuário da sessão, que é quem o
+// repositório de verdade consultaria), busca e ordem. O critério origemDoRegistro não é aplicado porque o item
+// de lista não carrega essa informação. O detalhe devolve o atendimento que o teste definiu, os catálogos
+// devolvem o que o teste definiu, e cada escrita devolve o resultado que o teste configurou (Sucesso por padrão).
 class RepositorioDeAtendimentosFalso(private val sessao: SessaoDoUsuario) : AtendimentoRepository {
 
     private val itens = MutableStateFlow<List<ItemDeAtendimento>>(emptyList())
@@ -38,6 +38,32 @@ class RepositorioDeAtendimentosFalso(private val sessao: SessaoDoUsuario) : Aten
     val aberturas = mutableListOf<SolicitacaoDeAbertura>()
     val iniciados = mutableListOf<String>()
     val alteracoes = mutableListOf<Pair<String, AlteracaoDeAtendimento>>()
+
+    // Resultado que cada escrita devolve. O teste troca para simular cada erro.
+    var resultadoDaAbertura: ResultadoDaAcao = ResultadoDaAcao.Sucesso
+    var resultadoDoInicio: ResultadoDaAcao = ResultadoDaAcao.Sucesso
+    var resultadoDaAlteracao: ResultadoDaAcao = ResultadoDaAcao.Sucesso
+
+    // Quando preenchido, cada escrita registra a chamada e FICA ESPERANDO até o teste completar o portão. Serve
+    // para simular uma escrita demorada e provar que o segundo toque, feito enquanto ela roda, é ignorado.
+    var portao: CompletableDeferred<Unit>? = null
+
+    private val atendimento = MutableStateFlow<Atendimento?>(null)
+    private val culturas = MutableStateFlow<List<Cultura>>(emptyList())
+    private val distribuidores = MutableStateFlow<List<Distribuidor>>(emptyList())
+
+    // Define o atendimento que o detalhe vai encontrar (nulo = não existe). Emite de novo ao mudar.
+    fun definirAtendimento(novo: Atendimento?) {
+        atendimento.value = novo
+    }
+
+    fun definirCulturas(novas: List<Cultura>) {
+        culturas.value = novas
+    }
+
+    fun definirDistribuidores(novos: List<Distribuidor>) {
+        distribuidores.value = novos
+    }
 
     // Troca o conteúdo do "banco". Quem está observando recebe a lista nova, como aconteceria com o Room.
     fun definirItens(novos: List<ItemDeAtendimento>) {
@@ -60,24 +86,35 @@ class RepositorioDeAtendimentosFalso(private val sessao: SessaoDoUsuario) : Aten
         return ordenar(buscarNosItens(filtrados, filtro.busca), filtro.ordem)
     }
 
-    override fun observarAtendimento(id: String): Flow<Atendimento?> = flowOf(null)
+    // Ids que o detalhe e a edição pediram para observar. Serve para provar que, sem usuário logado, o
+    // repositório não é consultado.
+    val idsObservados = mutableListOf<String>()
+
+    // Só devolve o atendimento definido se o id bate; qualquer outro id "não existe".
+    override fun observarAtendimento(id: String): Flow<Atendimento?> {
+        idsObservados += id
+        return atendimento.map { atual -> atual?.takeIf { it.item.id == id } }
+    }
 
     override suspend fun abrirAtendimento(solicitacao: SolicitacaoDeAbertura): ResultadoDaAcao {
         aberturas += solicitacao
-        return ResultadoDaAcao.Sucesso
+        portao?.await()
+        return resultadoDaAbertura
     }
 
     override suspend fun iniciarAtendimento(id: String): ResultadoDaAcao {
         iniciados += id
-        return ResultadoDaAcao.Sucesso
+        portao?.await()
+        return resultadoDoInicio
     }
 
     override suspend fun alterarAtendimento(id: String, alteracao: AlteracaoDeAtendimento): ResultadoDaAcao {
         alteracoes += id to alteracao
-        return ResultadoDaAcao.Sucesso
+        portao?.await()
+        return resultadoDaAlteracao
     }
 
-    override fun observarCulturas(): Flow<List<Cultura>> = flowOf(emptyList())
+    override fun observarCulturas(): Flow<List<Cultura>> = culturas
 
-    override fun observarDistribuidores(): Flow<List<Distribuidor>> = flowOf(emptyList())
+    override fun observarDistribuidores(): Flow<List<Distribuidor>> = distribuidores
 }

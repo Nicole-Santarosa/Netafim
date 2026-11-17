@@ -19,11 +19,15 @@ class SessaoFalsa(inicial: UsuarioDaSessao? = umUsuario()) : SessaoDoUsuario {
 
     companion object {
         // Usuário comum de teste. Cada teste troca só o que importa para ele.
-        fun umUsuario(id: Int = 10, tipo: TipoDeOrganizacao = TipoDeOrganizacao.DISTRIBUIDOR) = UsuarioDaSessao(
+        fun umUsuario(
+            id: Int = 10,
+            tipo: TipoDeOrganizacao = TipoDeOrganizacao.DISTRIBUIDOR,
+            idDaOrganizacao: Int? = 1,
+        ) = UsuarioDaSessao(
             id = id,
             nome = "Usuário $id",
             tipoDeOrganizacao = tipo,
-            idDaOrganizacao = 1,
+            idDaOrganizacao = idDaOrganizacao,
             ehAdmin = false,
             permissoes = emptySet(),
         )

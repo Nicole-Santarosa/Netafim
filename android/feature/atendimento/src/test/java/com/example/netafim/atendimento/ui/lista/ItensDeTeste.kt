@@ -1,9 +1,11 @@
 package com.example.netafim.atendimento.ui.lista
 
+import com.example.netafim.core.modelo.Atendimento
 import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.OrigemAtendimento
 import com.example.netafim.core.modelo.SituacaoDeSincronizacao
+import com.example.netafim.core.modelo.SituacaoDoProjeto
 import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -36,6 +38,25 @@ fun itemDeTeste(
 )
 
 fun ids(lista: List<ItemDeAtendimento>) = lista.map { it.id }
+
+// Atendimento completo de teste, em cima do itemDeTeste. Só o que os testes de detalhe e edição variam
+// (id, status e situação do projeto) é parâmetro; o resto fica com valor fixo.
+fun atendimentoDeTeste(
+    id: String = "1",
+    status: StatusAtendimento = StatusAtendimento.AGENDADO,
+    situacaoProjeto: SituacaoDoProjeto? = null,
+) = Atendimento(
+    item = itemDeTeste(id, status = status),
+    produtor = "Produtor $id",
+    nomeFazenda = null,
+    cidade = null,
+    culturas = emptyList(),
+    situacaoProjeto = situacaoProjeto,
+    tipoVenda = null,
+    historico = emptyList(),
+    conflito = null,
+    erroDeEnvio = null,
+)
 
 // O StateFlow dos ViewModels usa WhileSubscribed: só consulta o repositório enquanto alguém coleta. No teste
 // esse alguém é esta coleta em segundo plano, que o runTest cancela sozinho no fim e que roda sem esperar
