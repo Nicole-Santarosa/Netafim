@@ -20,12 +20,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
-import com.example.netafim.atendimento.dominio.DetalheDoDistribuidor
 import com.example.netafim.atendimento.dominio.selo
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.CampoDeLeitura
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
+import com.example.netafim.atendimento.ui.comum.atendimentoDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
+import com.example.netafim.core.modelo.Atendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
 
@@ -33,7 +34,7 @@ import com.example.netafim.core.modelo.StatusAtendimento
 // o atendimento da região e não altera nada, então não há nenhum botão nem lambda de ação.
 @Composable
 fun DetalheDoDistribuidorTela(
-    detalhe: DetalheDoDistribuidor,
+    atendimento: Atendimento,
     aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -57,23 +58,23 @@ fun DetalheDoDistribuidorTela(
             // Campos de leitura, na ordem do protótipo. Aqui o espaço depois da divisória é de 12dp.
             CampoDeLeitura(
                 rotulo = stringResource(R.string.atendimento_distribuidor_produtor),
-                valor = detalhe.produtor,
+                valor = atendimento.produtor,
                 espacoDepoisDaDivisoria = 12.dp,
             )
             CampoDeLeitura(
                 rotulo = stringResource(R.string.atendimento_distribuidor_local),
-                valor = detalhe.local ?: naoInformado,
+                valor = atendimento.item.local ?: naoInformado,
                 espacoDepoisDaDivisoria = 12.dp,
             )
             CampoDeLeitura(
                 rotulo = stringResource(R.string.atendimento_distribuidor_motivo),
-                valor = stringResource(detalhe.motivo.rotulo()),
+                valor = stringResource(atendimento.item.motivo.rotulo()),
                 espacoDepoisDaDivisoria = 12.dp,
             )
             // O status aparece como texto simples, o mesmo rótulo do selo que o cliente vê, sem chip.
             CampoDeLeitura(
                 rotulo = stringResource(R.string.atendimento_distribuidor_status),
-                valor = stringResource(detalhe.status.selo.rotulo()),
+                valor = stringResource(atendimento.item.status.selo.rotulo()),
                 espacoDepoisDaDivisoria = 12.dp,
             )
             Spacer(Modifier.height(24.dp))
@@ -106,48 +107,49 @@ private fun PilulaSomenteLeitura() {
 }
 
 // Dados fictícios dos previews.
-private val detalheDoPreview = DetalheDoDistribuidor(
-    id = "1",
+private fun atendimentoDoPreview(
+    status: StatusAtendimento = StatusAtendimento.EM_ATENDIMENTO,
+    cidade: String? = "Arealva, SP",
+) = atendimentoDePreview(
+    status = status,
     protocolo = "OS-0506",
-    produtor = "Vanderlei Zucchi Rodas",
-    local = "Arealva, SP",
     motivo = MotivoAtendimento.DIGITAL_FARMING,
-    status = StatusAtendimento.EM_ATENDIMENTO,
+    cidade = cidade,
 )
 
 @Composable
-private fun TelaDePreview(detalhe: DetalheDoDistribuidor) {
+private fun TelaDePreview(atendimento: Atendimento) {
     TemaDePreview {
-        DetalheDoDistribuidorTela(detalhe = detalhe, aoVoltar = {})
+        DetalheDoDistribuidorTela(atendimento = atendimento, aoVoltar = {})
     }
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 828)
 @Composable
 private fun DetalheDoDistribuidorEmAtendimentoPreview() {
-    TelaDePreview(detalheDoPreview)
+    TelaDePreview(atendimentoDoPreview())
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 828)
 @Composable
 private fun DetalheDoDistribuidorDestinadoPreview() {
-    TelaDePreview(detalheDoPreview.copy(status = StatusAtendimento.DESTINADO))
+    TelaDePreview(atendimentoDoPreview(status = StatusAtendimento.DESTINADO))
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 828)
 @Composable
 private fun DetalheDoDistribuidorEncerradoPreview() {
-    TelaDePreview(detalheDoPreview.copy(status = StatusAtendimento.ENCERRADO))
+    TelaDePreview(atendimentoDoPreview(status = StatusAtendimento.ENCERRADO))
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 828)
 @Composable
 private fun DetalheDoDistribuidorCanceladoPreview() {
-    TelaDePreview(detalheDoPreview.copy(status = StatusAtendimento.CANCELADO))
+    TelaDePreview(atendimentoDoPreview(status = StatusAtendimento.CANCELADO))
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 828)
 @Composable
 private fun DetalheDoDistribuidorSemLocalPreview() {
-    TelaDePreview(detalheDoPreview.copy(local = null))
+    TelaDePreview(atendimentoDoPreview(cidade = null))
 }

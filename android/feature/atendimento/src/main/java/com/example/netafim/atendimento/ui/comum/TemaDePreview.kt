@@ -5,6 +5,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.example.netafim.core.modelo.Atendimento
+import com.example.netafim.core.modelo.Cultura
+import com.example.netafim.core.modelo.EventoDoHistorico
 import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.OrigemAtendimento
@@ -57,3 +60,37 @@ internal fun itemDePreview(
     idTecnicoResponsavel = null,
     sincronizacao = SituacaoDeSincronizacao.SINCRONIZADO,
 )
+
+// Monta um atendimento completo para os previews dos detalhes, em cima do itemDePreview. O local do item é
+// o nome da fazenda e a cidade juntos, como o repositório entrega. O que o detalhe não desenha (situação do
+// projeto, tipo de venda, conflito e erro de envio) fica vazio.
+internal fun atendimentoDePreview(
+    status: StatusAtendimento,
+    protocolo: String? = "OS-0498",
+    motivo: MotivoAtendimento = MotivoAtendimento.DUVIDAS,
+    produtor: String = "Vanderlei Zucchi Rodas",
+    nomeFazenda: String? = null,
+    cidade: String? = null,
+    culturas: List<Cultura> = emptyList(),
+    historico: List<EventoDoHistorico> = emptyList(),
+) = Atendimento(
+    item = itemDePreview(
+        id = "1",
+        protocolo = protocolo,
+        motivo = motivo,
+        status = status,
+        abertoEm = "2026-10-20T15:00:00Z",
+        nomeCliente = produtor,
+        local = listOfNotNull(nomeFazenda, cidade).joinToString(" · ").ifEmpty { null },
+    ),
+    produtor = produtor,
+    nomeFazenda = nomeFazenda,
+    cidade = cidade,
+    culturas = culturas,
+    situacaoProjeto = null,
+    tipoVenda = null,
+    historico = historico,
+    conflito = null,
+    erroDeEnvio = null,
+)
+

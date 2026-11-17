@@ -1,19 +1,6 @@
 package com.example.netafim.atendimento.dominio
 
-import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
-
-// O que a tela de detalhe do técnico mostra de um atendimento. O local é opcional (o atendimento pode
-// ter sido aberto sem cidade nem fazenda) e as culturas podem vir vazias.
-data class DetalheDoTecnico(
-    val id: String,
-    val protocolo: String,
-    val produtor: String,
-    val local: String?,
-    val culturas: List<String>,
-    val motivo: MotivoAtendimento,
-    val status: StatusAtendimento,
-)
 
 // Diz se a tela mostra o botão Iniciar atendimento. A regra espelha o back-end: a mudança só é
 // aceita de agendado para em atendimento, e só o técnico responsável pode fazê-la. Quem confere o

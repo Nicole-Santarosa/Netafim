@@ -1,6 +1,11 @@
 package com.example.netafim.atendimento.dominio
 
+import com.example.netafim.core.modelo.Atendimento
+import com.example.netafim.core.modelo.EventoDoHistorico
+import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.OrigemAtendimento
+import com.example.netafim.core.modelo.SituacaoDeSincronizacao
 import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 import org.junit.Assert.assertEquals
@@ -120,24 +125,104 @@ class LinhaDoTempoTest {
         }
     }
 
+    // ---- statusAntesDoCancelamento(historico)
+
+    private fun evento(
+        id: Long,
+        tipo: String = "status_alterado",
+        anterior: String? = null,
+        novo: String? = null,
+    ) = EventoDoHistorico(id, tipo, anterior, novo, Instant.parse("2026-11-01T12:00:00Z"))
+
     @Test
-    fun detalheGuardaOStatusAnteriorEOPadraoENulo() {
-        assertNull(detalhe(null, null).statusAntesDoCancelamento)
+    fun semHistoricoOuSemCancelamentoOStatusAnteriorENulo() {
+        assertNull(statusAntesDoCancelamento(emptyList()))
+        val semCancelamento = listOf(
+            evento(1, tipo = "criado", novo = "aberto"),
+            evento(2, anterior = "aberto", novo = "destinado"),
+        )
+        assertNull(statusAntesDoCancelamento(semCancelamento))
+    }
+
+    @Test
+    fun umCancelamentoDevolveOStatusAnterior() {
+        val historico = listOf(
+            evento(1, anterior = "agendado", novo = "em_atendimento"),
+            evento(2, anterior = "em_atendimento", novo = "cancelado"),
+        )
+        assertEquals(StatusAtendimento.EM_ATENDIMENTO, statusAntesDoCancelamento(historico))
         assertEquals(
-            StatusAtendimento.EM_ATENDIMENTO,
-            detalhe(null, null).copy(statusAntesDoCancelamento = StatusAtendimento.EM_ATENDIMENTO)
-                .statusAntesDoCancelamento,
+            StatusAtendimento.ABERTO,
+            statusAntesDoCancelamento(listOf(evento(1, anterior = "aberto", novo = "cancelado"))),
         )
     }
 
-    private fun detalhe(fazenda: String?, cidade: String?) = DetalheAtendimento(
-        id = "1",
-        protocolo = "OS-0001",
-        motivo = MotivoAtendimento.DUVIDAS,
-        status = StatusAtendimento.ABERTO,
-        abertoEm = Instant.parse("2026-11-11T12:00:00Z"),
+    @Test
+    fun comVariosCancelamentosVaiOUltimoNaOrdemDaLista() {
+        // Não reordena por data nem por id: o repositório já entrega na ordem do servidor.
+        val historico = listOf(
+            evento(5, anterior = "aberto", novo = "cancelado"),
+            evento(2, anterior = "em_atendimento", novo = "cancelado"),
+        )
+        assertEquals(StatusAtendimento.EM_ATENDIMENTO, statusAntesDoCancelamento(historico))
+    }
+
+    @Test
+    fun eventoPosteriorQueNaoECancelamentoNaoApagaOCancelamento() {
+        val historico = listOf(
+            evento(1, anterior = "em_atendimento", novo = "cancelado"),
+            evento(2, tipo = "editado_pos_finalizacao", anterior = "x", novo = "y"),
+        )
+        assertEquals(StatusAtendimento.EM_ATENDIMENTO, statusAntesDoCancelamento(historico))
+    }
+
+    @Test
+    fun codigoAnteriorQueOAppNaoConheceViraNulo() {
+        assertNull(statusAntesDoCancelamento(listOf(evento(1, anterior = "status_novo_do_servidor", novo = "cancelado"))))
+    }
+
+    @Test
+    fun cancelamentoSemValorAnteriorViraNulo() {
+        assertNull(statusAntesDoCancelamento(listOf(evento(1, anterior = null, novo = "cancelado"))))
+    }
+
+    @Test
+    fun eventoDeOutroTipoComValorNovoCanceladoEIgnorado() {
+        // Só status_alterado conta, mesmo que outro tipo de evento traga o texto "cancelado".
+        val historico = listOf(evento(1, tipo = "destinado", anterior = "em_atendimento", novo = "cancelado"))
+        assertNull(statusAntesDoCancelamento(historico))
+    }
+
+    @Test
+    fun mudancaDeStatusParaOutroValorNaoContaComoCancelamento() {
+        val historico = listOf(evento(1, anterior = "aberto", novo = "destinado"))
+        assertNull(statusAntesDoCancelamento(historico))
+    }
+
+    // ---- linhaDeLocal
+
+    private fun detalhe(fazenda: String?, cidade: String?) = Atendimento(
+        item = ItemDeAtendimento(
+            id = "1",
+            protocolo = "OS-0001",
+            motivo = MotivoAtendimento.DUVIDAS,
+            status = StatusAtendimento.ABERTO,
+            origem = OrigemAtendimento.CLIENTE_FINAL,
+            abertoEm = Instant.parse("2026-11-11T12:00:00Z"),
+            nomeCliente = null,
+            local = null,
+            idTecnicoResponsavel = null,
+            sincronizacao = SituacaoDeSincronizacao.SINCRONIZADO,
+        ),
+        produtor = "Produtor",
         nomeFazenda = fazenda,
         cidade = cidade,
+        culturas = emptyList(),
+        situacaoProjeto = null,
+        tipoVenda = null,
+        historico = emptyList(),
+        conflito = null,
+        erroDeEnvio = null,
     )
 
     @Test

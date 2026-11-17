@@ -23,13 +23,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
-import com.example.netafim.atendimento.dominio.DetalheDoTecnico
 import com.example.netafim.atendimento.dominio.culturasEmTexto
 import com.example.netafim.atendimento.dominio.podeIniciar
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.CampoDeLeitura
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
+import com.example.netafim.atendimento.ui.comum.atendimentoDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
+import com.example.netafim.core.modelo.Atendimento
+import com.example.netafim.core.modelo.Cultura
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
 
@@ -40,7 +42,7 @@ import com.example.netafim.core.modelo.StatusAtendimento
 // indicador de progresso enquanto o pedido está a caminho.
 @Composable
 fun DetalheDoTecnicoTela(
-    detalhe: DetalheDoTecnico,
+    atendimento: Atendimento,
     iniciando: Boolean,
     aoIniciar: () -> Unit,
     aoVoltar: () -> Unit,
@@ -62,20 +64,24 @@ fun DetalheDoTecnicoTela(
             Spacer(Modifier.height(26.dp))
 
             // Campos de leitura, na ordem do protótipo.
-            CampoDeLeitura(stringResource(R.string.atendimento_tecnico_numero), detalhe.protocolo)
-            CampoDeLeitura(stringResource(R.string.atendimento_tecnico_produtor), detalhe.produtor)
-            CampoDeLeitura(stringResource(R.string.atendimento_tecnico_local), detalhe.local ?: naoInformado)
+            // Sem protocolo (atendimento criado sem conexão) o servidor ainda não o gerou.
+            CampoDeLeitura(
+                stringResource(R.string.atendimento_tecnico_numero),
+                atendimento.item.protocolo ?: stringResource(R.string.atendimento_protocolo_pendente),
+            )
+            CampoDeLeitura(stringResource(R.string.atendimento_tecnico_produtor), atendimento.produtor)
+            CampoDeLeitura(stringResource(R.string.atendimento_tecnico_local), atendimento.item.local ?: naoInformado)
             CampoDeLeitura(
                 stringResource(R.string.atendimento_tecnico_cultura),
-                culturasEmTexto(detalhe.culturas) ?: naoInformado,
+                culturasEmTexto(atendimento.culturas.map { it.nome }) ?: naoInformado,
             )
             CampoDeLeitura(
                 stringResource(R.string.atendimento_tecnico_motivo),
-                stringResource(detalhe.motivo.rotulo()),
+                stringResource(atendimento.item.motivo.rotulo()),
             )
 
             // Ação principal, só no status em que o back-end aceita iniciar.
-            if (podeIniciar(detalhe.status)) {
+            if (podeIniciar(atendimento.item.status)) {
                 Spacer(Modifier.height(34.dp))
                 BotaoIniciar(iniciando = iniciando, aoIniciar = aoIniciar)
             }
@@ -118,55 +124,61 @@ private fun BotaoIniciar(iniciando: Boolean, aoIniciar: () -> Unit) {
 }
 
 // Dados fictícios dos previews.
-private val detalheDoPreview = DetalheDoTecnico(
-    id = "1",
+private fun atendimentoDoPreview(
+    status: StatusAtendimento = StatusAtendimento.AGENDADO,
+    cidade: String? = "Arealva, SP",
+    culturas: List<Cultura> = listOf(Cultura(1, "Citrus")),
+) = atendimentoDePreview(
+    status = status,
     protocolo = "OS-0506",
-    produtor = "Vanderlei Zucchi Rodas",
-    local = "Arealva, SP",
-    culturas = listOf("Citrus"),
     motivo = MotivoAtendimento.DIGITAL_FARMING,
-    status = StatusAtendimento.AGENDADO,
+    cidade = cidade,
+    culturas = culturas,
 )
 
 @Composable
-private fun TelaDePreview(detalhe: DetalheDoTecnico, iniciando: Boolean = false) {
+private fun TelaDePreview(atendimento: Atendimento, iniciando: Boolean = false) {
     TemaDePreview {
-        DetalheDoTecnicoTela(detalhe = detalhe, iniciando = iniciando, aoIniciar = {}, aoVoltar = {})
+        DetalheDoTecnicoTela(atendimento = atendimento, iniciando = iniciando, aoIniciar = {}, aoVoltar = {})
     }
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 828)
 @Composable
 private fun DetalheDoTecnicoAgendadoPreview() {
-    TelaDePreview(detalheDoPreview)
+    TelaDePreview(atendimentoDoPreview())
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 828)
 @Composable
 private fun DetalheDoTecnicoIniciandoPreview() {
-    TelaDePreview(detalheDoPreview, iniciando = true)
+    TelaDePreview(atendimentoDoPreview(), iniciando = true)
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 828)
 @Composable
 private fun DetalheDoTecnicoEmAtendimentoPreview() {
-    TelaDePreview(detalheDoPreview.copy(status = StatusAtendimento.EM_ATENDIMENTO))
+    TelaDePreview(atendimentoDoPreview(status = StatusAtendimento.EM_ATENDIMENTO))
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 828)
 @Composable
 private fun DetalheDoTecnicoDestinadoPreview() {
-    TelaDePreview(detalheDoPreview.copy(status = StatusAtendimento.DESTINADO))
+    TelaDePreview(atendimentoDoPreview(status = StatusAtendimento.DESTINADO))
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 828)
 @Composable
 private fun DetalheDoTecnicoSemLocalNemCulturasPreview() {
-    TelaDePreview(detalheDoPreview.copy(local = null, culturas = emptyList()))
+    TelaDePreview(atendimentoDoPreview(cidade = null, culturas = emptyList()))
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 828)
 @Composable
 private fun DetalheDoTecnicoVariasCulturasPreview() {
-    TelaDePreview(detalheDoPreview.copy(culturas = listOf("Citrus", "Cana-de-açúcar", "Soja", "Milho")))
+    TelaDePreview(
+        atendimentoDoPreview(
+            culturas = listOf(Cultura(1, "Citrus"), Cultura(2, "Cana-de-açúcar"), Cultura(3, "Soja"), Cultura(4, "Milho")),
+        ),
+    )
 }

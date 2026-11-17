@@ -32,14 +32,16 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
-import com.example.netafim.atendimento.dominio.DetalheAtendimento
 import com.example.netafim.atendimento.dominio.linhaDeLocal
 import com.example.netafim.atendimento.dominio.linhaDoTempo
 import com.example.netafim.atendimento.dominio.selo
+import com.example.netafim.atendimento.dominio.statusAntesDoCancelamento
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
+import com.example.netafim.atendimento.ui.comum.atendimentoDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
-import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.Atendimento
+import com.example.netafim.core.modelo.EventoDoHistorico
 import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 
@@ -48,7 +50,7 @@ import java.time.Instant
 // parte do grupo: quem monta a tela por cima encaixa esses botões sem precisar mudar esta tela.
 @Composable
 fun DetalheAtendimentoTela(
-    detalhe: DetalheAtendimento,
+    atendimento: Atendimento,
     aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
     acoes: @Composable ColumnScope.() -> Unit = {},
@@ -59,12 +61,16 @@ fun DetalheAtendimentoTela(
             .background(MaterialTheme.colorScheme.background),
     ) {
         BarraDoAtendimento(
-            titulo = stringResource(R.string.atendimento_detalhe_titulo, detalhe.protocolo),
+            // Sem protocolo (atendimento criado sem conexão) o servidor ainda não o gerou.
+            titulo = stringResource(
+                R.string.atendimento_detalhe_titulo,
+                atendimento.item.protocolo ?: stringResource(R.string.atendimento_protocolo_pendente),
+            ),
             aoVoltar = aoVoltar,
             subtitulo = stringResource(
                 R.string.atendimento_detalhe_subtitulo,
-                stringResource(detalhe.motivo.rotulo()),
-                stringResource(detalhe.status.selo.rotulo()),
+                stringResource(atendimento.item.motivo.rotulo()),
+                stringResource(atendimento.item.status.selo.rotulo()),
             ),
         )
         Column(
@@ -75,10 +81,13 @@ fun DetalheAtendimentoTela(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             CartaoDeSecao {
-                LinhaDoTempo(etapas = linhaDoTempo(detalhe.status, detalhe.statusAntesDoCancelamento))
+                // O status anterior ao cancelamento vem do histórico do próprio atendimento.
+                LinhaDoTempo(
+                    etapas = linhaDoTempo(atendimento.item.status, statusAntesDoCancelamento(atendimento.historico)),
+                )
             }
             CartaoDeSecao {
-                CartaoDeInformacoes(detalhe)
+                CartaoDeInformacoes(atendimento)
             }
             acoes()
         }
@@ -100,15 +109,15 @@ private fun CartaoDeSecao(conteudo: @Composable () -> Unit) {
 
 // Linha de local (só se houver fazenda ou cidade) e linha do motivo.
 @Composable
-private fun CartaoDeInformacoes(detalhe: DetalheAtendimento) {
-    val local = linhaDeLocal(detalhe)
+private fun CartaoDeInformacoes(atendimento: Atendimento) {
+    val local = linhaDeLocal(atendimento)
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (local != null) {
             LinhaDeInformacao(icone = Icons.Filled.LocationOn, texto = local)
         }
         LinhaDeInformacao(
             icone = Icons.AutoMirrored.Filled.Assignment,
-            texto = stringResource(R.string.atendimento_detalhe_motivo, stringResource(detalhe.motivo.rotulo())),
+            texto = stringResource(R.string.atendimento_detalhe_motivo, stringResource(atendimento.item.motivo.rotulo())),
         )
     }
 }
@@ -131,57 +140,65 @@ private fun LinhaDeInformacao(icone: ImageVector, texto: String) {
     }
 }
 
-// Dados fictícios só para os previews.
-private fun detalheDePreview(
+// Dados fictícios só para os previews. O cancelamento vem do histórico, como no uso real.
+private fun atendimentoDoPreview(
     status: StatusAtendimento,
     nomeFazenda: String? = "Fazenda Santa Rita",
     cidade: String? = "Ribeirão Preto, SP",
-    motivo: MotivoAtendimento = MotivoAtendimento.DUVIDAS,
-    statusAntesDoCancelamento: StatusAtendimento? = null,
-) = DetalheAtendimento(
-    id = "1",
-    protocolo = "OS-0498",
-    motivo = motivo,
+    historico: List<EventoDoHistorico> = emptyList(),
+) = atendimentoDePreview(
     status = status,
-    abertoEm = Instant.parse("2026-10-20T15:00:00Z"),
     nomeFazenda = nomeFazenda,
     cidade = cidade,
-    statusAntesDoCancelamento = statusAntesDoCancelamento,
+    historico = historico,
+)
+
+// Evento de mudança de status, como o banco grava: os dois valores são códigos de status.
+private fun mudancaDeStatus(id: Long, anterior: StatusAtendimento, novo: StatusAtendimento) = EventoDoHistorico(
+    id = id,
+    tipo = "status_alterado",
+    valorAnterior = anterior.codigo,
+    valorNovo = novo.codigo,
+    em = Instant.parse("2026-10-25T15:00:00Z"),
 )
 
 @Composable
-private fun TelaDePreview(detalhe: DetalheAtendimento) {
-    TemaDePreview { DetalheAtendimentoTela(detalhe = detalhe, aoVoltar = {}) }
+private fun TelaDePreview(atendimento: Atendimento) {
+    TemaDePreview { DetalheAtendimentoTela(atendimento = atendimento, aoVoltar = {}) }
 }
 
 @Preview(showBackground = true, heightDp = 700)
 @Composable
-private fun DetalheConcluidoPreview() = TelaDePreview(detalheDePreview(StatusAtendimento.ENCERRADO))
+private fun DetalheConcluidoPreview() = TelaDePreview(atendimentoDoPreview(StatusAtendimento.ENCERRADO))
 
 @Preview(showBackground = true, heightDp = 700)
 @Composable
-private fun DetalheEmAtendimentoPreview() = TelaDePreview(detalheDePreview(StatusAtendimento.EM_ATENDIMENTO))
+private fun DetalheEmAtendimentoPreview() = TelaDePreview(atendimentoDoPreview(StatusAtendimento.EM_ATENDIMENTO))
 
 @Preview(showBackground = true, heightDp = 700)
 @Composable
 private fun DetalheAbertoSoComCidadePreview() =
-    TelaDePreview(detalheDePreview(StatusAtendimento.ABERTO, nomeFazenda = null, cidade = "Arealva, SP"))
+    TelaDePreview(atendimentoDoPreview(StatusAtendimento.ABERTO, nomeFazenda = null, cidade = "Arealva, SP"))
 
 @Preview(showBackground = true, heightDp = 700)
 @Composable
-private fun DetalheCanceladoPreview() = TelaDePreview(detalheDePreview(StatusAtendimento.CANCELADO))
+private fun DetalheCanceladoPreview() = TelaDePreview(atendimentoDoPreview(StatusAtendimento.CANCELADO))
 
-// Cancelado durante o atendimento: a etapa Em atendimento continua como feita.
+// Cancelado durante o atendimento: a etapa Em atendimento continua como feita, porque o histórico mostra
+// que o status anterior ao cancelamento era em atendimento.
 @Preview(showBackground = true, heightDp = 700)
 @Composable
 private fun DetalheCanceladoAposEmAtendimentoPreview() = TelaDePreview(
-    detalheDePreview(
+    atendimentoDoPreview(
         StatusAtendimento.CANCELADO,
-        statusAntesDoCancelamento = StatusAtendimento.EM_ATENDIMENTO,
+        historico = listOf(
+            mudancaDeStatus(1, StatusAtendimento.AGENDADO, StatusAtendimento.EM_ATENDIMENTO),
+            mudancaDeStatus(2, StatusAtendimento.EM_ATENDIMENTO, StatusAtendimento.CANCELADO),
+        ),
     ),
 )
 
 @Preview(showBackground = true, heightDp = 700)
 @Composable
 private fun DetalheSemLocalPreview() =
-    TelaDePreview(detalheDePreview(StatusAtendimento.AGENDADO, nomeFazenda = null, cidade = null))
+    TelaDePreview(atendimentoDoPreview(StatusAtendimento.AGENDADO, nomeFazenda = null, cidade = null))
