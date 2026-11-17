@@ -41,8 +41,9 @@ internal fun TemaDePreview(conteudo: @Composable () -> Unit) {
     }
 }
 
-// Monta um item de lista para os previews. As telas de lista ainda não mostram a origem, o técnico nem a
-// situação de sincronização, então esses campos recebem um valor fixo e o preview só varia o que a tela desenha.
+// Monta um item de lista para os previews. As telas de lista não mostram a origem nem o técnico, então esses
+// campos recebem um valor fixo; a situação de sincronização começa como sincronizada e os previews do
+// indicador trocam.
 internal fun itemDePreview(
     id: String,
     protocolo: String?,
@@ -52,6 +53,7 @@ internal fun itemDePreview(
     nomeCliente: String? = null,
     local: String? = null,
     origem: OrigemAtendimento = OrigemAtendimento.CLIENTE_FINAL,
+    sincronizacao: SituacaoDeSincronizacao = SituacaoDeSincronizacao.SINCRONIZADO,
 ) = ItemDeAtendimento(
     id = id,
     protocolo = protocolo,
@@ -62,7 +64,7 @@ internal fun itemDePreview(
     nomeCliente = nomeCliente,
     local = local,
     idTecnicoResponsavel = null,
-    sincronizacao = SituacaoDeSincronizacao.SINCRONIZADO,
+    sincronizacao = sincronizacao,
 )
 
 // Faz nos previews o que o repositório faz de verdade: aplica status, origem, busca e ordem do pedido sobre
@@ -109,3 +111,18 @@ internal fun atendimentoDePreview(
     conflito = null,
     erroDeEnvio = null,
 )
+
+// Um item de cada situação de sincronização, para os previews das listas mostrarem os três desenhos do
+// indicador (nenhum, pendente e atenção, este em conflito e em erro) lado a lado.
+internal val itensDeCadaSincronizacao: List<ItemDeAtendimento> = SituacaoDeSincronizacao.entries.mapIndexed { i, s ->
+    itemDePreview(
+        id = "sinc-$i",
+        protocolo = "OS-060$i",
+        motivo = MotivoAtendimento.POS_VENDA,
+        status = StatusAtendimento.AGENDADO,
+        abertoEm = "2026-11-1${i}T15:00:00Z",
+        nomeCliente = "Cliente ${s.name.lowercase()}",
+        local = "Bauru, SP",
+        sincronizacao = s,
+    )
+}

@@ -31,13 +31,17 @@ import com.example.netafim.atendimento.dominio.comoFiltroDeAtendimentos
 import com.example.netafim.atendimento.dominio.selo
 import com.example.netafim.atendimento.dominio.textoDaLinha
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
+import com.example.netafim.atendimento.ui.comum.IconeDeSincronizacao
+import com.example.netafim.atendimento.ui.comum.IndicadorDeCarregando
 import com.example.netafim.atendimento.ui.comum.LinhaDeFiltros
 import com.example.netafim.atendimento.ui.comum.MensagemDeEstadoVazio
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.itemDePreview
+import com.example.netafim.atendimento.ui.comum.itensDeCadaSincronizacao
 import com.example.netafim.atendimento.ui.comum.listaDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
 import com.example.netafim.atendimento.ui.fila.SeloDaFila
+import com.example.netafim.atendimento.ui.lista.EstadoDaLista
 import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.OrigemAtendimento
@@ -48,7 +52,7 @@ import com.example.netafim.core.modelo.StatusAtendimento
 // ao chamador pela lambda. Não há busca nesta tela.
 @Composable
 fun ListaDoAdminTela(
-    itens: List<ItemDeAtendimento>,
+    estado: EstadoDaLista,
     filtro: FiltroDeOrigem,
     aoMudarFiltro: (FiltroDeOrigem) -> Unit,
     aoAbrir: (String) -> Unit,
@@ -74,24 +78,28 @@ fun ListaDoAdminTela(
             modifier = Modifier.padding(top = 16.dp),
             quebrarLinha = true,
         )
-        if (itens.isEmpty()) {
-            // Uma mensagem para filtro sem resultado, outra para lista realmente vazia.
-            MensagemDeEstadoVazio(
-                stringResource(
-                    if (filtro != FiltroDeOrigem.TODAS) {
-                        R.string.atendimento_admin_vazio_filtro
-                    } else {
-                        R.string.atendimento_admin_vazio
-                    },
-                ),
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(start = 20.dp, top = 16.dp, end = 20.dp),
-            ) {
-                items(items = itens, key = { it.id }) { item ->
-                    LinhaDoAdmin(item = item, aoClicar = { aoAbrir(item.id) })
+        when (estado) {
+            // Antes da primeira resposta do repositório: progresso, e não a mensagem de lista vazia.
+            EstadoDaLista.Carregando -> IndicadorDeCarregando(modifier = Modifier.weight(1f))
+            is EstadoDaLista.Pronta -> if (estado.itens.isEmpty()) {
+                // Uma mensagem para filtro sem resultado, outra para lista realmente vazia.
+                MensagemDeEstadoVazio(
+                    stringResource(
+                        if (filtro != FiltroDeOrigem.TODAS) {
+                            R.string.atendimento_admin_vazio_filtro
+                        } else {
+                            R.string.atendimento_admin_vazio
+                        },
+                    ),
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(start = 20.dp, top = 16.dp, end = 20.dp),
+                ) {
+                    items(items = estado.itens, key = { it.id }) { item ->
+                        LinhaDoAdmin(item = item, aoClicar = { aoAbrir(item.id) })
+                    }
                 }
             }
         }
@@ -100,8 +108,9 @@ fun ListaDoAdminTela(
 
 // Uma linha da lista: "protocolo · cliente" à esquerda (até 2 linhas) e o selo de status à direita, com
 // divisória embaixo. A linha inteira é clicável e é lida como um item só pelo leitor de tela.
-// O parâmetro "selo" existe para os selos de outras partes do grupo (editado, sincronizado, atrasado):
-// quando informado, o conteúdo passado aparece no lugar do selo de status do atendimento.
+// O parâmetro "selo" existe para os selos de outras partes do grupo (editado, atrasado): quando informado, o
+// conteúdo passado aparece no lugar do selo de status do atendimento. A sincronização não passa por ele: tem o
+// próprio ícone antes do texto.
 @Composable
 private fun LinhaDoAdmin(
     item: ItemDeAtendimento,
@@ -116,6 +125,9 @@ private fun LinhaDoAdmin(
     ) {
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // Indicador de sincronização antes do "protocolo · cliente". O ícone tem 16dp, menos que a linha
+            // de texto, então a altura da linha não muda e o selo de status continua no mesmo lugar.
+            IconeDeSincronizacao(item.sincronizacao, modifier = Modifier.padding(end = 6.dp))
             Text(
                 text = textoDaLinha(item, stringResource(R.string.atendimento_protocolo_pendente)),
                 modifier = Modifier.weight(1f),
@@ -158,12 +170,14 @@ private val itensDoPreview = listOf(
 
 @Composable
 private fun TelaDePreview(
-    itens: List<ItemDeAtendimento> = itensDoPreview,
+    itens: List<ItemDeAtendimento>? = itensDoPreview,
     filtro: FiltroDeOrigem = FiltroDeOrigem.TODAS,
 ) {
     TemaDePreview {
         ListaDoAdminTela(
-            itens = listaDePreview(itens, filtro.comoFiltroDeAtendimentos()),
+            // Lista nula no preview representa o estado de carregando.
+            estado = itens?.let { EstadoDaLista.Pronta(listaDePreview(it, filtro.comoFiltroDeAtendimentos())) }
+                ?: EstadoDaLista.Carregando,
             filtro = filtro,
             aoMudarFiltro = {},
             aoAbrir = {},
@@ -208,3 +222,12 @@ private fun ListaDoAdminNomeLongoPreview() = TelaDePreview(
         ),
     ),
 )
+
+@Preview(showBackground = true, heightDp = 780)
+@Composable
+private fun ListaDoAdminCarregandoPreview() = TelaDePreview(itens = null)
+
+// Uma linha de cada situação de sincronização: sem ícone, aguardando envio, conflito e erro.
+@Preview(showBackground = true, heightDp = 780)
+@Composable
+private fun ListaDoAdminSincronizacaoPreview() = TelaDePreview(itens = itensDeCadaSincronizacao)

@@ -45,10 +45,10 @@ class ListaDoAdminViewModelTest {
     fun estadoInicialTemTodasAsOrigensDoMaisRecenteParaOMaisAntigo() = runTest {
         repositorio.definirItens(umDeCadaOrigem)
         val viewModel = criar()
-        manterColetando(viewModel.itens)
+        manterColetando(viewModel.estado)
 
         assertEquals(FiltroDeOrigem.TODAS, viewModel.filtro.value)
-        assertEquals(listOf("cliente", "distribuidor", "netafim"), ids(viewModel.itens.value))
+        assertEquals(listOf("cliente", "distribuidor", "netafim"), ids(prontos(viewModel.estado.value)))
         assertEquals(FiltroDeOrigem.TODAS.comoFiltroDeAtendimentos(), repositorio.pedidosRecebidos.single())
     }
 
@@ -56,19 +56,19 @@ class ListaDoAdminViewModelTest {
     fun trocarOChipFiltraPelaOrigem() = runTest {
         repositorio.definirItens(umDeCadaOrigem)
         val viewModel = criar()
-        manterColetando(viewModel.itens)
+        manterColetando(viewModel.estado)
 
         viewModel.trocarFiltro(FiltroDeOrigem.NETAFIM)
-        assertEquals(listOf("netafim"), ids(viewModel.itens.value))
+        assertEquals(listOf("netafim"), ids(prontos(viewModel.estado.value)))
 
         viewModel.trocarFiltro(FiltroDeOrigem.DISTRIBUIDOR)
-        assertEquals(listOf("distribuidor"), ids(viewModel.itens.value))
+        assertEquals(listOf("distribuidor"), ids(prontos(viewModel.estado.value)))
 
         viewModel.trocarFiltro(FiltroDeOrigem.CLIENTE_FINAL)
-        assertEquals(listOf("cliente"), ids(viewModel.itens.value))
+        assertEquals(listOf("cliente"), ids(prontos(viewModel.estado.value)))
 
         viewModel.trocarFiltro(FiltroDeOrigem.TODAS)
-        assertEquals(3, viewModel.itens.value.size)
+        assertEquals(3, prontos(viewModel.estado.value).size)
     }
 
     @Test
@@ -77,30 +77,30 @@ class ListaDoAdminViewModelTest {
             listOf(itemDeTeste("b"), itemDeTeste("a"), itemDeTeste("c", aberto = "2026-11-09T12:00:00Z")),
         )
         val viewModel = criar()
-        manterColetando(viewModel.itens)
+        manterColetando(viewModel.estado)
 
-        assertEquals(listOf("c", "a", "b"), ids(viewModel.itens.value))
+        assertEquals(listOf("c", "a", "b"), ids(prontos(viewModel.estado.value)))
     }
 
     @Test
-    fun semUsuarioNaSessaoAListaSaiVaziaESemConsultarORepositorio() = runTest {
+    fun semUsuarioNaSessaoAListaFicaCarregandoESemConsultarORepositorio() = runTest {
         repositorio.definirItens(umDeCadaOrigem)
         sessao.entrarComo(null)
         val viewModel = criar()
-        manterColetando(viewModel.itens)
+        manterColetando(viewModel.estado)
 
-        assertTrue(viewModel.itens.value.isEmpty())
+        assertEquals(EstadoDaLista.Carregando, viewModel.estado.value)
         assertTrue(repositorio.pedidosRecebidos.isEmpty())
     }
 
     @Test
     fun aListaReageAMudancasNoRepositorio() = runTest {
         val viewModel = criar()
-        manterColetando(viewModel.itens)
-        assertTrue(viewModel.itens.value.isEmpty())
+        manterColetando(viewModel.estado)
+        assertTrue(prontos(viewModel.estado.value).isEmpty())
 
         repositorio.definirItens(umDeCadaOrigem)
-        assertEquals(3, viewModel.itens.value.size)
+        assertEquals(3, prontos(viewModel.estado.value).size)
     }
 
     @Test

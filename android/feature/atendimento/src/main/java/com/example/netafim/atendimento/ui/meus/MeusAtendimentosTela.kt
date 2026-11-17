@@ -25,20 +25,22 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
+import com.example.netafim.atendimento.ui.comum.IndicadorDeCarregando
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.itemDePreview
-import com.example.netafim.core.modelo.ItemDeAtendimento
+import com.example.netafim.atendimento.ui.comum.itensDeCadaSincronizacao
+import com.example.netafim.atendimento.ui.lista.EstadoDaLista
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 import java.time.ZoneId
 
-// Lista dos atendimentos do cliente, com botão para abrir um novo. Tela sem estado: recebe a lista
-// pronta e avisa por lambdas o que o usuário fez. "agora" e "zona" entram como parâmetro para o
-// texto de apoio dos cartões ser previsível nos testes e nos previews.
+// Lista dos atendimentos do cliente, com botão para abrir um novo. Tela sem estado: recebe o estado da lista
+// (carregando ou pronta) e avisa por lambdas o que o usuário fez. "agora" e "zona" entram como parâmetro para
+// o texto de apoio dos cartões ser previsível nos testes e nos previews.
 @Composable
 fun MeusAtendimentosTela(
-    atendimentos: List<ItemDeAtendimento>,
+    estado: EstadoDaLista,
     agora: Instant,
     zona: ZoneId,
     aoAbrirNovo: () -> Unit,
@@ -65,7 +67,14 @@ fun MeusAtendimentosTela(
             }
         },
     ) { espacamentoDoScaffold ->
-        if (atendimentos.isEmpty()) {
+        // Antes da primeira resposta do repositório: progresso, e não a mensagem de lista vazia.
+        val atendimentos = when (estado) {
+            EstadoDaLista.Carregando -> null
+            is EstadoDaLista.Pronta -> estado.itens
+        }
+        if (atendimentos == null) {
+            IndicadorDeCarregando(modifier = Modifier.padding(espacamentoDoScaffold))
+        } else if (atendimentos.isEmpty()) {
             EstadoVazio(modifier = Modifier.padding(espacamentoDoScaffold))
         } else {
             LazyColumn(
@@ -115,6 +124,16 @@ private fun EstadoVazio(modifier: Modifier = Modifier) {
     }
 }
 
+// Dados fictícios só para o preview da lista com atendimentos.
+private val itensDoPreview = listOf(
+    itemDePreview("1", "OS-0498", MotivoAtendimento.DUVIDAS, StatusAtendimento.ENCERRADO, "2026-10-20T15:00:00Z"),
+    itemDePreview("2", "OS-0506", MotivoAtendimento.POS_VENDA, StatusAtendimento.ABERTO, "2026-11-08T15:00:00Z"),
+    itemDePreview(
+        "3", "OS-0477", MotivoAtendimento.DIGITAL_FARMING, StatusAtendimento.EM_ATENDIMENTO, "2026-11-11T12:00:00Z",
+    ),
+    itemDePreview("4", "OS-0431", MotivoAtendimento.TREINAMENTO, StatusAtendimento.CANCELADO, "2026-09-30T15:00:00Z"),
+)
+
 // Data fixa para o preview não mudar de um dia para o outro.
 private val agoraDoPreview: Instant = Instant.parse("2026-11-11T15:00:00Z")
 private val zonaDoPreview: ZoneId = ZoneId.of("America/Sao_Paulo")
@@ -124,12 +143,7 @@ private val zonaDoPreview: ZoneId = ZoneId.of("America/Sao_Paulo")
 private fun MeusAtendimentosTelaPreview() {
     TemaDePreview {
         MeusAtendimentosTela(
-            atendimentos = listOf(
-                itemDePreview("1", "OS-0498", MotivoAtendimento.DUVIDAS, StatusAtendimento.ENCERRADO, "2026-10-20T15:00:00Z"),
-                itemDePreview("2", "OS-0506", MotivoAtendimento.POS_VENDA, StatusAtendimento.ABERTO, "2026-11-08T15:00:00Z"),
-                itemDePreview("3", "OS-0477", MotivoAtendimento.DIGITAL_FARMING, StatusAtendimento.EM_ATENDIMENTO, "2026-11-11T12:00:00Z"),
-                itemDePreview("4", "OS-0431", MotivoAtendimento.TREINAMENTO, StatusAtendimento.CANCELADO, "2026-09-30T15:00:00Z"),
-            ),
+            estado = EstadoDaLista.Pronta(itensDoPreview),
             agora = agoraDoPreview,
             zona = zonaDoPreview,
             aoAbrirNovo = {},
@@ -143,7 +157,36 @@ private fun MeusAtendimentosTelaPreview() {
 private fun MeusAtendimentosTelaVaziaPreview() {
     TemaDePreview {
         MeusAtendimentosTela(
-            atendimentos = emptyList(),
+            estado = EstadoDaLista.Pronta(emptyList()),
+            agora = agoraDoPreview,
+            zona = zonaDoPreview,
+            aoAbrirNovo = {},
+            aoAbrirDetalhe = {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MeusAtendimentosTelaCarregandoPreview() {
+    TemaDePreview {
+        MeusAtendimentosTela(
+            estado = EstadoDaLista.Carregando,
+            agora = agoraDoPreview,
+            zona = zonaDoPreview,
+            aoAbrirNovo = {},
+            aoAbrirDetalhe = {},
+        )
+    }
+}
+
+// Um cartão de cada situação de sincronização: sem ícone, aguardando envio, conflito e erro.
+@Preview(showBackground = true)
+@Composable
+private fun MeusAtendimentosTelaSincronizacaoPreview() {
+    TemaDePreview {
+        MeusAtendimentosTela(
+            estado = EstadoDaLista.Pronta(itensDeCadaSincronizacao),
             agora = agoraDoPreview,
             zona = zonaDoPreview,
             aoAbrirNovo = {},

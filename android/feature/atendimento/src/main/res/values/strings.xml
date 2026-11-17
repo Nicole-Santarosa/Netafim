@@ -30,6 +30,10 @@
 
     <!-- Valor que o app não reconhece, vindo de um servidor mais novo -->
     <string name="atendimento_desconhecido">Desconhecido</string>
+    <string name="atendimento_lista_carregando">Carregando atendimentos</string>
+    <string name="atendimento_sincronizacao_pendente">Aguardando envio</string>
+    <string name="atendimento_sincronizacao_conflito">Atenção: conflito com a versão do servidor</string>
+    <string name="atendimento_sincronizacao_erro">Atenção: erro no envio</string>
 
     <!-- Motivo do atendimento -->
     <string name="atendimento_motivo_digital_farming">Digital Farming</string>

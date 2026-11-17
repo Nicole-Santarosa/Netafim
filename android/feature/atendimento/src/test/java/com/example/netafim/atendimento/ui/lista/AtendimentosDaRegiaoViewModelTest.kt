@@ -50,11 +50,11 @@ class AtendimentosDaRegiaoViewModelTest {
     fun estadoInicialTemTodosSemBuscaTrazTudoSemFiltrarPorTecnico() = runTest {
         repositorio.definirItens(umDeCada)
         val viewModel = criar()
-        manterColetando(viewModel.itens)
+        manterColetando(viewModel.estado)
 
         assertEquals(FiltroDaRegiao.TODOS, viewModel.filtro.value)
         assertEquals("", viewModel.busca.value)
-        assertEquals(5, viewModel.itens.value.size)
+        assertEquals(5, prontos(viewModel.estado.value).size)
         val pedido = repositorio.pedidosRecebidos.single()
         assertEquals(FiltroDaRegiao.TODOS.comoFiltroDeAtendimentos(""), pedido)
         assertFalse(pedido.somenteMeusComoTecnico)
@@ -64,17 +64,17 @@ class AtendimentosDaRegiaoViewModelTest {
     fun trocarOChipFiltraPorSelo() = runTest {
         repositorio.definirItens(umDeCada)
         val viewModel = criar()
-        manterColetando(viewModel.itens)
+        manterColetando(viewModel.estado)
 
         viewModel.trocarFiltro(FiltroDaRegiao.EM_ANDAMENTO)
-        assertEquals(setOf("aberto", "em-curso"), ids(viewModel.itens.value).toSet())
+        assertEquals(setOf("aberto", "em-curso"), ids(prontos(viewModel.estado.value)).toSet())
 
         viewModel.trocarFiltro(FiltroDaRegiao.CONCLUIDOS)
-        assertEquals(setOf("resolvido", "encerrado"), ids(viewModel.itens.value).toSet())
+        assertEquals(setOf("resolvido", "encerrado"), ids(prontos(viewModel.estado.value)).toSet())
 
         // O cancelado só aparece em Todos.
         viewModel.trocarFiltro(FiltroDaRegiao.TODOS)
-        assertTrue("cancelado" in ids(viewModel.itens.value))
+        assertTrue("cancelado" in ids(prontos(viewModel.estado.value)))
     }
 
     @Test
@@ -86,13 +86,13 @@ class AtendimentosDaRegiaoViewModelTest {
             ),
         )
         val viewModel = criar()
-        manterColetando(viewModel.itens)
+        manterColetando(viewModel.estado)
 
         viewModel.buscar("0506")
-        assertEquals(listOf("1"), ids(viewModel.itens.value))
+        assertEquals(listOf("1"), ids(prontos(viewModel.estado.value)))
 
         viewModel.buscar("CITRO")
-        assertEquals(listOf("2"), ids(viewModel.itens.value))
+        assertEquals(listOf("2"), ids(prontos(viewModel.estado.value)))
     }
 
     @Test
@@ -106,31 +106,31 @@ class AtendimentosDaRegiaoViewModelTest {
             ),
         )
         val viewModel = criar()
-        manterColetando(viewModel.itens)
+        manterColetando(viewModel.estado)
 
         assertEquals(OrdemDaLista.MAIS_RECENTE_PRIMEIRO, repositorio.pedidosRecebidos.single().ordem)
-        assertEquals(listOf("novo", "a", "b", "velho"), ids(viewModel.itens.value))
+        assertEquals(listOf("novo", "a", "b", "velho"), ids(prontos(viewModel.estado.value)))
     }
 
     @Test
-    fun semUsuarioNaSessaoAListaSaiVaziaESemConsultarORepositorio() = runTest {
+    fun semUsuarioNaSessaoAListaFicaCarregandoESemConsultarORepositorio() = runTest {
         repositorio.definirItens(umDeCada)
         sessao.entrarComo(null)
         val viewModel = criar()
-        manterColetando(viewModel.itens)
+        manterColetando(viewModel.estado)
 
-        assertTrue(viewModel.itens.value.isEmpty())
+        assertEquals(EstadoDaLista.Carregando, viewModel.estado.value)
         assertTrue(repositorio.pedidosRecebidos.isEmpty())
     }
 
     @Test
     fun aListaReageAMudancasNoRepositorio() = runTest {
         val viewModel = criar()
-        manterColetando(viewModel.itens)
-        assertTrue(viewModel.itens.value.isEmpty())
+        manterColetando(viewModel.estado)
+        assertTrue(prontos(viewModel.estado.value).isEmpty())
 
         repositorio.definirItens(listOf(itemDeTeste("chegou")))
-        assertEquals(listOf("chegou"), ids(viewModel.itens.value))
+        assertEquals(listOf("chegou"), ids(prontos(viewModel.estado.value)))
     }
 
     @Test

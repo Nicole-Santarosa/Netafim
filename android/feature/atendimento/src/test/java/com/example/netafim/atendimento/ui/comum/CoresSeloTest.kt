@@ -1,5 +1,6 @@
 package com.example.netafim.atendimento.ui.comum
 
+import com.example.netafim.atendimento.dominio.IndicadorDeSincronizacao
 import com.example.netafim.atendimento.dominio.SeloStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -13,6 +14,15 @@ class CoresSeloTest {
             val cores = coresDoSelo(selo)
             val razao = razaoDeContraste(cores.texto, cores.fundo)
             assertTrue("$selo: contraste $razao abaixo de 4,5", razao >= 4.5)
+        }
+    }
+
+    // O ícone de sincronização é elemento gráfico: o mínimo do WCAG para ele é 3 para 1 sobre o fundo do cartão.
+    @Test
+    fun iconeDeSincronizacaoTemContrasteMinimoDeTresSobreOCartao() {
+        IndicadorDeSincronizacao.entries.forEach { indicador ->
+            val razao = razaoDeContraste(corDoIndicador(indicador), FUNDO_DO_CARTAO)
+            assertTrue("$indicador: contraste $razao abaixo de 3", razao >= 3.0)
         }
     }
 

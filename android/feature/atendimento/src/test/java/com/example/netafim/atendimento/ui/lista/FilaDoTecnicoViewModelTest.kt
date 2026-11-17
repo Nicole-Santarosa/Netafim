@@ -40,11 +40,11 @@ class FilaDoTecnicoViewModelTest {
     @Test
     fun estadoInicialTemTodosSemBuscaEListaVaziaSemDados() = runTest {
         val viewModel = criar()
-        manterColetando(viewModel.itens)
+        manterColetando(viewModel.estado)
 
         assertEquals(FiltroDaFila.TODOS, viewModel.filtro.value)
         assertEquals("", viewModel.busca.value)
-        assertTrue(viewModel.itens.value.isEmpty())
+        assertTrue(prontos(viewModel.estado.value).isEmpty())
         // O primeiro pedido ao repositório é o do chip Todos da fila, do técnico logado, na ordem da fila.
         val pedido = repositorio.pedidosRecebidos.single()
         assertEquals(FiltroDaFila.TODOS.comoFiltroDeAtendimentos(""), pedido)
@@ -63,9 +63,9 @@ class FilaDoTecnicoViewModelTest {
             ),
         )
         val viewModel = criar()
-        manterColetando(viewModel.itens)
+        manterColetando(viewModel.estado)
 
-        assertEquals(listOf("meu"), ids(viewModel.itens.value))
+        assertEquals(listOf("meu"), ids(prontos(viewModel.estado.value)))
     }
 
     @Test
@@ -78,17 +78,17 @@ class FilaDoTecnicoViewModelTest {
             ),
         )
         val viewModel = criar()
-        manterColetando(viewModel.itens)
+        manterColetando(viewModel.estado)
 
         viewModel.trocarFiltro(FiltroDaFila.NOVO)
         assertEquals(FiltroDaFila.NOVO, viewModel.filtro.value)
-        assertEquals(setOf("agendado", "destinado"), ids(viewModel.itens.value).toSet())
+        assertEquals(setOf("agendado", "destinado"), ids(prontos(viewModel.estado.value)).toSet())
 
         viewModel.trocarFiltro(FiltroDaFila.EM_ATENDIMENTO)
-        assertEquals(listOf("em-curso"), ids(viewModel.itens.value))
+        assertEquals(listOf("em-curso"), ids(prontos(viewModel.estado.value)))
 
         viewModel.trocarFiltro(FiltroDaFila.TODOS)
-        assertEquals(3, viewModel.itens.value.size)
+        assertEquals(3, prontos(viewModel.estado.value).size)
     }
 
     @Test
@@ -100,17 +100,17 @@ class FilaDoTecnicoViewModelTest {
             ),
         )
         val viewModel = criar()
-        manterColetando(viewModel.itens)
+        manterColetando(viewModel.estado)
 
         viewModel.buscar("RIBEIRAO")
         assertEquals("RIBEIRAO", viewModel.busca.value)
-        assertEquals(listOf("2"), ids(viewModel.itens.value))
+        assertEquals(listOf("2"), ids(prontos(viewModel.estado.value)))
 
         viewModel.buscar("")
-        assertEquals(2, viewModel.itens.value.size)
+        assertEquals(2, prontos(viewModel.estado.value).size)
 
         viewModel.buscar("zzz")
-        assertTrue(viewModel.itens.value.isEmpty())
+        assertTrue(prontos(viewModel.estado.value).isEmpty())
     }
 
     @Test
@@ -128,11 +128,11 @@ class FilaDoTecnicoViewModelTest {
             ),
         )
         val viewModel = criar()
-        manterColetando(viewModel.itens)
+        manterColetando(viewModel.estado)
 
         viewModel.trocarFiltro(FiltroDaFila.NOVO)
         viewModel.buscar("citro")
-        assertEquals(listOf("novo-citro"), ids(viewModel.itens.value))
+        assertEquals(listOf("novo-citro"), ids(prontos(viewModel.estado.value)))
     }
 
     @Test
@@ -150,35 +150,35 @@ class FilaDoTecnicoViewModelTest {
             ),
         )
         val viewModel = criar()
-        manterColetando(viewModel.itens)
+        manterColetando(viewModel.estado)
 
-        assertEquals(listOf("em-curso-recente", "novo-antigo", "novo-recente"), ids(viewModel.itens.value))
+        assertEquals(listOf("em-curso-recente", "novo-antigo", "novo-recente"), ids(prontos(viewModel.estado.value)))
     }
 
     @Test
-    fun semUsuarioNaSessaoAListaSaiVaziaESemConsultarORepositorio() = runTest {
+    fun semUsuarioNaSessaoAListaFicaCarregandoESemConsultarORepositorio() = runTest {
         repositorio.definirItens(listOf(itemDeTeste("meu", idTecnico = 10)))
         sessao.entrarComo(null)
         val viewModel = criar()
-        manterColetando(viewModel.itens)
+        manterColetando(viewModel.estado)
 
-        assertTrue(viewModel.itens.value.isEmpty())
+        assertEquals(EstadoDaLista.Carregando, viewModel.estado.value)
         assertTrue(repositorio.pedidosRecebidos.isEmpty())
     }
 
     @Test
-    fun aoEntrarEAoSairAListaAparecePeloUsuarioEDesapareceSemEle() = runTest {
+    fun aoEntrarAListaAparecePeloUsuarioEAoSairVoltaACarregando() = runTest {
         repositorio.definirItens(listOf(itemDeTeste("meu", idTecnico = 10)))
         sessao.entrarComo(null)
         val viewModel = criar()
-        manterColetando(viewModel.itens)
-        assertTrue(viewModel.itens.value.isEmpty())
+        manterColetando(viewModel.estado)
+        assertEquals(EstadoDaLista.Carregando, viewModel.estado.value)
 
         sessao.entrarComo(SessaoFalsa.umUsuario(id = 10))
-        assertEquals(listOf("meu"), ids(viewModel.itens.value))
+        assertEquals(listOf("meu"), ids(prontos(viewModel.estado.value)))
 
         sessao.entrarComo(null)
-        assertTrue(viewModel.itens.value.isEmpty())
+        assertEquals(EstadoDaLista.Carregando, viewModel.estado.value)
     }
 
     @Test
@@ -187,24 +187,24 @@ class FilaDoTecnicoViewModelTest {
             listOf(itemDeTeste("do-10", idTecnico = 10), itemDeTeste("do-11", idTecnico = 11)),
         )
         val viewModel = criar()
-        manterColetando(viewModel.itens)
-        assertEquals(listOf("do-10"), ids(viewModel.itens.value))
+        manterColetando(viewModel.estado)
+        assertEquals(listOf("do-10"), ids(prontos(viewModel.estado.value)))
 
         sessao.entrarComo(SessaoFalsa.umUsuario(id = 11))
-        assertEquals(listOf("do-11"), ids(viewModel.itens.value))
+        assertEquals(listOf("do-11"), ids(prontos(viewModel.estado.value)))
     }
 
     @Test
     fun aListaReageAMudancasNoRepositorio() = runTest {
         val viewModel = criar()
-        manterColetando(viewModel.itens)
-        assertTrue(viewModel.itens.value.isEmpty())
+        manterColetando(viewModel.estado)
+        assertTrue(prontos(viewModel.estado.value).isEmpty())
 
         repositorio.definirItens(listOf(itemDeTeste("chegou", idTecnico = 10)))
-        assertEquals(listOf("chegou"), ids(viewModel.itens.value))
+        assertEquals(listOf("chegou"), ids(prontos(viewModel.estado.value)))
 
         repositorio.definirItens(emptyList())
-        assertTrue(viewModel.itens.value.isEmpty())
+        assertTrue(prontos(viewModel.estado.value).isEmpty())
     }
 
     @Test

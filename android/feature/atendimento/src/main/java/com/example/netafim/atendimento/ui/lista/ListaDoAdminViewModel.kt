@@ -8,7 +8,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.netafim.atendimento.dominio.FiltroDeOrigem
 import com.example.netafim.atendimento.dominio.comoFiltroDeAtendimentos
 import com.example.netafim.core.modelo.AtendimentoRepository
-import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.sessao.SessaoDoUsuario
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,11 +26,12 @@ class ListaDoAdminViewModel(
     private val _filtro = MutableStateFlow(FiltroDeOrigem.TODAS)
     val filtro: StateFlow<FiltroDeOrigem> = _filtro.asStateFlow()
 
-    val itens: StateFlow<List<ItemDeAtendimento>> = observarListaDoUsuario(
+    // Começa em Carregando até o repositório responder pela primeira vez (ver observarListaDoUsuario).
+    val estado: StateFlow<EstadoDaLista> = observarListaDoUsuario(
         sessao = sessao,
         repositorio = repositorio,
         pedidos = _filtro.map { it.comoFiltroDeAtendimentos() },
-    ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(ESPERA_SEM_TELA_MS), emptyList())
+    ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(ESPERA_SEM_TELA_MS), EstadoDaLista.Carregando)
 
     fun trocarFiltro(novo: FiltroDeOrigem) {
         _filtro.value = novo

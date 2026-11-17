@@ -39,6 +39,11 @@ fun itemDeTeste(
 
 fun ids(lista: List<ItemDeAtendimento>) = lista.map { it.id }
 
+// Itens de uma lista que já respondeu. Se ainda estiver carregando, o teste falha com a mensagem dizendo isso,
+// em vez de comparar com uma lista vazia que esconderia o problema.
+fun prontos(estado: EstadoDaLista): List<ItemDeAtendimento> =
+    (estado as? EstadoDaLista.Pronta)?.itens ?: throw AssertionError("A lista ainda está em $estado")
+
 // Atendimento completo de teste, em cima do itemDeTeste. Só o que os testes de detalhe e edição variam
 // (id, status e situação do projeto) é parâmetro; o resto fica com valor fixo.
 fun atendimentoDeTeste(

@@ -15,6 +15,7 @@ import com.example.netafim.core.modelo.sessao.SessaoDoUsuario
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 
 // Dublê de teste do contrato AtendimentoRepository. NÃO é a implementação real (a do Room e da
@@ -28,7 +29,8 @@ import kotlinx.coroutines.flow.map
 // devolvem o que o teste definiu, e cada escrita devolve o resultado que o teste configurou (Sucesso por padrão).
 class RepositorioDeAtendimentosFalso(private val sessao: SessaoDoUsuario) : AtendimentoRepository {
 
-    private val itens = MutableStateFlow<List<ItemDeAtendimento>>(emptyList())
+    // Nulo quer dizer "o banco ainda não respondeu": a lista observada não emite nada até definirItens.
+    private val itens = MutableStateFlow<List<ItemDeAtendimento>?>(emptyList())
 
     // Cada pedido de lista que chegou, na ordem. Serve para o teste conferir o que o ViewModel pediu e também
     // que ele NÃO consultou o repositório (lista vazia) quando não havia usuário logado.
@@ -70,9 +72,15 @@ class RepositorioDeAtendimentosFalso(private val sessao: SessaoDoUsuario) : Aten
         itens.value = novos
     }
 
+    // Faz as listas ficarem sem resposta até o próximo definirItens, como um Room que ainda não leu o disco.
+    // Serve para provar que a tela fica em Carregando antes da primeira emissão.
+    fun segurarResposta() {
+        itens.value = null
+    }
+
     override fun observarAtendimentos(filtro: FiltroDeAtendimentos): Flow<List<ItemDeAtendimento>> {
         pedidosRecebidos += filtro
-        return itens.map { aplicar(it, filtro) }
+        return itens.filterNotNull().map { aplicar(it, filtro) }
     }
 
     // Mesmas regras do contrato: filtra, busca e ordena, nessa ordem.

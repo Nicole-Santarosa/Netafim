@@ -20,13 +20,16 @@ import com.example.netafim.atendimento.dominio.comoFiltroDeAtendimentos
 import com.example.netafim.atendimento.dominio.selo
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.CampoDeBusca
+import com.example.netafim.atendimento.ui.comum.IndicadorDeCarregando
 import com.example.netafim.atendimento.ui.comum.LinhaDeFiltros
 import com.example.netafim.atendimento.ui.comum.MensagemDeEstadoVazio
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.itemDePreview
+import com.example.netafim.atendimento.ui.comum.itensDeCadaSincronizacao
 import com.example.netafim.atendimento.ui.comum.listaDePreview
 import com.example.netafim.atendimento.ui.comum.rotulo
 import com.example.netafim.atendimento.ui.fila.CartaoDaFila
+import com.example.netafim.atendimento.ui.lista.EstadoDaLista
 import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
@@ -36,7 +39,7 @@ import com.example.netafim.core.modelo.StatusAtendimento
 // repositório (ver comoFiltroDeAtendimentos) e a tela só desenha; busca e filtro voltam ao chamador pelas lambdas.
 @Composable
 fun AtendimentosDaRegiaoTela(
-    itens: List<ItemDeAtendimento>,
+    estado: EstadoDaLista,
     filtro: FiltroDaRegiao,
     busca: String,
     aoMudarFiltro: (FiltroDaRegiao) -> Unit,
@@ -66,28 +69,32 @@ fun AtendimentosDaRegiaoTela(
             aoMudar = aoMudarFiltro,
             modifier = Modifier.padding(top = 12.dp),
         )
-        if (itens.isEmpty()) {
-            // Uma mensagem para busca ou filtro sem resultado, outra para região sem atendimentos.
-            val filtrando = busca.isNotBlank() || filtro != FiltroDaRegiao.TODOS
-            MensagemDeEstadoVazio(
-                stringResource(
-                    if (filtrando) R.string.atendimento_regiao_vazio_busca else R.string.atendimento_regiao_vazio,
-                ),
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(start = 20.dp, top = 16.dp, end = 20.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                items(items = itens, key = { it.id }) { item ->
-                    // O selo mostra o rótulo normal do status (Aberto, Em atendimento, Concluído,
-                    // Cancelado) e não o "Novo" da fila do técnico.
-                    CartaoDaFila(
-                        item = item,
-                        aoClicar = { aoAbrir(item.id) },
-                        rotuloDoStatus = { status -> status.selo.rotulo() },
-                    )
+        when (estado) {
+            // Antes da primeira resposta do repositório: progresso, e não a mensagem de lista vazia.
+            EstadoDaLista.Carregando -> IndicadorDeCarregando(modifier = Modifier.weight(1f))
+            is EstadoDaLista.Pronta -> if (estado.itens.isEmpty()) {
+                // Uma mensagem para busca ou filtro sem resultado, outra para região sem atendimentos.
+                val filtrando = busca.isNotBlank() || filtro != FiltroDaRegiao.TODOS
+                MensagemDeEstadoVazio(
+                    stringResource(
+                        if (filtrando) R.string.atendimento_regiao_vazio_busca else R.string.atendimento_regiao_vazio,
+                    ),
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(start = 20.dp, top = 16.dp, end = 20.dp, bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    items(items = estado.itens, key = { it.id }) { item ->
+                        // O selo mostra o rótulo normal do status (Aberto, Em atendimento, Concluído,
+                        // Cancelado) e não o "Novo" da fila do técnico.
+                        CartaoDaFila(
+                            item = item,
+                            aoClicar = { aoAbrir(item.id) },
+                            rotuloDoStatus = { status -> status.selo.rotulo() },
+                        )
+                    }
                 }
             }
         }
@@ -105,13 +112,15 @@ private val itensDoPreview = listOf(
 
 @Composable
 private fun TelaDePreview(
-    itens: List<ItemDeAtendimento> = itensDoPreview,
+    itens: List<ItemDeAtendimento>? = itensDoPreview,
     filtro: FiltroDaRegiao = FiltroDaRegiao.TODOS,
     busca: String = "",
 ) {
     TemaDePreview {
         AtendimentosDaRegiaoTela(
-            itens = listaDePreview(itens, filtro.comoFiltroDeAtendimentos(busca)),
+            // Lista nula no preview representa o estado de carregando.
+            estado = itens?.let { EstadoDaLista.Pronta(listaDePreview(it, filtro.comoFiltroDeAtendimentos(busca))) }
+                ?: EstadoDaLista.Carregando,
             filtro = filtro,
             busca = busca,
             aoMudarFiltro = {},
@@ -140,3 +149,12 @@ private fun RegiaoVaziaPreview() = TelaDePreview(itens = emptyList())
 @Preview(showBackground = true, heightDp = 780)
 @Composable
 private fun RegiaoVaziaComBuscaPreview() = TelaDePreview(busca = "xyz")
+
+@Preview(showBackground = true, heightDp = 780)
+@Composable
+private fun RegiaoCarregandoPreview() = TelaDePreview(itens = null)
+
+// Um cartão de cada situação de sincronização: sem ícone, aguardando envio, conflito e erro.
+@Preview(showBackground = true, heightDp = 780)
+@Composable
+private fun RegiaoSincronizacaoPreview() = TelaDePreview(itens = itensDeCadaSincronizacao)

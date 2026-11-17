@@ -19,12 +19,14 @@ import com.example.netafim.atendimento.dominio.FiltroDaFila
 import com.example.netafim.atendimento.dominio.comoFiltroDeAtendimentos
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.CampoDeBusca
+import com.example.netafim.atendimento.ui.comum.IndicadorDeCarregando
 import com.example.netafim.atendimento.ui.comum.LinhaDeFiltros
 import com.example.netafim.atendimento.ui.comum.MensagemDeEstadoVazio
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.itemDePreview
+import com.example.netafim.atendimento.ui.comum.itensDeCadaSincronizacao
 import com.example.netafim.atendimento.ui.comum.listaDePreview
-import com.example.netafim.core.modelo.ItemDeAtendimento
+import com.example.netafim.atendimento.ui.lista.EstadoDaLista
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
 
@@ -32,7 +34,7 @@ import com.example.netafim.core.modelo.StatusAtendimento
 // repositório (ver comoFiltroDeAtendimentos) e a tela só desenha; busca e filtro voltam ao chamador pelas lambdas.
 @Composable
 fun FilaDoTecnicoTela(
-    itens: List<ItemDeAtendimento>,
+    estado: EstadoDaLista,
     filtro: FiltroDaFila,
     busca: String,
     aoMudarFiltro: (FiltroDaFila) -> Unit,
@@ -62,22 +64,26 @@ fun FilaDoTecnicoTela(
             aoMudar = aoMudarFiltro,
             modifier = Modifier.padding(top = 12.dp),
         )
-        if (itens.isEmpty()) {
-            // Uma mensagem para busca ou filtro sem resultado, outra para fila vazia.
-            val filtrando = busca.isNotBlank() || filtro != FiltroDaFila.TODOS
-            MensagemDeEstadoVazio(
-                stringResource(
-                    if (filtrando) R.string.atendimento_fila_vazio_busca else R.string.atendimento_fila_vazio,
-                ),
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(start = 20.dp, top = 16.dp, end = 20.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                items(items = itens, key = { it.id }) { item ->
-                    CartaoDaFila(item = item, aoClicar = { aoAbrir(item.id) })
+        when (estado) {
+            // Antes da primeira resposta do repositório: progresso, e não a mensagem de lista vazia.
+            EstadoDaLista.Carregando -> IndicadorDeCarregando(modifier = Modifier.weight(1f))
+            is EstadoDaLista.Pronta -> if (estado.itens.isEmpty()) {
+                // Uma mensagem para busca ou filtro sem resultado, outra para fila vazia.
+                val filtrando = busca.isNotBlank() || filtro != FiltroDaFila.TODOS
+                MensagemDeEstadoVazio(
+                    stringResource(
+                        if (filtrando) R.string.atendimento_fila_vazio_busca else R.string.atendimento_fila_vazio,
+                    ),
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(start = 20.dp, top = 16.dp, end = 20.dp, bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    items(items = estado.itens, key = { it.id }) { item ->
+                        CartaoDaFila(item = item, aoClicar = { aoAbrir(item.id) })
+                    }
                 }
             }
         }
@@ -95,7 +101,7 @@ private val itensDoPreview = listOf(
 private fun TelaDePreview(filtro: FiltroDaFila = FiltroDaFila.TODOS, busca: String = "") {
     TemaDePreview {
         FilaDoTecnicoTela(
-            itens = listaDePreview(itensDoPreview, filtro.comoFiltroDeAtendimentos(busca)),
+            estado = EstadoDaLista.Pronta(listaDePreview(itensDoPreview, filtro.comoFiltroDeAtendimentos(busca))),
             filtro = filtro,
             busca = busca,
             aoMudarFiltro = {},
@@ -122,7 +128,7 @@ private fun FilaComBuscaPreview() = TelaDePreview(busca = "citro")
 private fun FilaVaziaPreview() {
     TemaDePreview {
         FilaDoTecnicoTela(
-            itens = emptyList(),
+            estado = EstadoDaLista.Pronta(emptyList()),
             filtro = FiltroDaFila.TODOS,
             busca = "",
             aoMudarFiltro = {},
@@ -135,3 +141,35 @@ private fun FilaVaziaPreview() {
 @Preview(showBackground = true, heightDp = 780)
 @Composable
 private fun FilaVaziaComBuscaPreview() = TelaDePreview(busca = "xyz")
+
+// Antes da primeira resposta do repositório: progresso no lugar da lista.
+@Preview(showBackground = true, heightDp = 780)
+@Composable
+private fun FilaCarregandoPreview() {
+    TemaDePreview {
+        FilaDoTecnicoTela(
+            estado = EstadoDaLista.Carregando,
+            filtro = FiltroDaFila.TODOS,
+            busca = "",
+            aoMudarFiltro = {},
+            aoMudarBusca = {},
+            aoAbrir = {},
+        )
+    }
+}
+
+// Um cartão de cada situação de sincronização: sem ícone, aguardando envio, conflito e erro.
+@Preview(showBackground = true, heightDp = 780)
+@Composable
+private fun FilaSincronizacaoPreview() {
+    TemaDePreview {
+        FilaDoTecnicoTela(
+            estado = EstadoDaLista.Pronta(itensDeCadaSincronizacao),
+            filtro = FiltroDaFila.TODOS,
+            busca = "",
+            aoMudarFiltro = {},
+            aoMudarBusca = {},
+            aoAbrir = {},
+        )
+    }
+}

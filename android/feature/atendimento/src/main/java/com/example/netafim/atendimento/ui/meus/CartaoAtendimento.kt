@@ -28,6 +28,7 @@ import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.ApoioDoCartao
 import com.example.netafim.atendimento.dominio.apoioDoCartao
 import com.example.netafim.atendimento.dominio.selo
+import com.example.netafim.atendimento.ui.comum.IconeDeSincronizacao
 import com.example.netafim.atendimento.ui.comum.SeloStatusChip
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.itemDePreview
@@ -64,12 +65,16 @@ fun CartaoAtendimento(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                // Sem protocolo (atendimento criado sem conexão) o servidor ainda não o gerou.
-                text = item.protocolo ?: stringResource(R.string.atendimento_protocolo_pendente),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
+            // Indicador de sincronização ao lado do protocolo, na mesma linha, para não aumentar o cartão.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    // Sem protocolo (atendimento criado sem conexão) o servidor ainda não o gerou.
+                    text = item.protocolo ?: stringResource(R.string.atendimento_protocolo_pendente),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                IconeDeSincronizacao(item.sincronizacao, modifier = Modifier.padding(start = 6.dp))
+            }
             Spacer(Modifier.height(4.dp))
             Text(
                 text = textoDeApoio(apoioDoCartao(item, agora, zona)),

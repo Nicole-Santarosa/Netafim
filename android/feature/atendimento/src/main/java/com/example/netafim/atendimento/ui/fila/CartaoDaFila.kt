@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.SeloStatus
 import com.example.netafim.atendimento.dominio.selo
+import com.example.netafim.atendimento.ui.comum.IconeDeSincronizacao
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.coresDoSelo
 import com.example.netafim.atendimento.ui.comum.itemDePreview
@@ -51,9 +52,11 @@ import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
 
 // Cartão de um atendimento na fila do técnico. O cartão inteiro é clicável e é lido como um item só
-// pelo leitor de tela; ícones, pino e seta são decorativos.
-// O parâmetro "selo" existe para o estado de sincronização (offline, sincronizado), que é de outra parte
-// do grupo: quando informado, o conteúdo passado aparece no lugar do selo de status do atendimento.
+// pelo leitor de tela; ícones, pino e seta são decorativos, menos o indicador de sincronização, que tem
+// descrição própria e entra uma vez na leitura do cartão.
+// O parâmetro "selo" fica para selos de outras partes do grupo: quando informado, o conteúdo passado aparece
+// no lugar do selo de status do atendimento. A sincronização não usa mais esse encaixe: tem o próprio
+// ícone ao lado do protocolo.
 // rotuloDoStatus escolhe o texto do selo: a fila do técnico usa o padrão ("Novo" para destinado e
 // agendado) e a lista da região do distribuidor passa o rótulo normal do selo.
 @Composable
@@ -79,12 +82,17 @@ fun CartaoDaFila(
                 CirculoDoStatus(item.status)
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        // Sem protocolo (atendimento criado sem conexão) o servidor ainda não o gerou.
-                        text = item.protocolo ?: stringResource(R.string.atendimento_protocolo_pendente),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
+                    // O indicador de sincronização vai na mesma linha do protocolo: é menor que o texto, então
+                    // não aumenta a altura do cartão nem mexe no selo de status lá embaixo.
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            // Sem protocolo (atendimento criado sem conexão) o servidor ainda não o gerou.
+                            text = item.protocolo ?: stringResource(R.string.atendimento_protocolo_pendente),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        IconeDeSincronizacao(item.sincronizacao, modifier = Modifier.padding(start = 6.dp))
+                    }
                     // O item vem de outro módulo, então o compilador não faz smart cast: let entrega o valor não nulo.
                     item.nomeCliente?.let { Text(text = it, style = MaterialTheme.typography.bodyMedium) }
                     item.local?.let { LinhaDeLocal(it) }
