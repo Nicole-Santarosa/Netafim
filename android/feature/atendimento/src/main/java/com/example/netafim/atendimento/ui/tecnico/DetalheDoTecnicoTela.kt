@@ -27,14 +27,17 @@ import com.example.netafim.atendimento.dominio.ErroAoSalvar
 import com.example.netafim.atendimento.dominio.culturasEmTexto
 import com.example.netafim.atendimento.dominio.podeIniciar
 import com.example.netafim.atendimento.ui.comum.AvisoDeErro
+import com.example.netafim.atendimento.ui.comum.AvisoDeSincronizacao
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.CampoDeLeitura
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.atendimentoDePreview
+import com.example.netafim.atendimento.ui.comum.comSincronizacao
 import com.example.netafim.atendimento.ui.comum.rotulo
 import com.example.netafim.core.modelo.Atendimento
 import com.example.netafim.core.modelo.Cultura
 import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.SituacaoDeSincronizacao
 import com.example.netafim.core.modelo.StatusAtendimento
 
 // Detalhe do atendimento para o técnico. Tela sem estado: mostra os dados que receber e só chama
@@ -67,6 +70,10 @@ fun DetalheDoTecnicoTela(
                 .padding(horizontal = 20.dp),
         ) {
             Spacer(Modifier.height(26.dp))
+
+            // Situação do registro em relação ao servidor, antes dos campos. O espaço de baixo vai no modifier
+            // para só existir quando o aviso aparece (sincronizado não desenha nada).
+            AvisoDeSincronizacao(atendimento.item.sincronizacao, modifier = Modifier.padding(bottom = 16.dp))
 
             // Campos de leitura, na ordem do protótipo.
             // Sem protocolo (atendimento criado sem conexão) o servidor ainda não o gerou.
@@ -212,4 +219,14 @@ private fun DetalheDoTecnicoVariasCulturasPreview() {
 @Composable
 private fun DetalheDoTecnicoComErroPreview() {
     TelaDePreview(atendimentoDoPreview(), erro = ErroAoSalvar.RegraDeNegocio(""))
+}
+
+// O início do atendimento foi salvo no aparelho mas deu conflito com o servidor.
+@Preview(showBackground = true, widthDp = 360, heightDp = 828)
+@Composable
+private fun DetalheDoTecnicoEmConflitoPreview() {
+    TelaDePreview(
+        atendimentoDoPreview(status = StatusAtendimento.EM_ATENDIMENTO)
+            .comSincronizacao(SituacaoDeSincronizacao.CONFLITO),
+    )
 }

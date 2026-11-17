@@ -26,6 +26,16 @@ class CoresSeloTest {
         }
     }
 
+    // O aviso de sincronização dos detalhes usa a cor do indicador também no texto, que é texto normal: precisa de
+    // 4,5 para 1 sobre o fundo da tela, mais do que os 3 para 1 que bastam ao ícone.
+    @Test
+    fun textoDoAvisoDeSincronizacaoTemContrasteMinimoDeQuatroEMeioSobreATela() {
+        IndicadorDeSincronizacao.entries.forEach { indicador ->
+            val razao = razaoDeContraste(corDoIndicador(indicador), FUNDO_DA_TELA)
+            assertTrue("$indicador: contraste $razao abaixo de 4,5", razao >= 4.5)
+        }
+    }
+
     // O aviso de erro das telas de ação é texto normal: precisa de 4,5 para 1 sobre o fundo da tela.
     @Test
     fun avisoDeErroTemContrasteMinimoDeQuatroEMeioSobreATela() {

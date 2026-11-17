@@ -126,3 +126,7 @@ internal val itensDeCadaSincronizacao: List<ItemDeAtendimento> = SituacaoDeSincr
         sincronizacao = s,
     )
 }
+
+// Troca a situação de sincronização de um atendimento dos previews, para os detalhes mostrarem o aviso.
+internal fun Atendimento.comSincronizacao(situacao: SituacaoDeSincronizacao): Atendimento =
+    copy(item = item.copy(sincronizacao = situacao))

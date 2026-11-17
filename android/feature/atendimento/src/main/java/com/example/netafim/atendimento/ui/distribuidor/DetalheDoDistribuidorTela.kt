@@ -21,13 +21,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.selo
+import com.example.netafim.atendimento.ui.comum.AvisoDeSincronizacao
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.CampoDeLeitura
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.atendimentoDePreview
+import com.example.netafim.atendimento.ui.comum.comSincronizacao
 import com.example.netafim.atendimento.ui.comum.rotulo
 import com.example.netafim.core.modelo.Atendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.SituacaoDeSincronizacao
 import com.example.netafim.core.modelo.StatusAtendimento
 
 // Detalhe do atendimento para o distribuidor. Tela sem estado e só de leitura: o distribuidor acompanha
@@ -54,6 +57,10 @@ fun DetalheDoDistribuidorTela(
             Spacer(Modifier.height(12.dp))
             PilulaSomenteLeitura()
             Spacer(Modifier.height(12.dp))
+
+            // Situação do registro em relação ao servidor, depois da pílula (que faz parte do cabeçalho) e antes
+            // dos campos. O espaço de baixo vai no modifier para só existir quando o aviso aparece.
+            AvisoDeSincronizacao(atendimento.item.sincronizacao, modifier = Modifier.padding(bottom = 12.dp))
 
             // Campos de leitura, na ordem do protótipo. Aqui o espaço depois da divisória é de 12dp.
             CampoDeLeitura(
@@ -152,4 +159,11 @@ private fun DetalheDoDistribuidorCanceladoPreview() {
 @Composable
 private fun DetalheDoDistribuidorSemLocalPreview() {
     TelaDePreview(atendimentoDoPreview(cidade = null))
+}
+
+// Registro com erro de envio: o distribuidor só lê, mas precisa saber que o que vê ainda não está no servidor.
+@Preview(showBackground = true, widthDp = 360, heightDp = 828)
+@Composable
+private fun DetalheDoDistribuidorComErroDeEnvioPreview() {
+    TelaDePreview(atendimentoDoPreview().comSincronizacao(SituacaoDeSincronizacao.ERRO))
 }

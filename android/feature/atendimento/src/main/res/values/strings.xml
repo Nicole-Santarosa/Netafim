@@ -34,6 +34,13 @@
     <string name="atendimento_sincronizacao_pendente">Aguardando envio</string>
     <string name="atendimento_sincronizacao_conflito">Atenção: conflito com a versão do servidor</string>
     <string name="atendimento_sincronizacao_erro">Atenção: erro no envio</string>
+    <!--
+        Aviso de sincronização nas telas de detalhe. Dizem só o que aconteceu: como resolver um conflito
+        ou um erro de envio ainda é decisão da camada de dados, então nenhum texto promete ação.
+    -->
+    <string name="atendimento_sincronizacao_aviso_pendente">Salvo neste aparelho, aguardando envio ao servidor.</string>
+    <string name="atendimento_sincronizacao_aviso_conflito">Houve conflito com a versão do servidor. Sua alteração ainda não foi enviada.</string>
+    <string name="atendimento_sincronizacao_aviso_erro">Não foi possível enviar a alteração ao servidor.</string>
 
     <!-- Motivo do atendimento -->
     <string name="atendimento_motivo_digital_farming">Digital Farming</string>

@@ -10,6 +10,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -28,14 +29,18 @@ import com.example.netafim.core.modelo.SituacaoDeSincronizacao
 fun IconeDeSincronizacao(situacao: SituacaoDeSincronizacao, modifier: Modifier = Modifier) {
     val indicador = situacao.comoIndicador() ?: return
     Icon(
-        imageVector = when (indicador) {
-            IndicadorDeSincronizacao.PENDENTE -> Icons.Filled.HourglassTop
-            IndicadorDeSincronizacao.ATENCAO -> Icons.Filled.Warning
-        },
+        imageVector = indicador.icone(),
         contentDescription = stringResource(descricaoDaSituacao(situacao)),
         tint = Color(corDoIndicador(indicador)),
         modifier = modifier.size(16.dp),
     )
+}
+
+// Desenho de cada indicador, o mesmo na lista e no aviso dos detalhes, para a pessoa reconhecer a situação
+// pelo formato nos dois lugares.
+internal fun IndicadorDeSincronizacao.icone(): ImageVector = when (this) {
+    IndicadorDeSincronizacao.PENDENTE -> Icons.Filled.HourglassTop
+    IndicadorDeSincronizacao.ATENCAO -> Icons.Filled.Warning
 }
 
 // Texto que o leitor de tela fala. O desenho de conflito e erro é o mesmo, mas a frase diz qual dos dois é.

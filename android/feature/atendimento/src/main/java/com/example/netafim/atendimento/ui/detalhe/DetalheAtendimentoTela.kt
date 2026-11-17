@@ -36,12 +36,15 @@ import com.example.netafim.atendimento.dominio.linhaDeLocal
 import com.example.netafim.atendimento.dominio.linhaDoTempo
 import com.example.netafim.atendimento.dominio.selo
 import com.example.netafim.atendimento.dominio.statusAntesDoCancelamento
+import com.example.netafim.atendimento.ui.comum.AvisoDeSincronizacao
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.atendimentoDePreview
+import com.example.netafim.atendimento.ui.comum.comSincronizacao
 import com.example.netafim.atendimento.ui.comum.rotulo
 import com.example.netafim.core.modelo.Atendimento
 import com.example.netafim.core.modelo.EventoDoHistorico
+import com.example.netafim.core.modelo.SituacaoDeSincronizacao
 import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 
@@ -83,6 +86,9 @@ fun DetalheAtendimentoTela(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            // Situação do registro em relação ao servidor, antes de tudo. Sincronizado não desenha nada, e
+            // então a coluna não ganha espaço extra.
+            AvisoDeSincronizacao(atendimento.item.sincronizacao)
             CartaoDeSecao {
                 // O status anterior ao cancelamento vem do histórico do próprio atendimento.
                 LinhaDoTempo(
@@ -120,7 +126,10 @@ private fun CartaoDeInformacoes(atendimento: Atendimento) {
         }
         LinhaDeInformacao(
             icone = Icons.AutoMirrored.Filled.Assignment,
-            texto = stringResource(R.string.atendimento_detalhe_motivo, stringResource(atendimento.item.motivo.rotulo())),
+            texto = stringResource(
+                R.string.atendimento_detalhe_motivo,
+                stringResource(atendimento.item.motivo.rotulo()),
+            ),
         )
     }
 }
@@ -205,3 +214,10 @@ private fun DetalheCanceladoAposEmAtendimentoPreview() = TelaDePreview(
 @Composable
 private fun DetalheSemLocalPreview() =
     TelaDePreview(atendimentoDoPreview(StatusAtendimento.AGENDADO, nomeFazenda = null, cidade = null))
+
+// Atendimento aberto sem conexão, ainda aguardando envio: o aviso aparece antes da linha do tempo.
+@Preview(showBackground = true, heightDp = 700)
+@Composable
+private fun DetalheAguardandoEnvioPreview() = TelaDePreview(
+    atendimentoDoPreview(StatusAtendimento.ABERTO).comSincronizacao(SituacaoDeSincronizacao.PENDENTE_DE_ENVIO),
+)

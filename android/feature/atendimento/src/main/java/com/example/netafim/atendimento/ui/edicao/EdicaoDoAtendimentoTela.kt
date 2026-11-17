@@ -40,13 +40,16 @@ import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.dominio.ErroAoSalvar
 import com.example.netafim.atendimento.dominio.podeSalvar
 import com.example.netafim.atendimento.ui.comum.AvisoDeErro
+import com.example.netafim.atendimento.ui.comum.AvisoDeSincronizacao
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.CampoDeLeitura
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.atendimentoDePreview
+import com.example.netafim.atendimento.ui.comum.comSincronizacao
 import com.example.netafim.atendimento.ui.comum.rotulo
 import com.example.netafim.core.modelo.Atendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.SituacaoDeSincronizacao
 import com.example.netafim.core.modelo.SituacaoDoProjeto
 import com.example.netafim.core.modelo.StatusAtendimento
 
@@ -81,6 +84,11 @@ fun EdicaoDoAtendimentoTela(
                 .padding(horizontal = 20.dp),
         ) {
             Spacer(Modifier.height(26.dp))
+
+            // Situação do registro em relação ao servidor, antes dos campos. É outra coisa que o aviso de erro de
+            // salvar, mais abaixo: este fala do registro guardado no aparelho, aquele da última tentativa de
+            // salvar, e os dois podem aparecer juntos. O espaço de baixo só existe quando o aviso aparece.
+            AvisoDeSincronizacao(atendimento.item.sincronizacao, modifier = Modifier.padding(bottom = 16.dp))
 
             // Campo em leitura: número da OS e motivo, como no protótipo ("OS-0477 · Digital Farming").
             // O separador é pontuação, por isso fica aqui e não no strings.xml.
@@ -315,4 +323,23 @@ private fun EdicaoRegraDeNegocioPreview() = TelaDePreview(
 private fun EdicaoA360dpComFonteGrandePreview() = TelaDePreview(
     escolhida = SituacaoDoProjeto.INSTALACAO,
     erro = ErroAoSalvar.ConflitoDeVersao,
+)
+
+// Os dois avisos juntos: o registro está em conflito com o servidor e a última tentativa de salvar falhou.
+@Preview(showBackground = true, widthDp = 360, heightDp = 780)
+@Composable
+private fun EdicaoComConflitoDeSincronizacaoEErroPreview() = TelaDePreview(
+    atendimento = atendimentoDoPreview().comSincronizacao(SituacaoDeSincronizacao.CONFLITO),
+    escolhida = SituacaoDoProjeto.GARANTIA,
+    erro = ErroAoSalvar.SemConexao,
+)
+
+// Pior caso de altura: os dois avisos em 360dp com fonte no dobro. O botão Salvar fica abaixo da dobra, mas
+// está dentro da coluna que rola, então continua alcançável rolando a tela; nada o cobre.
+@Preview(showBackground = true, widthDp = 360, heightDp = 780, fontScale = 2f)
+@Composable
+private fun EdicaoComOsDoisAvisosEFonteGrandePreview() = TelaDePreview(
+    atendimento = atendimentoDoPreview().comSincronizacao(SituacaoDeSincronizacao.CONFLITO),
+    escolhida = SituacaoDoProjeto.GARANTIA,
+    erro = ErroAoSalvar.SemConexao,
 )

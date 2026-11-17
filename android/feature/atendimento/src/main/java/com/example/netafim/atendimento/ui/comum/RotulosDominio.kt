@@ -6,6 +6,7 @@ import com.example.netafim.atendimento.dominio.ErroAoSalvar
 import com.example.netafim.atendimento.dominio.SeloStatus
 import com.example.netafim.core.modelo.AreaDoSetor
 import com.example.netafim.core.modelo.MotivoAtendimento
+import com.example.netafim.core.modelo.SituacaoDeSincronizacao
 import com.example.netafim.core.modelo.TipoVenda
 
 // Liga cada valor do domínio ao texto do strings.xml. O domínio só carrega códigos e regras,
@@ -58,4 +59,14 @@ fun ErroAoSalvar.rotulo(): Int = when (this) {
     ErroAoSalvar.NaoEncontrado -> R.string.atendimento_erro_nao_encontrado
     ErroAoSalvar.SemConexao -> R.string.atendimento_erro_sem_conexao
     is ErroAoSalvar.RegraDeNegocio -> R.string.atendimento_erro_regra
+}
+
+// Texto do aviso de sincronização das telas de detalhe, ou nulo quando o registro está sincronizado (o caso
+// normal, que não mostra aviso). Sem else no when: uma situação nova no core obriga a decidir o texto dela.
+@StringRes
+fun SituacaoDeSincronizacao.textoDoAviso(): Int? = when (this) {
+    SituacaoDeSincronizacao.SINCRONIZADO -> null
+    SituacaoDeSincronizacao.PENDENTE_DE_ENVIO -> R.string.atendimento_sincronizacao_aviso_pendente
+    SituacaoDeSincronizacao.CONFLITO -> R.string.atendimento_sincronizacao_aviso_conflito
+    SituacaoDeSincronizacao.ERRO -> R.string.atendimento_sincronizacao_aviso_erro
 }
