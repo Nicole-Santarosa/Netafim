@@ -31,6 +31,9 @@
     <!-- Valor que o app não reconhece, vindo de um servidor mais novo -->
     <string name="atendimento_desconhecido">Desconhecido</string>
     <string name="atendimento_lista_carregando">Carregando atendimentos</string>
+    <!-- Listas de uma conta de distribuidor ou de cliente ainda não vinculada a uma empresa -->
+    <string name="atendimento_conta_sem_empresa_titulo">Conta sem empresa vinculada</string>
+    <string name="atendimento_conta_sem_empresa_texto">Sua conta ainda não está vinculada a uma empresa, então não há atendimentos para mostrar. Entre em contato com a Netafim para concluir o seu cadastro.</string>
     <string name="atendimento_sincronizacao_pendente">Aguardando envio</string>
     <string name="atendimento_sincronizacao_conflito">Atenção: conflito com a versão do servidor</string>
     <string name="atendimento_sincronizacao_erro">Atenção: erro no envio</string>

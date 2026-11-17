@@ -19,6 +19,9 @@ internal const val ESPERA_SEM_TELA_MS = 5_000L
 // - Sem usuário na sessão (deslogado) o estado fica em Carregando e o repositório nem é consultado, porque sem
 //   usuário ele não saberia o que mostrar. Não vira Pronta vazia de propósito: na saída da conta a tela
 //   piscaria "nenhum atendimento" antes de sair, a mesma decisão do detalhe.
+// - Usuário sem organização (conta ainda não vinculada) vira SemOrganizacao, também sem consultar o
+//   repositório. Se a sessão trocar para um usuário com organização, o flatMapLatest recomeça e a lista volta
+//   ao fluxo normal; o contrário volta a SemOrganizacao.
 // - Trocar o chip ou a busca não volta para Carregando: a lista anterior continua na tela até a resposta
 //   nova chegar, para a lista não sumir e voltar a cada letra digitada.
 // - Quando o usuário muda (sair e entrar com outra conta) a consulta recomeça, e quando o pedido muda (chip ou
@@ -29,10 +32,10 @@ internal fun observarListaDoUsuario(
     repositorio: AtendimentoRepository,
     pedidos: Flow<FiltroDeAtendimentos>,
 ): Flow<EstadoDaLista> = sessao.usuario.flatMapLatest { usuario ->
-    if (usuario == null) {
-        flowOf(EstadoDaLista.Carregando)
-    } else {
-        pedidos
+    when {
+        usuario == null -> flowOf(EstadoDaLista.Carregando)
+        usuario.semOrganizacao -> flowOf(EstadoDaLista.SemOrganizacao)
+        else -> pedidos
             .flatMapLatest { pedido -> repositorio.observarAtendimentos(pedido) }
             .map { itens -> EstadoDaLista.Pronta(itens) }
     }

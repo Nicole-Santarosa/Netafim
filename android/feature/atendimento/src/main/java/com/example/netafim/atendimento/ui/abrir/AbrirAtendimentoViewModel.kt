@@ -106,14 +106,16 @@ class AbrirAtendimentoViewModel(
         // dos campos, e não uma recusa antiga do servidor. Fica antes da trava porque, com um envio em
         // andamento, o erro já foi limpo quando ele começou.
         _erro.value = null
-        // A origem e os ids da sessão saem do usuário, e vêm antes da validação porque é a origem que diz
-        // quais campos são obrigatórios. Cliente ou distribuidor sem organização não pode abrir (a API
-        // recusaria): mostra "sem permissão" sem chamar o repositório.
-        val origem = usuario.comoOrigemDaAbertura()
-        if (origem == null) {
+        // Cliente ou distribuidor sem organização não pode abrir (a API recusaria): mostra "sem permissão" sem
+        // chamar o repositório. A regra é a do usuário da sessão, a mesma que as listas usam.
+        if (usuario.semOrganizacao) {
             _erro.value = ErroAoSalvar.SemPermissao
             return
         }
+        // A origem e os ids da sessão saem do usuário, e vêm antes da validação porque é a origem que diz
+        // quais campos são obrigatórios. Com organização (ou sendo Netafim) ela sempre existe; o retorno só
+        // cobre o tipo, que o compilador não sabe que já foi conferido acima.
+        val origem = usuario.comoOrigemDaAbertura() ?: return
 
         val formulario = _formulario.value
         val erros = validar(formulario, origem.origem)

@@ -28,6 +28,12 @@ data class UsuarioDaSessao(
 ) {
     // Diz se o perfil tem a permissão pelo código exato. Códigos que o app não conhece simplesmente não casam.
     fun temPermissao(codigo: String): Boolean = codigo in permissoes
+
+    // Conta de distribuidor ou de cliente que o Netafim Admin ainda não vinculou a uma empresa. A Netafim fica de
+    // fora porque para ela o idDaOrganizacao nulo é o normal. Sem empresa a conta não enxerga atendimento nenhum
+    // e não pode abrir um (a API recusaria), por isso as listas e a abertura olham esta regra, que fica só aqui.
+    val semOrganizacao: Boolean
+        get() = tipoDeOrganizacao != TipoDeOrganizacao.NETAFIM && idDaOrganizacao == null
 }
 
 // Fonte do usuário logado. O StateFlow guarda sempre o valor atual: nulo quando ninguém está logado, e um

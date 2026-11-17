@@ -119,6 +119,42 @@ class MeusAtendimentosViewModelTest {
         assertEquals(listOf("1"), ids(prontos(viewModel.estado.value)))
     }
 
+    // Os três abaixo também valem para as quatro listas, pelo mesmo motivo.
+
+    @Test
+    fun contaSemEmpresaEmiteSemOrganizacaoSemConsultarORepositorio() = runTest {
+        repositorio.definirItens(listOf(itemDeTeste("1")))
+        sessao.entrarComo(SessaoFalsa.umUsuario(id = 5, tipo = TipoDeOrganizacao.CLIENTE, idDaOrganizacao = null))
+        val viewModel = criar()
+        manterColetando(viewModel.estado)
+
+        assertEquals(EstadoDaLista.SemOrganizacao, viewModel.estado.value)
+        assertTrue(repositorio.pedidosRecebidos.isEmpty())
+    }
+
+    @Test
+    fun aoVincularAEmpresaAListaPassaAPronta() = runTest {
+        repositorio.definirItens(listOf(itemDeTeste("1")))
+        sessao.entrarComo(SessaoFalsa.umUsuario(id = 5, tipo = TipoDeOrganizacao.CLIENTE, idDaOrganizacao = null))
+        val viewModel = criar()
+        manterColetando(viewModel.estado)
+        assertEquals(EstadoDaLista.SemOrganizacao, viewModel.estado.value)
+
+        sessao.entrarComo(SessaoFalsa.umUsuario(id = 5, tipo = TipoDeOrganizacao.CLIENTE, idDaOrganizacao = 3))
+        assertEquals(listOf("1"), ids(prontos(viewModel.estado.value)))
+    }
+
+    @Test
+    fun aoPerderAEmpresaAListaVoltaASemOrganizacao() = runTest {
+        repositorio.definirItens(listOf(itemDeTeste("1")))
+        val viewModel = criar()
+        manterColetando(viewModel.estado)
+        assertEquals(listOf("1"), ids(prontos(viewModel.estado.value)))
+
+        sessao.entrarComo(SessaoFalsa.umUsuario(id = 5, tipo = TipoDeOrganizacao.CLIENTE, idDaOrganizacao = null))
+        assertEquals(EstadoDaLista.SemOrganizacao, viewModel.estado.value)
+    }
+
     @Test
     fun mudancaNoRepositorioAtualizaAListaPronta() = runTest {
         repositorio.definirItens(listOf(itemDeTeste("1")))

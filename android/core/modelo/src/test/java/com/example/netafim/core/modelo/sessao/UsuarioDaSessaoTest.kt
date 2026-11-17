@@ -39,4 +39,35 @@ class UsuarioDaSessaoTest {
         assertFalse(usuario.temPermissao("ABRIR_ATENDIMENTO"))
         assertFalse(usuario.temPermissao("abrir"))
     }
+
+    // Usuário só com o tipo e a organização mudando, para os casos de semOrganizacao.
+    private fun daOrganizacao(tipo: TipoDeOrganizacao, idDaOrganizacao: Int?) = UsuarioDaSessao(
+        id = 2,
+        nome = "Usuário de teste",
+        tipoDeOrganizacao = tipo,
+        idDaOrganizacao = idDaOrganizacao,
+        ehAdmin = false,
+        permissoes = emptySet(),
+    )
+
+    @Test
+    fun netafimSemOrganizacaoNaoEhContaSemEmpresa() {
+        // Para a Netafim o idDaOrganizacao nulo é o normal.
+        assertFalse(daOrganizacao(TipoDeOrganizacao.NETAFIM, null).semOrganizacao)
+    }
+
+    @Test
+    fun distribuidorSemOrganizacaoEhContaSemEmpresa() {
+        assertTrue(daOrganizacao(TipoDeOrganizacao.DISTRIBUIDOR, null).semOrganizacao)
+    }
+
+    @Test
+    fun clienteSemOrganizacaoEhContaSemEmpresa() {
+        assertTrue(daOrganizacao(TipoDeOrganizacao.CLIENTE, null).semOrganizacao)
+    }
+
+    @Test
+    fun clienteComOrganizacaoNaoEhContaSemEmpresa() {
+        assertFalse(daOrganizacao(TipoDeOrganizacao.CLIENTE, 3).semOrganizacao)
+    }
 }

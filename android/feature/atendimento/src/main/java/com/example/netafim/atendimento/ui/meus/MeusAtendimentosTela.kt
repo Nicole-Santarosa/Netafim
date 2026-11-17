@@ -26,18 +26,20 @@ import androidx.compose.ui.unit.dp
 import com.example.netafim.atendimento.R
 import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.IndicadorDeCarregando
+import com.example.netafim.atendimento.ui.comum.MensagemDeContaSemEmpresa
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.itemDePreview
 import com.example.netafim.atendimento.ui.comum.itensDeCadaSincronizacao
 import com.example.netafim.atendimento.ui.lista.EstadoDaLista
+import com.example.netafim.core.modelo.ItemDeAtendimento
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.StatusAtendimento
 import java.time.Instant
 import java.time.ZoneId
 
 // Lista dos atendimentos do cliente, com botão para abrir um novo. Tela sem estado: recebe o estado da lista
-// (carregando ou pronta) e avisa por lambdas o que o usuário fez. "agora" e "zona" entram como parâmetro para
-// o texto de apoio dos cartões ser previsível nos testes e nos previews.
+// (carregando, conta sem empresa ou pronta) e avisa por lambdas o que o usuário fez. "agora" e "zona" entram
+// como parâmetro para o texto de apoio dos cartões ser previsível nos testes e nos previews.
 @Composable
 fun MeusAtendimentosTela(
     estado: EstadoDaLista,
@@ -54,45 +56,57 @@ fun MeusAtendimentosTela(
             BarraDoAtendimento(titulo = stringResource(R.string.atendimento_meus_titulo))
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = aoAbrirNovo,
-                shape = CircleShape,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = stringResource(R.string.atendimento_meus_novo),
-                )
+            // Conta sem empresa não pode abrir atendimento (a abertura seria recusada), então o botão nem aparece.
+            if (estado != EstadoDaLista.SemOrganizacao) {
+                FloatingActionButton(
+                    onClick = aoAbrirNovo,
+                    shape = CircleShape,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = stringResource(R.string.atendimento_meus_novo),
+                    )
+                }
             }
         },
     ) { espacamentoDoScaffold ->
-        // Antes da primeira resposta do repositório: progresso, e não a mensagem de lista vazia.
-        val atendimentos = when (estado) {
-            EstadoDaLista.Carregando -> null
-            is EstadoDaLista.Pronta -> estado.itens
+        val margens = Modifier.padding(espacamentoDoScaffold)
+        when (estado) {
+            // Antes da primeira resposta do repositório: progresso, e não a mensagem de lista vazia.
+            EstadoDaLista.Carregando -> IndicadorDeCarregando(modifier = margens)
+            EstadoDaLista.SemOrganizacao -> MensagemDeContaSemEmpresa(modifier = margens)
+            is EstadoDaLista.Pronta -> ListaOuVazio(estado.itens, agora, zona, aoAbrirDetalhe, margens)
         }
-        if (atendimentos == null) {
-            IndicadorDeCarregando(modifier = Modifier.padding(espacamentoDoScaffold))
-        } else if (atendimentos.isEmpty()) {
-            EstadoVazio(modifier = Modifier.padding(espacamentoDoScaffold))
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(espacamentoDoScaffold),
-                // Margem de 16dp; embaixo sobra espaço para o botão flutuante não cobrir o último cartão.
-                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(items = atendimentos, key = { it.id }) { item ->
-                    CartaoAtendimento(
-                        item = item,
-                        agora = agora,
-                        zona = zona,
-                        aoClicar = { aoAbrirDetalhe(item.id) },
-                    )
-                }
+    }
+}
+
+// Lista pronta: a mensagem de estado vazio quando não há atendimento, ou os cartões.
+@Composable
+private fun ListaOuVazio(
+    atendimentos: List<ItemDeAtendimento>,
+    agora: Instant,
+    zona: ZoneId,
+    aoAbrirDetalhe: (String) -> Unit,
+    margens: Modifier,
+) {
+    if (atendimentos.isEmpty()) {
+        EstadoVazio(modifier = margens)
+    } else {
+        LazyColumn(
+            modifier = margens.fillMaxSize(),
+            // Margem de 16dp; embaixo sobra espaço para o botão flutuante não cobrir o último cartão.
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(items = atendimentos, key = { it.id }) { item ->
+                CartaoAtendimento(
+                    item = item,
+                    agora = agora,
+                    zona = zona,
+                    aoClicar = { aoAbrirDetalhe(item.id) },
+                )
             }
         }
     }
@@ -187,6 +201,21 @@ private fun MeusAtendimentosTelaSincronizacaoPreview() {
     TemaDePreview {
         MeusAtendimentosTela(
             estado = EstadoDaLista.Pronta(itensDeCadaSincronizacao),
+            agora = agoraDoPreview,
+            zona = zonaDoPreview,
+            aoAbrirNovo = {},
+            aoAbrirDetalhe = {},
+        )
+    }
+}
+
+// Cliente com a conta ainda sem empresa: a explicação no lugar da lista e sem o botão de abrir novo.
+@Preview(showBackground = true)
+@Composable
+private fun MeusAtendimentosTelaContaSemEmpresaPreview() {
+    TemaDePreview {
+        MeusAtendimentosTela(
+            estado = EstadoDaLista.SemOrganizacao,
             agora = agoraDoPreview,
             zona = zonaDoPreview,
             aoAbrirNovo = {},

@@ -21,6 +21,7 @@ import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.CampoDeBusca
 import com.example.netafim.atendimento.ui.comum.IndicadorDeCarregando
 import com.example.netafim.atendimento.ui.comum.LinhaDeFiltros
+import com.example.netafim.atendimento.ui.comum.MensagemDeContaSemEmpresa
 import com.example.netafim.atendimento.ui.comum.MensagemDeEstadoVazio
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.itemDePreview
@@ -67,6 +68,9 @@ fun FilaDoTecnicoTela(
         when (estado) {
             // Antes da primeira resposta do repositório: progresso, e não a mensagem de lista vazia.
             EstadoDaLista.Carregando -> IndicadorDeCarregando(modifier = Modifier.weight(1f))
+            // Conta sem empresa: no lugar da lista, a explicação. A busca e os chips continuam desenhados, mas
+            // não mudam nada, porque o repositório nem é consultado nesse estado.
+            EstadoDaLista.SemOrganizacao -> MensagemDeContaSemEmpresa(modifier = Modifier.weight(1f))
             is EstadoDaLista.Pronta -> if (estado.itens.isEmpty()) {
                 // Uma mensagem para busca ou filtro sem resultado, outra para fila vazia.
                 val filtrando = busca.isNotBlank() || filtro != FiltroDaFila.TODOS
@@ -92,9 +96,33 @@ fun FilaDoTecnicoTela(
 
 // Dados fictícios só para os previews.
 private val itensDoPreview = listOf(
-    itemDePreview("1", "OS-0506", MotivoAtendimento.DIGITAL_FARMING, StatusAtendimento.AGENDADO, "2026-11-08T15:00:00Z", "Vanderlei Zucchi Rodas", "Arealva, SP"),
-    itemDePreview("2", "OS-0477", MotivoAtendimento.DIGITAL_FARMING, StatusAtendimento.EM_ATENDIMENTO, "2026-11-01T15:00:00Z", "Citrosuco", "Boa Esperança do Sul, SP"),
-    itemDePreview("3", "OS-0512", MotivoAtendimento.POS_VENDA, StatusAtendimento.DESTINADO, "2026-11-10T15:00:00Z", "Fazenda Santa Rita", "Ribeirão Preto, SP"),
+    itemDePreview(
+        "1",
+        "OS-0506",
+        MotivoAtendimento.DIGITAL_FARMING,
+        StatusAtendimento.AGENDADO,
+        "2026-11-08T15:00:00Z",
+        "Vanderlei Zucchi Rodas",
+        "Arealva, SP",
+    ),
+    itemDePreview(
+        "2",
+        "OS-0477",
+        MotivoAtendimento.DIGITAL_FARMING,
+        StatusAtendimento.EM_ATENDIMENTO,
+        "2026-11-01T15:00:00Z",
+        "Citrosuco",
+        "Boa Esperança do Sul, SP",
+    ),
+    itemDePreview(
+        "3",
+        "OS-0512",
+        MotivoAtendimento.POS_VENDA,
+        StatusAtendimento.DESTINADO,
+        "2026-11-10T15:00:00Z",
+        "Fazenda Santa Rita",
+        "Ribeirão Preto, SP",
+    ),
 )
 
 @Composable
@@ -165,6 +193,22 @@ private fun FilaSincronizacaoPreview() {
     TemaDePreview {
         FilaDoTecnicoTela(
             estado = EstadoDaLista.Pronta(itensDeCadaSincronizacao),
+            filtro = FiltroDaFila.TODOS,
+            busca = "",
+            aoMudarFiltro = {},
+            aoMudarBusca = {},
+            aoAbrir = {},
+        )
+    }
+}
+
+// Técnico de distribuidor com a conta ainda sem empresa: a explicação no lugar da lista.
+@Preview(showBackground = true, heightDp = 780)
+@Composable
+private fun FilaContaSemEmpresaPreview() {
+    TemaDePreview {
+        FilaDoTecnicoTela(
+            estado = EstadoDaLista.SemOrganizacao,
             filtro = FiltroDaFila.TODOS,
             busca = "",
             aoMudarFiltro = {},

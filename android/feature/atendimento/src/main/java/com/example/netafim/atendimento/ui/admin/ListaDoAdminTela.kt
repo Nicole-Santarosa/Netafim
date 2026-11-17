@@ -34,6 +34,7 @@ import com.example.netafim.atendimento.ui.comum.BarraDoAtendimento
 import com.example.netafim.atendimento.ui.comum.IconeDeSincronizacao
 import com.example.netafim.atendimento.ui.comum.IndicadorDeCarregando
 import com.example.netafim.atendimento.ui.comum.LinhaDeFiltros
+import com.example.netafim.atendimento.ui.comum.MensagemDeContaSemEmpresa
 import com.example.netafim.atendimento.ui.comum.MensagemDeEstadoVazio
 import com.example.netafim.atendimento.ui.comum.TemaDePreview
 import com.example.netafim.atendimento.ui.comum.itemDePreview
@@ -81,6 +82,10 @@ fun ListaDoAdminTela(
         when (estado) {
             // Antes da primeira resposta do repositório: progresso, e não a mensagem de lista vazia.
             EstadoDaLista.Carregando -> IndicadorDeCarregando(modifier = Modifier.weight(1f))
+            // Esta lista é só do Netafim Admin, e para a Netafim esse estado não acontece (não ter empresa é o
+            // normal dela). O caso fica tratado para o when continuar completo e a tela não quebrar se um dia
+            // outra conta chegar aqui.
+            EstadoDaLista.SemOrganizacao -> MensagemDeContaSemEmpresa(modifier = Modifier.weight(1f))
             is EstadoDaLista.Pronta -> if (estado.itens.isEmpty()) {
                 // Uma mensagem para filtro sem resultado, outra para lista realmente vazia.
                 MensagemDeEstadoVazio(
@@ -161,11 +166,46 @@ private fun itemAdminDePreview(
 
 // Dados fictícios só para os previews, com datas fora de ordem para provar a ordenação.
 private val itensDoPreview = listOf(
-    itemAdminDePreview("1", "OS-0477", "Citrosuco", OrigemAtendimento.DISTRIBUIDOR, StatusAtendimento.EM_ATENDIMENTO, "2026-11-01T15:00:00Z"),
-    itemAdminDePreview("2", "OS-0512", "Fazenda Santa Rita", OrigemAtendimento.CLIENTE_FINAL, StatusAtendimento.DESTINADO, "2026-11-10T15:00:00Z"),
-    itemAdminDePreview("3", "OS-0430", "Agropecuária Bom Jesus", OrigemAtendimento.NETAFIM, StatusAtendimento.ENCERRADO, "2026-10-20T15:00:00Z"),
-    itemAdminDePreview("4", "OS-0498", "Citrosuco", OrigemAtendimento.DISTRIBUIDOR, StatusAtendimento.CANCELADO, "2026-10-28T15:00:00Z"),
-    itemAdminDePreview("5", "OS-0506", "Vanderlei Zucchi Rodas", OrigemAtendimento.CLIENTE_FINAL, StatusAtendimento.AGENDADO, "2026-11-08T15:00:00Z"),
+    itemAdminDePreview(
+        "1",
+        "OS-0477",
+        "Citrosuco",
+        OrigemAtendimento.DISTRIBUIDOR,
+        StatusAtendimento.EM_ATENDIMENTO,
+        "2026-11-01T15:00:00Z",
+    ),
+    itemAdminDePreview(
+        "2",
+        "OS-0512",
+        "Fazenda Santa Rita",
+        OrigemAtendimento.CLIENTE_FINAL,
+        StatusAtendimento.DESTINADO,
+        "2026-11-10T15:00:00Z",
+    ),
+    itemAdminDePreview(
+        "3",
+        "OS-0430",
+        "Agropecuária Bom Jesus",
+        OrigemAtendimento.NETAFIM,
+        StatusAtendimento.ENCERRADO,
+        "2026-10-20T15:00:00Z",
+    ),
+    itemAdminDePreview(
+        "4",
+        "OS-0498",
+        "Citrosuco",
+        OrigemAtendimento.DISTRIBUIDOR,
+        StatusAtendimento.CANCELADO,
+        "2026-10-28T15:00:00Z",
+    ),
+    itemAdminDePreview(
+        "5",
+        "OS-0506",
+        "Vanderlei Zucchi Rodas",
+        OrigemAtendimento.CLIENTE_FINAL,
+        StatusAtendimento.AGENDADO,
+        "2026-11-08T15:00:00Z",
+    ),
 )
 
 @Composable
@@ -231,3 +271,18 @@ private fun ListaDoAdminCarregandoPreview() = TelaDePreview(itens = null)
 @Preview(showBackground = true, heightDp = 780)
 @Composable
 private fun ListaDoAdminSincronizacaoPreview() = TelaDePreview(itens = itensDeCadaSincronizacao)
+
+// O estado que não deveria chegar a esta lista, desenhado só para conferir que ela não quebra.
+@Preview(showBackground = true, heightDp = 780)
+@Composable
+private fun ListaDoAdminContaSemEmpresaPreview() {
+    TemaDePreview {
+        ListaDoAdminTela(
+            estado = EstadoDaLista.SemOrganizacao,
+            filtro = FiltroDeOrigem.TODAS,
+            aoMudarFiltro = {},
+            aoAbrir = {},
+            aoVoltar = {},
+        )
+    }
+}
