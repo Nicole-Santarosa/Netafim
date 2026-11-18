@@ -146,6 +146,18 @@ interface AcessoApi {
     @PUT("perfis/{id}/permissoes")
     suspend fun salvarPermissoes(@Path("id") id: Int, @Body corpo: PermissoesRequisicao): PerfilCompletoDto
 
+    @GET("dominios")
+    suspend fun dominios(@Query("page") pagina: Int): PaginaDto<DominioDto>
+
+    @POST("dominios")
+    suspend fun criarDominio(@Body corpo: DominioRequisicao): DominioDto
+
+    @PATCH("dominios/{id}")
+    suspend fun alterarDominio(@Path("id") id: Int, @Body corpo: DominioAtivoRequisicao): DominioDto
+
+    @DELETE("dominios/{id}")
+    suspend fun excluirDominio(@Path("id") id: Int)
+
     @GET("distribuidores")
     suspend fun distribuidores(@Query("page") pagina: Int): PaginaDto<DistribuidorDto>
 

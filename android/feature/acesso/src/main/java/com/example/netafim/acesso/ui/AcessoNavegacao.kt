@@ -19,6 +19,8 @@ import com.example.netafim.acesso.ui.link.LinkRota
 import com.example.netafim.acesso.ui.link.LinkViewModel
 import com.example.netafim.acesso.ui.login.LoginRota
 import com.example.netafim.acesso.ui.login.LoginViewModel
+import com.example.netafim.acesso.ui.dominios.DominiosRota
+import com.example.netafim.acesso.ui.dominios.DominiosViewModel
 import com.example.netafim.acesso.ui.permissoes.PerfisRota
 import com.example.netafim.acesso.ui.permissoes.PerfisViewModel
 import com.example.netafim.acesso.ui.permissoes.PermissoesPerfilRota
@@ -64,6 +66,7 @@ object RotasAcesso {
     const val USUARIO_EDITAR = "acesso/usuarios/{id}/editar"
     const val PERMISSOES = "acesso/permissoes"
     const val PERMISSOES_PERFIL = "acesso/permissoes/{id}"
+    const val DOMINIOS = "acesso/dominios"
     const val PRIVACIDADE = "acesso/privacidade"
     const val NOVO_PEDIDO = "acesso/privacidade/novo"
     const val FILA_PRIVACIDADE = "acesso/privacidade/fila"
@@ -78,7 +81,7 @@ object RotasAcesso {
 
     /** Telas de dentro do app: sem sessão, a navegação raiz leva ao login. */
     fun exigeSessao(rota: String): Boolean =
-        !rota.startsWith("$GRAFO/") || rota in setOf(PERFIL, TROCAR_SENHA, APROVACAO, USUARIOS, NOVO_USUARIO, USUARIO_DETALHE, USUARIO_EDITAR, PERMISSOES, PERMISSOES_PERFIL, PRIVACIDADE, NOVO_PEDIDO, FILA_PRIVACIDADE, PEDIDO_PRIVACIDADE)
+        !rota.startsWith("$GRAFO/") || rota in setOf(PERFIL, TROCAR_SENHA, APROVACAO, USUARIOS, NOVO_USUARIO, USUARIO_DETALHE, USUARIO_EDITAR, PERMISSOES, PERMISSOES_PERFIL, DOMINIOS, PRIVACIDADE, NOVO_PEDIDO, FILA_PRIVACIDADE, PEDIDO_PRIVACIDADE)
 }
 
 private val fabrica = viewModelFactory {
@@ -92,6 +95,7 @@ private val fabrica = viewModelFactory {
     initializer { AprovacaoViewModel(AcessoGrafo.repositorioCadastros) }
     initializer { UsuariosViewModel(AcessoGrafo.repositorioUsuarios, AcessoGrafo.repositorio) }
     initializer { PerfisViewModel(AcessoGrafo.repositorioPerfis) }
+    initializer { DominiosViewModel(AcessoGrafo.repositorioDominios, AcessoGrafo.repositorioCadastros) }
     initializer { NovoUsuarioViewModel(AcessoGrafo.repositorioUsuarios) }
     initializer { PrivacidadeViewModel(AcessoGrafo.repositorioPrivacidade) }
     initializer { NovoPedidoViewModel(AcessoGrafo.repositorioPrivacidade) }
@@ -185,6 +189,13 @@ fun NavGraphBuilder.telasPermissoes(navController: NavHostController) {
             },
         )
         PermissoesPerfilRota(viewModel = viewModel, aoConcluir = { navController.popBackStack() })
+    }
+}
+
+/** Domínios de e-mail corporativos (RNF18), só para o Netafim Admin. */
+fun NavGraphBuilder.telaDominios(navController: NavHostController) {
+    composable(RotasAcesso.DOMINIOS) {
+        DominiosRota(viewModel = viewModel(factory = fabrica))
     }
 }
 
