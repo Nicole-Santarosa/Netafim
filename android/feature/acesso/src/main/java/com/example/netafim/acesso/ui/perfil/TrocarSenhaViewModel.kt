@@ -29,8 +29,9 @@ data class TrocarSenhaEstado(
 /**
  * Troca da própria senha (`POST me/senha`). Valida no aparelho (mínimo de 8 caracteres, não só
  * números, confirmação igual, nova diferente da atual) e deixa a API dar a palavra final. Com a
- * senha trocada, a API encerra as outras sessões; por isso o app também sai e pede o login com a
- * nova senha.
+ * senha trocada, a API pede ao banco para encerrar as outras sessões (migração 001, aplicada em
+ * 18/11/2026; sem ela, as outras sessões valem até expirar). Em qualquer caso o app também sai e
+ * pede o login com a nova senha.
  */
 class TrocarSenhaViewModel(private val repositorio: RepositorioAcesso) : ViewModel() {
 

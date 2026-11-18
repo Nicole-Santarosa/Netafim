@@ -24,7 +24,9 @@ interface RepositorioAcesso {
 
     /**
      * Troca a senha de quem está logado (`POST me/senha`). Só vale com a senha atual correta e uma nova
-     * diferente da atual. A API encerra as outras sessões; o chamador deve sair em seguida.
+     * diferente da atual. A API pede ao banco para encerrar as outras sessões (função
+     * `fn_revogar_tokens_usuario`, migração 001, aplicada no Supabase em 18/11/2026); sem ela no banco, a troca
+     * funciona e as outras sessões valem até expirar. O chamador deve sair em seguida.
      */
     suspend fun alterarSenha(senhaAtual: String, novaSenha: String): Resultado<Unit>
 
