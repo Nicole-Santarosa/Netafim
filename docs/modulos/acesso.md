@@ -169,11 +169,13 @@ if (usuario?.temPermissao(Permissoes.ABRIR_ATENDIMENTO) == true) { ... }
 
 ## Estado das migrações no banco do grupo (Supabase)
 
-Conferido em 14/11/2026 contra o banco real.
+Conferido em 18/11/2026 contra o banco real (consulta só de leitura; as datas de aplicação vêm do registro de aplicação).
 
 | Nº | Script | Situação |
 |---|---|---|
-| 001 | `fn_revogar_tokens_usuario` | **Não aplicada** (a função não existe no banco) |
+| 001 | [`001`](../../infra/db/migracoes/001_fn_revogar_tokens_usuario.sql), `fn_revogar_tokens_usuario`: encerra as sessões do usuário | Aplicada em 18/11/2026. Verificada: a função existe, é `SECURITY DEFINER` e só `postgres` e `app_django` têm EXECUTE. O corpo no banco tem quebras de linha CRLF (sem diferença de conteúdo), então o MD5 não bate com o do arquivo |
+| 002 | `002` (arquivo na branch `db/propostas-002-003`), política `usuario_insert_admin`: admin de empresa só cria usuário pendente e de nível Usuário | Aplicada em 18/11/2026 (verificada no banco) |
+| 003 | `003` (arquivo na branch `db/propostas-002-003`), `search_path` fixo nas 10 funções que não tinham | Aplicada em 18/11/2026. Verificada: nenhuma função de `public` ficou sem `search_path` |
 | 004 | `app_auth` e `fn_credencial_*` | Aplicada em 08/11/2026 |
 | 005 | Revoga a leitura do hash e da auditoria | Aplicada em 08/11/2026 |
 | 006 | Tabela de controle das migrações | **Não aplicada** |
@@ -183,7 +185,7 @@ Conferido em 14/11/2026 contra o banco real.
 | 011 | [`011`](../../infra/db/migracoes/011_anonimizar_contato_solicitante.sql), `fn_anonimizar_usuario` limpa o contato do solicitante | Aplicada em 14/11/2026 |
 | 012 | [`012`](../../infra/db/migracoes/012_agendamento_encerramento_vencidos.sql), pg_cron: encerramento dos atendimentos vencidos | **Não aplicada** (a extensão precisa ser habilitada no painel) |
 
-As propostas 002 e 003 (DT-003 e DT-004) também continuam sem aplicar. O corpo de `fn_atendimento_antes` e de `fn_anonimizar_usuario` foi conferido por MD5 antes e depois da aplicação; o rollback e o registro estão em `01_Gestao_do_Projeto/Aplicacao_Supabase/`.
+As propostas 002 e 003 (DT-003 e DT-004) foram aplicadas em 18/11/2026; os arquivos estão na branch `db/propostas-002-003`, ainda sem PR. Como a 006 (tabela de controle) não está aplicada, a aplicação da 001, da 002 e da 003 não está registrada em tabela. O corpo de `fn_atendimento_antes` e de `fn_anonimizar_usuario` foi conferido por MD5 antes e depois da aplicação; o rollback e o registro estão em `01_Gestao_do_Projeto/Aplicacao_Supabase/`.
 
 ## Telas do aplicativo (Android)
 
@@ -204,11 +206,11 @@ Arquivos **provisórios** criados só para o módulo rodar e ser testado: `backe
 
 ### Sobre o banco (itens que dependem de quem mantém o SQL)
 
-1. **Encerrar sessões na troca de senha.** O banco não tem como revogar todos os tokens de um usuário. Há uma proposta em [`infra/db/migracoes/001_fn_revogar_tokens_usuario.sql`](../../infra/db/migracoes/001_fn_revogar_tokens_usuario.sql). Enquanto não for aplicada, a API troca a senha, registra um aviso no log e as sessões antigas valem até expirar.
+1. **Encerrar sessões na troca de senha: aplicado em 18/11/2026 (migração `001`).** A função `fn_revogar_tokens_usuario` existe no banco, e a API a chama ao trocar a senha, ao definir a senha por convite ou redefinição e quando o Netafim Admin redefine o MFA de alguém (`tokens.revogar_todos`). Antes da aplicação a API registrava um aviso no log e as sessões antigas valiam até expirar. **Ainda não foi testado de ponta a ponta no banco real** (trocar a senha de uma conta e conferir que as outras sessões caem): só se verificou que a função existe, tem as permissões certas e nega a chamada sem ator.
 2. **A API lê o hash da senha e a trilha de auditoria (DT-002).** `app_django` tem `SELECT` na tabela `usuario` inteira e em `log_auditoria`. **Lado Django: feito** (campo só de escrita e conexão `auth`, ver "Contrato com o banco"). **Lado banco: aplicado no Supabase em 08/11/2026** (`004` e `005`), em dois scripts: [`004_login_sem_leitura_de_hash.sql`](../../infra/db/migracoes/004_login_sem_leitura_de_hash.sql), **aditivo** (papel `app_auth` e as funções `fn_credencial_*`; compatível com o código antigo e o novo), e [`005_revoga_leitura_de_hash_e_auditoria.sql`](../../infra/db/migracoes/005_revoga_leitura_de_hash_e_auditoria.sql) (os `REVOKE` e o `GRANT` por coluna, com o comando para desfazer). Como a conexão `auth` é opcional e o código cai no modo legado quando ela ainda não existe, **a ordem não quebra ninguém**: (1) o código novo pode entrar a qualquer momento; (2) aplicar o `004`; (3) definir a senha do `app_auth` fora do repositório; (4) configurar `DB_AUTH_USER` e `DB_AUTH_PASSWORD`, reiniciar a API e conferir o login pela conexão `auth` (o `manage.py check` deixa de avisar); (5) só então aplicar o `005`, quando todos já estiverem no código novo. Se o `005` entrar antes do passo 4, o login falha com uma mensagem pedindo `DB_AUTH_PASSWORD`.
 3. **Gatilho `fn_usuario_protege` não protege senha, e-mail nem consentimento de terceiros.** Um admin de empresa com `editar_usuarios` poderia alterá-los direto no banco (a API não oferece isso).
-4. **Política `usuario_insert_admin`** deixa um admin de empresa inserir usuário já ativo e com perfil admin. A API restringe (pendente, nível Usuário), mas o banco não.
-5. **Funções com `search_path` mutável** (10, apontadas pelo Supabase) e **sem timeouts** por papel.
+4. **Política `usuario_insert_admin`: corrigida em 18/11/2026 (migração `002`).** Antes, o banco deixava um admin de empresa inserir usuário já ativo e com perfil admin (só a API restringia). Agora o banco também exige usuário pendente, sem aprovação gravada, de nível Usuário e da própria organização; o Netafim Admin continua criando qualquer um. Verificado no banco; uma inserção real não foi testada.
+5. **Funções com `search_path` mutável: corrigido em 18/11/2026 (migração `003`).** As 10 funções apontadas pelo Supabase passaram a ter `search_path = public, pg_temp`, e nenhuma função de `public` ficou sem. **Sem timeouts por papel** continua pendente (não conferido em 18/11).
 6. **`fn_rotacionar_token`:** sem tolerância para resposta perdida em rede móvel, não devolve o tipo do token consumido e `fn_emitir_token` não devolve a validade.
 7. **Último Netafim Admin:** a proteção está só na API; sob concorrência dois admins poderiam se inativar ao mesmo tempo.
 8. **Configuração `app.acao_sistema`:** quem executa SQL com a credencial da API consegue ligá-la com `set_config`, e ela desliga as proteções do gatilho `fn_usuario_protege`, assim como o ator (`app.current_user_id`) é informado pela própria conexão. O código da API nunca a usa; a mitigação é a credencial só ter o necessário e consultas sempre parametrizadas.
