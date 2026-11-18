@@ -54,6 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -131,7 +132,6 @@ fun AbrirAtendimentoTela(
                 CampoDistribuidor(
                     distribuidores = distribuidores,
                     escolhido = formulario.idDistribuidor,
-                    erro = erros.distribuidor,
                     habilitado = habilitado,
                     aoEscolher = { aoAlterar(formulario.copy(idDistribuidor = it)) },
                 )
@@ -207,14 +207,13 @@ fun AbrirAtendimentoTela(
                 acao = ImeAction.Done,
                 habilitado = habilitado,
             )
-            // Tipo de venda só existe no motivo Digital Farming.
-            if (formulario.motivo == MotivoAtendimento.DIGITAL_FARMING) {
-                SecaoTipoVenda(
-                    escolhido = tipoVendaEfetivo(formulario),
-                    habilitado = habilitado,
-                    aoEscolher = { aoAlterar(formulario.copy(tipoVenda = it)) },
-                )
-            }
+            // Tipo de venda aparece em todos os motivos e começa sem nenhuma opção marcada.
+            SecaoTipoVenda(
+                escolhido = tipoVendaEfetivo(formulario),
+                erro = erros.tipoVenda,
+                habilitado = habilitado,
+                aoEscolher = { aoAlterar(formulario.copy(tipoVenda = it)) },
+            )
             // Erro do envio logo acima do botão, depois de todos os campos: aparecer aqui não move nenhum campo.
             if (erro != null) {
                 AvisoDeErro(erro = erro, aoDispensar = aoDispensarErro)
@@ -224,13 +223,16 @@ fun AbrirAtendimentoTela(
     }
 }
 
-// Rótulo pequeno acima de cada bloco do formulário.
+// Rótulo pequeno acima de cada bloco do formulário. Campo obrigatório leva um asterisco no fim; para o leitor
+// de tela o asterisco não é lido como símbolo: o texto lido é o rótulo seguido de "obrigatório".
 @Composable
-private fun Rotulo(texto: String) {
+private fun Rotulo(texto: String, obrigatorio: Boolean = true) {
+    val descricao = if (obrigatorio) stringResource(R.string.atendimento_abrir_obrigatorio_descricao, texto) else texto
     Text(
-        text = texto,
+        text = if (obrigatorio) "$texto *" else texto,
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.semantics { contentDescription = descricao },
     )
 }
 
@@ -444,24 +446,24 @@ private fun CampoDeTexto(
     }
 }
 
-// Distribuidor: menu suspenso somente leitura, só com os distribuidores. Como o campo é obrigatório,
-// tirei a opção "Nenhum" que limpava a escolha: escolher nenhum só levaria ao erro. O nulo agora só
-// existe no estado inicial do formulário, e aí o campo mostra o texto de orientação.
+// Distribuidor: menu suspenso somente leitura com os distribuidores e a opção "Sem distribuidor". O campo é
+// opcional (decisão da Netafim de 18/11/2026): quem não tem distribuidor padrão segue sem escolher, e quem já
+// escolheu pode voltar atrás com "Sem distribuidor". Por ser opcional não tem erro nem asterisco; um texto de
+// apoio abaixo explica para onde vai o atendimento sem distribuidor.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CampoDistribuidor(
     distribuidores: List<Distribuidor>,
     escolhido: Int?,
-    erro: ErroCampo?,
     habilitado: Boolean,
-    aoEscolher: (Int) -> Unit,
+    aoEscolher: (Int?) -> Unit,
 ) {
     // Só o abrir e fechar do menu fica guardado aqui; a escolha em si volta para o chamador.
     var aberto by remember { mutableStateOf(false) }
     // Sem escolha o valor fica vazio e o placeholder mostra "Selecione o distribuidor".
     val nomeExibido = distribuidores.firstOrNull { it.id == escolhido }?.nome.orEmpty()
     Column(modifier = Modifier.semantics(mergeDescendants = true) {}) {
-        Rotulo(stringResource(R.string.atendimento_abrir_distribuidor))
+        Rotulo(stringResource(R.string.atendimento_abrir_distribuidor), obrigatorio = false)
         Spacer(Modifier.size(8.dp))
         ExposedDropdownMenuBox(expanded = aberto && habilitado, onExpandedChange = { aberto = it }) {
             TextField(
@@ -469,7 +471,6 @@ private fun CampoDistribuidor(
                 onValueChange = {},
                 readOnly = true,
                 enabled = habilitado,
-                isError = erro != null,
                 singleLine = true,
                 placeholder = { Text(stringResource(R.string.atendimento_abrir_distribuidor_selecione)) },
                 shape = formaDoCampo,
@@ -480,6 +481,14 @@ private fun CampoDistribuidor(
                     .fillMaxWidth(),
             )
             ExposedDropdownMenu(expanded = aberto && habilitado, onDismissRequest = { aberto = false }) {
+                // Volta ao estado sem distribuidor (nulo), que é uma escolha válida.
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.atendimento_abrir_distribuidor_nenhum)) },
+                    onClick = {
+                        aoEscolher(null)
+                        aberto = false
+                    },
+                )
                 distribuidores.forEach { distribuidor ->
                     DropdownMenuItem(
                         text = { Text(distribuidor.nome) },
@@ -491,10 +500,13 @@ private fun CampoDistribuidor(
                 }
             }
         }
-        // Dentro da mesma coluna com mergeDescendants, para o leitor de tela ler o erro junto do campo.
-        if (erro != null) {
-            MensagemDeErro(textoDoErro(erro, R.string.atendimento_abrir_erro_distribuidor, limite = 0))
-        }
+        // Texto de apoio dentro da mesma coluna com mergeDescendants, para o leitor de tela ler junto do campo.
+        Text(
+            text = stringResource(R.string.atendimento_abrir_distribuidor_apoio),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
     }
 }
 
@@ -533,14 +545,20 @@ private fun SecaoAreaSetor(
     }
 }
 
-// Tipo de venda: dois chips de seleção única. O valor mostrado como marcado já considera o padrão
-// (Projeto quando o cliente ainda não escolheu), vindo de tipoVendaEfetivo.
+// Tipo de venda: dois chips de seleção única, obrigatório e sem opção pré-marcada. "escolhido" vem de
+// tipoVendaEfetivo e é nulo até o usuário escolher; sem escolha, o erro aparece depois da tentativa de envio.
 @Composable
-private fun SecaoTipoVenda(escolhido: TipoVenda?, habilitado: Boolean, aoEscolher: (TipoVenda) -> Unit) {
+private fun SecaoTipoVenda(
+    escolhido: TipoVenda?,
+    erro: ErroCampo?,
+    habilitado: Boolean,
+    aoEscolher: (TipoVenda) -> Unit,
+) {
     Column {
         Rotulo(stringResource(R.string.atendimento_abrir_tipo_venda))
         Spacer(Modifier.size(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // selectableGroup faz o leitor de tela anunciar as opções como um grupo.
+        Row(modifier = Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ChipDeSelecao(
                 texto = stringResource(TipoVenda.PROJETO.rotulo()),
                 marcado = escolhido == TipoVenda.PROJETO,
@@ -553,6 +571,10 @@ private fun SecaoTipoVenda(escolhido: TipoVenda?, habilitado: Boolean, aoEscolhe
                 habilitado = habilitado,
                 aoClicar = { aoEscolher(TipoVenda.VENDA_REGULAR) },
             )
+        }
+        // Tipo de venda só tem o erro de obrigatório; o limite não entra na mensagem.
+        if (erro != null) {
+            MensagemDeErro(textoDoErro(erro, R.string.atendimento_abrir_erro_tipo_venda, limite = 0))
         }
     }
 }
@@ -617,6 +639,7 @@ private val formularioDoDistribuidor = FormularioAbertura(
     cidade = "Bauru",
     contato = "14988880000",
     nomeProdutor = "José da Silva",
+    tipoVenda = TipoVenda.VENDA_REGULAR,
 )
 private val formularioDaNetafim = FormularioAbertura(
     motivo = MotivoAtendimento.TREINAMENTO,
@@ -625,6 +648,7 @@ private val formularioDaNetafim = FormularioAbertura(
     contato = "16977770000",
     nomeProdutor = "Maria Souza",
     areaSetor = AreaDoSetor.ENGENHARIA,
+    tipoVenda = TipoVenda.PROJETO,
 )
 
 @Composable
@@ -675,14 +699,15 @@ private fun AbrirAtendimentoComErrosPreview() {
             cidade = ErroCampo.OBRIGATORIO,
             nomeFazenda = ErroCampo.OBRIGATORIO,
             culturas = ErroCampo.OBRIGATORIO,
-            distribuidor = ErroCampo.OBRIGATORIO,
             contato = ErroCampo.OBRIGATORIO,
+            tipoVenda = ErroCampo.OBRIGATORIO,
         ),
     )
 }
 
-// Erros dos campos novos com o resto preenchido: cultura e distribuidor sem escolha, e cidade e nome
-// da fazenda passando do limite, para conferir a mensagem de "muito longo" com 100 e 150.
+// Erros dos campos novos com o resto preenchido: cultura e tipo de venda sem escolha, e cidade e nome
+// da fazenda passando do limite, para conferir a mensagem de "muito longo" com 100 e 150. O distribuidor
+// fica sem escolha de propósito: é opcional e não gera erro.
 @Preview(showBackground = true, heightDp = 1100)
 @Composable
 private fun AbrirAtendimentoErrosDosCamposNovosPreview() {
@@ -690,6 +715,7 @@ private fun AbrirAtendimentoErrosDosCamposNovosPreview() {
         formulario = formularioPreenchido.copy(
             culturas = emptySet(),
             idDistribuidor = null,
+            tipoVenda = null,
             cidade = "a".repeat(LIMITE_CIDADE + 1),
             nomeFazenda = "a".repeat(LIMITE_NOME_FAZENDA + 1),
         ),
@@ -697,7 +723,7 @@ private fun AbrirAtendimentoErrosDosCamposNovosPreview() {
             cidade = ErroCampo.MUITO_LONGO,
             nomeFazenda = ErroCampo.MUITO_LONGO,
             culturas = ErroCampo.OBRIGATORIO,
-            distribuidor = ErroCampo.OBRIGATORIO,
+            tipoVenda = ErroCampo.OBRIGATORIO,
         ),
     )
 }
@@ -744,6 +770,7 @@ private fun AbrirAtendimentoNetafimComErrosPreview() {
             contato = ErroCampo.OBRIGATORIO,
             nomeProdutor = ErroCampo.OBRIGATORIO,
             areaSetor = ErroCampo.OBRIGATORIO,
+            tipoVenda = ErroCampo.OBRIGATORIO,
         ),
     )
 }

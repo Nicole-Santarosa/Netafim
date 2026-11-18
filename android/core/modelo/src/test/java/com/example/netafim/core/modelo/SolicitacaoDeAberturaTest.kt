@@ -11,14 +11,15 @@ class SolicitacaoDeAberturaTest {
     private fun solicitacao(
         origem: OrigemAtendimento = OrigemAtendimento.CLIENTE_FINAL,
         motivo: MotivoAtendimento = MotivoAtendimento.POS_VENDA,
-        tipoVenda: TipoVenda? = null,
+        tipoVenda: TipoVenda = TipoVenda.PROJETO,
         areaSetor: AreaDoSetor? = null,
+        idDistribuidorOrigem: Int? = 3,
     ) = SolicitacaoDeAbertura(
         id = "7b1f0c9e-3f5a-4a52-9f0e-6f3c2a1d8b40",
         origem = origem,
         motivo = motivo,
         idCliente = 12,
-        idDistribuidorOrigem = 3,
+        idDistribuidorOrigem = idDistribuidorOrigem,
         nomeProdutor = "",
         nomeFazenda = "Fazenda Boa Vista",
         cidade = "Ribeirão Preto",
@@ -37,8 +38,18 @@ class SolicitacaoDeAberturaTest {
     }
 
     @Test
-    fun tipoDeVendaNuloEAceito() {
-        assertNull(solicitacao(tipoVenda = null).tipoVenda)
+    fun tipoDeVendaVemSempreEscolhidoEEmQualquerMotivo() {
+        // O tipo de venda é obrigatório em todo atendimento (decisão da Netafim de 18/11/2026): não é mais
+        // nulo, e vale para qualquer motivo, não só para o Digital Farming.
+        for (tipo in listOf(TipoVenda.PROJETO, TipoVenda.VENDA_REGULAR)) {
+            assertEquals(tipo, solicitacao(motivo = MotivoAtendimento.POS_VENDA, tipoVenda = tipo).tipoVenda)
+        }
+    }
+
+    @Test
+    fun distribuidorDeOrigemNuloEAceito() {
+        // Cliente final sem distribuidor padrão: o atendimento nasce sem distribuidor de origem.
+        assertNull(solicitacao(origem = OrigemAtendimento.CLIENTE_FINAL, idDistribuidorOrigem = null).idDistribuidorOrigem)
     }
 
     @Test

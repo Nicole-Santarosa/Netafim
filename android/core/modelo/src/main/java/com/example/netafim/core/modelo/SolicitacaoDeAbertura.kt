@@ -11,6 +11,9 @@ data class SolicitacaoDeAbertura(
     val origem: OrigemAtendimento,
     val motivo: MotivoAtendimento,
     val idCliente: Int?,
+    // Nulo quando o cliente final não tem distribuidor padrão ou não escolheu um: o atendimento nasce sem
+    // distribuidor de origem e vai direto para a fila do Netafim Admin. Quem monta o corpo da API deve omitir
+    // a chave id_distribuidor_origem nesse caso.
     val idDistribuidorOrigem: Int?,
     val nomeProdutor: String,
     val nomeFazenda: String,
@@ -18,7 +21,8 @@ data class SolicitacaoDeAbertura(
     // Só a origem Netafim informa a área; nas outras ela é nula.
     val areaSetor: AreaDoSetor?,
     val contato: String,
-    val tipoVenda: TipoVenda?,
+    // Obrigatório em todo atendimento (decisão da Netafim de 18/11/2026): a API recusa a abertura sem ele.
+    val tipoVenda: TipoVenda,
     val culturas: Set<Int>,
     // Relógio do aparelho no momento da abertura.
     val abertoEm: Instant,

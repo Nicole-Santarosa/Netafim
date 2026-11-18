@@ -21,7 +21,8 @@ class FormularioAberturaTest {
         nomeFazenda = "Fazenda Santa Rita",
         contato = "16999990000",
         idDistribuidor = 7,
-        tipoVenda = null,
+        // O tipo de venda é obrigatório em todo atendimento: o formulário válido já traz uma escolha.
+        tipoVenda = TipoVenda.PROJETO,
     )
 
     // Os testes deste arquivo são do formulário do cliente final, que era o único antes da abertura por
@@ -36,7 +37,7 @@ class FormularioAberturaTest {
         assertNull(erros.cidade)
         assertNull(erros.nomeFazenda)
         assertNull(erros.culturas)
-        assertNull(erros.distribuidor)
+        assertNull(erros.tipoVenda)
         assertNull(erros.contato)
     }
 
@@ -74,10 +75,11 @@ class FormularioAberturaTest {
     }
 
     @Test
-    fun semDistribuidorFalha() {
+    fun clienteFinalSemDistribuidorEValido() {
+        // O distribuidor é opcional (decisão da Netafim de 18/11/2026): o cliente final sem distribuidor
+        // padrão abre o atendimento e ele vai para a fila do Netafim Admin.
         val erros = validarCliente(completo.copy(idDistribuidor = null))
-        assertEquals(ErroCampo.OBRIGATORIO, erros.distribuidor)
-        assertFalse(erros.valido)
+        assertTrue(erros.valido)
     }
 
     @Test
@@ -88,7 +90,7 @@ class FormularioAberturaTest {
         assertEquals(ErroCampo.OBRIGATORIO, erros.cidade)
         assertEquals(ErroCampo.OBRIGATORIO, erros.nomeFazenda)
         assertEquals(ErroCampo.OBRIGATORIO, erros.culturas)
-        assertEquals(ErroCampo.OBRIGATORIO, erros.distribuidor)
+        assertEquals(ErroCampo.OBRIGATORIO, erros.tipoVenda)
         assertEquals(ErroCampo.OBRIGATORIO, erros.contato)
     }
 
@@ -139,22 +141,50 @@ class FormularioAberturaTest {
     }
 
     @Test
-    fun tipoVendaEfetivoParaDigitalFarmingSemTipoEProjeto() {
-        val f = completo.copy(motivo = MotivoAtendimento.DIGITAL_FARMING, tipoVenda = null)
-        assertEquals(TipoVenda.PROJETO, tipoVendaEfetivo(f))
+    fun tipoVendaEfetivoSemEscolhaENuloEmQualquerMotivo() {
+        // Não há valor padrão: sem escolha, nem o Digital Farming (que antes assumia Projeto) devolve um tipo.
+        assertNull(tipoVendaEfetivo(completo.copy(motivo = MotivoAtendimento.DIGITAL_FARMING, tipoVenda = null)))
+        assertNull(tipoVendaEfetivo(completo.copy(motivo = MotivoAtendimento.DUVIDAS, tipoVenda = null)))
+        assertNull(tipoVendaEfetivo(completo.copy(motivo = null, tipoVenda = null)))
     }
 
     @Test
-    fun tipoVendaEfetivoParaDigitalFarmingComTipoMantemOTipo() {
-        val f = completo.copy(motivo = MotivoAtendimento.DIGITAL_FARMING, tipoVenda = TipoVenda.VENDA_REGULAR)
-        assertEquals(TipoVenda.VENDA_REGULAR, tipoVendaEfetivo(f))
+    fun tipoVendaEfetivoComEscolhaMantemOTipoEmQualquerMotivo() {
+        for (motivo in listOf(MotivoAtendimento.DIGITAL_FARMING, MotivoAtendimento.DUVIDAS, null)) {
+            val f = completo.copy(motivo = motivo, tipoVenda = TipoVenda.VENDA_REGULAR)
+            assertEquals(TipoVenda.VENDA_REGULAR, tipoVendaEfetivo(f))
+        }
     }
 
     @Test
-    fun tipoVendaEfetivoParaOutroMotivoENulo() {
-        val f = completo.copy(motivo = MotivoAtendimento.DUVIDAS, tipoVenda = TipoVenda.PROJETO)
-        assertNull(tipoVendaEfetivo(f))
-        assertNull(tipoVendaEfetivo(completo.copy(motivo = null)))
+    fun tipoVendaNuloEObrigatorioEmTodasAsOrigens() {
+        // O erro aparece nas três origens, e só o tipo de venda é apontado quando é o único que falta.
+        for (origem in listOf(OrigemAtendimento.CLIENTE_FINAL, OrigemAtendimento.DISTRIBUIDOR, OrigemAtendimento.NETAFIM)) {
+            val erros = validar(completo.copy(tipoVenda = null), origem)
+            assertEquals(origem.name, ErroCampo.OBRIGATORIO, erros.tipoVenda)
+        }
+        val soOTipo = validarCliente(completo.copy(tipoVenda = null))
+        assertEquals(ErrosFormulario(tipoVenda = ErroCampo.OBRIGATORIO), soOTipo)
+        assertFalse(soOTipo.valido)
+    }
+
+    @Test
+    fun tipoVendaObrigatorioEmTodosOsMotivos() {
+        // Antes só o Digital Farming tinha tipo de venda. Agora todo motivo exige a escolha.
+        for (motivo in MotivoAtendimento.motivosDoCliente) {
+            assertEquals(
+                motivo.name,
+                ErroCampo.OBRIGATORIO,
+                validarCliente(completo.copy(motivo = motivo, tipoVenda = null)).tipoVenda,
+            )
+            assertNull(motivo.name, validarCliente(completo.copy(motivo = motivo)).tipoVenda)
+        }
+    }
+
+    @Test
+    fun osDoisTiposDeVendaSaoAceitos() {
+        assertTrue(validarCliente(completo.copy(tipoVenda = TipoVenda.PROJETO)).valido)
+        assertTrue(validarCliente(completo.copy(tipoVenda = TipoVenda.VENDA_REGULAR)).valido)
     }
 
     @Test
@@ -166,9 +196,12 @@ class FormularioAberturaTest {
     }
 
     @Test
-    fun tipoVendaDesconhecidoCaiNoPadraoDoDigitalFarming() {
-        val formulario = completo.copy(motivo = MotivoAtendimento.DIGITAL_FARMING, tipoVenda = TipoVenda.DESCONHECIDO)
-        assertEquals(TipoVenda.PROJETO, tipoVendaEfetivo(formulario))
+    fun tipoVendaDesconhecidoContaComoNaoEscolhido() {
+        // DESCONHECIDO não é uma escolha possível: não vira padrão, é erro e não chega à solicitação.
+        val formulario = completo.copy(tipoVenda = TipoVenda.DESCONHECIDO)
+        assertNull(tipoVendaEfetivo(formulario))
+        assertEquals(ErroCampo.OBRIGATORIO, validarCliente(formulario).tipoVenda)
+        assertNull(converter(formulario))
     }
 
     // ---- comoSolicitacao
@@ -200,6 +233,7 @@ class FormularioAberturaTest {
         assertEquals("Ribeirão Preto", solicitacao.cidade)
         assertEquals("16999990000", solicitacao.contato)
         assertEquals(setOf(1, 2), solicitacao.culturas)
+        assertEquals(TipoVenda.PROJETO, solicitacao.tipoVenda)
     }
 
     @Test
@@ -219,19 +253,28 @@ class FormularioAberturaTest {
     }
 
     @Test
-    fun tipoDeVendaSegueARegraDoDigitalFarming() {
-        // Fora do Digital Farming o tipo vai nulo, mesmo que o formulário tenha um valor escondido.
-        assertNull(converter(completo.copy(tipoVenda = TipoVenda.PROJETO))!!.tipoVenda)
-        // No Digital Farming, sem escolha vale o padrão; com escolha, vale a escolha.
-        val digital = completo.copy(motivo = MotivoAtendimento.DIGITAL_FARMING)
-        assertEquals(TipoVenda.PROJETO, converter(digital)!!.tipoVenda)
-        assertEquals(TipoVenda.VENDA_REGULAR, converter(digital.copy(tipoVenda = TipoVenda.VENDA_REGULAR))!!.tipoVenda)
+    fun tipoDeVendaViajaNaSolicitacaoEmQualquerMotivo() {
+        // O tipo de venda é sempre o escolhido, em qualquer motivo (antes só o Digital Farming o enviava).
+        for (motivo in MotivoAtendimento.motivosDoCliente) {
+            for (tipo in listOf(TipoVenda.PROJETO, TipoVenda.VENDA_REGULAR)) {
+                assertEquals(tipo, converter(completo.copy(motivo = motivo, tipoVenda = tipo))!!.tipoVenda)
+            }
+        }
     }
 
     @Test
-    fun idDoDistribuidorNuloEFormularioInvalidoENaoViraSolicitacao() {
-        // O distribuidor é obrigatório: sem ele a validação barra e nada é convertido.
-        assertNull(converter(completo.copy(idDistribuidor = null)))
+    fun semTipoDeVendaOFormularioNaoViraSolicitacao() {
+        // Sem escolha não há padrão: a validação barra e nada é convertido.
+        assertNull(converter(completo.copy(tipoVenda = null)))
+        assertNull(converter(completo.copy(motivo = MotivoAtendimento.DIGITAL_FARMING, tipoVenda = null)))
+    }
+
+    @Test
+    fun clienteFinalSemDistribuidorViraSolicitacaoComDistribuidorNulo() {
+        // O distribuidor é opcional: sem ele o atendimento nasce sem distribuidor de origem.
+        val solicitacao = converter(completo.copy(idDistribuidor = null))!!
+        assertNull(solicitacao.idDistribuidorOrigem)
+        assertEquals(12, solicitacao.idCliente)
     }
 
     @Test
@@ -251,7 +294,8 @@ class FormularioAberturaTest {
     @Test
     fun formularioValidoNuncaProduzSolicitacaoQueOCoreRecuse() {
         // Todas as combinações de motivo e tipo de venda, inclusive DESCONHECIDO e nulo. Para cada uma, ou o
-        // formulário é inválido e nada é convertido, ou a conversão sai sem o require do core recusar.
+        // formulário é inválido e nada é convertido, ou a conversão sai sem o require do core recusar. Sem
+        // tipo de venda escolhido (nulo ou DESCONHECIDO) o formulário é sempre inválido.
         val motivos = listOf<MotivoAtendimento?>(null) + MotivoAtendimento.entries
         val tipos = listOf<TipoVenda?>(null) + TipoVenda.entries
         var convertidos = 0
@@ -267,7 +311,8 @@ class FormularioAberturaTest {
                 }
             }
         }
-        // Os seis motivos reais contam; nulo e DESCONHECIDO não.
-        assertEquals((MotivoAtendimento.entries.size - 1) * tipos.size, convertidos)
+        // Só contam os motivos reais (nulo e DESCONHECIDO não) combinados com os dois tipos de venda reais.
+        val tiposReais = TipoVenda.entries.count { it != TipoVenda.DESCONHECIDO }
+        assertEquals((MotivoAtendimento.entries.size - 1) * tiposReais, convertidos)
     }
 }

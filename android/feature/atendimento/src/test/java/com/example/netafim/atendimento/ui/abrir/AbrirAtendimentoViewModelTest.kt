@@ -16,6 +16,7 @@ import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.OrigemAtendimento
 import com.example.netafim.core.modelo.ResultadoDaAcao
 import com.example.netafim.core.modelo.SolicitacaoDeAbertura
+import com.example.netafim.core.modelo.TipoVenda
 import com.example.netafim.core.modelo.sessao.TipoDeOrganizacao
 import java.time.Instant
 import kotlinx.coroutines.CompletableDeferred
@@ -53,6 +54,8 @@ class AbrirAtendimentoViewModelTest {
         nomeFazenda = "Fazenda Boa Vista",
         contato = "14999990000",
         idDistribuidor = 3,
+        // Obrigatório em todo atendimento: o formulário válido já traz o tipo de venda escolhido.
+        tipoVenda = TipoVenda.PROJETO,
     )
 
     @Before
@@ -116,7 +119,7 @@ class AbrirAtendimentoViewModelTest {
         assertEquals(ErroCampo.OBRIGATORIO, erros.cidade)
         assertEquals(ErroCampo.OBRIGATORIO, erros.nomeFazenda)
         assertEquals(ErroCampo.OBRIGATORIO, erros.culturas)
-        assertEquals(ErroCampo.OBRIGATORIO, erros.distribuidor)
+        assertEquals(ErroCampo.OBRIGATORIO, erros.tipoVenda)
         assertEquals(ErroCampo.OBRIGATORIO, erros.contato)
         assertTrue(repositorio.aberturas.isEmpty())
         assertFalse(viewModel.enviando.value)
@@ -170,6 +173,7 @@ class AbrirAtendimentoViewModelTest {
         cidade = "Bauru",
         contato = "14988880000",
         nomeProdutor = "José da Silva",
+        tipoVenda = TipoVenda.VENDA_REGULAR,
     )
     private val formularioDaNetafim = formularioDoDistribuidor.copy(
         nomeProdutor = "Maria Souza",
@@ -231,7 +235,7 @@ class AbrirAtendimentoViewModelTest {
             cidade = "Bauru",
             areaSetor = AreaDoSetor.POS_VENDA,
             contato = "14988880000",
-            tipoVenda = null,
+            tipoVenda = TipoVenda.VENDA_REGULAR,
             culturas = setOf(2),
             abertoEm = instanteFixo,
         )
@@ -257,7 +261,7 @@ class AbrirAtendimentoViewModelTest {
             cidade = "Bauru",
             areaSetor = null,
             contato = "14988880000",
-            tipoVenda = null,
+            tipoVenda = TipoVenda.VENDA_REGULAR,
             culturas = setOf(2),
             abertoEm = instanteFixo,
         )
@@ -282,15 +286,84 @@ class AbrirAtendimentoViewModelTest {
         daNetafim.enviar()
         assertEquals(ErroCampo.OBRIGATORIO, daNetafim.erros.value.areaSetor)
 
-        // Cliente com o formulário da Netafim: faltam a fazenda e o distribuidor.
+        // Cliente com o formulário da Netafim: falta a fazenda. O distribuidor é opcional e não é cobrado.
         sessao.entrarComo(SessaoFalsa.umUsuario(tipo = TipoDeOrganizacao.CLIENTE, idDaOrganizacao = 42))
         val doCliente = criar()
         doCliente.alterar(formularioDaNetafim)
         doCliente.enviar()
         assertEquals(ErroCampo.OBRIGATORIO, doCliente.erros.value.nomeFazenda)
-        assertEquals(ErroCampo.OBRIGATORIO, doCliente.erros.value.distribuidor)
+        assertNull(doCliente.erros.value.tipoVenda)
 
         assertTrue(repositorio.aberturas.isEmpty())
+    }
+
+    @Test
+    fun clienteFinalSemDistribuidorAbreOAtendimentoSemDistribuidorDeOrigem() = runTest {
+        val viewModel = criar()
+        viewModel.alterar(formularioValido.copy(idDistribuidor = null))
+
+        viewModel.enviar()
+
+        // Sem distribuidor o envio segue: o atendimento nasce sem distribuidor de origem, com o tipo de venda
+        // preenchido, e vai para a fila do Netafim Admin.
+        assertTrue(viewModel.erros.value.valido)
+        val solicitacao = repositorio.aberturas.single()
+        assertNull(solicitacao.idDistribuidorOrigem)
+        assertEquals(42, solicitacao.idCliente)
+        assertEquals(TipoVenda.PROJETO, solicitacao.tipoVenda)
+        assertEquals(idFixo, viewModel.aberto.value)
+    }
+
+    @Test
+    fun semTipoDeVendaOEnvioEBarradoEmTodasAsOrigens() = runTest {
+        val casos = listOf(
+            SessaoFalsa.umUsuario(tipo = TipoDeOrganizacao.CLIENTE, idDaOrganizacao = 42) to formularioValido,
+            SessaoFalsa.umUsuario(tipo = TipoDeOrganizacao.DISTRIBUIDOR, idDaOrganizacao = 7) to formularioDoDistribuidor,
+            SessaoFalsa.umUsuario(tipo = TipoDeOrganizacao.NETAFIM, idDaOrganizacao = null) to formularioDaNetafim,
+        )
+        for ((usuario, formulario) in casos) {
+            sessao.entrarComo(usuario)
+            val viewModel = criar()
+            viewModel.alterar(formulario.copy(tipoVenda = null))
+
+            viewModel.enviar()
+
+            assertEquals(usuario.tipoDeOrganizacao.name, ErroCampo.OBRIGATORIO, viewModel.erros.value.tipoVenda)
+            assertFalse(viewModel.enviando.value)
+        }
+        assertTrue(repositorio.aberturas.isEmpty())
+    }
+
+    @Test
+    fun trocaDeOrigemLimpaOQueNaoValeNaNovaOrigemEZeraOsErros() = runTest {
+        // Cliente final preenche tudo e tenta enviar com um erro para ter erros na tela.
+        val viewModel = criar()
+        viewModel.alterar(formularioValido.copy(nomeProdutor = "Sobra", cidade = ""))
+        viewModel.enviar()
+        assertFalse(viewModel.erros.value.valido)
+
+        // A sessão passa a ser da Netafim: o distribuidor escolhido e a fazenda deixam de existir no estado e
+        // os erros da origem anterior somem. Os campos comuns e o produtor (que a Netafim também usa) ficam.
+        sessao.entrarComo(SessaoFalsa.umUsuario(tipo = TipoDeOrganizacao.NETAFIM, idDaOrganizacao = null))
+
+        val formulario = viewModel.formulario.value
+        assertNull(formulario.idDistribuidor)
+        assertEquals("", formulario.nomeFazenda)
+        assertEquals("Sobra", formulario.nomeProdutor)
+        assertEquals(TipoVenda.PROJETO, formulario.tipoVenda)
+        assertEquals(setOf(1, 2), formulario.culturas)
+        assertTrue(viewModel.erros.value.valido)
+    }
+
+    @Test
+    fun mudarDeSessaoSemMudarDeOrigemNaoLimpaOFormulario() = runTest {
+        val viewModel = criar()
+        viewModel.alterar(formularioValido)
+
+        // Outro usuário de cliente (mesma origem, outra empresa): nada é descartado.
+        sessao.entrarComo(SessaoFalsa.umUsuario(id = 6, tipo = TipoDeOrganizacao.CLIENTE, idDaOrganizacao = 43))
+
+        assertEquals(formularioValido, viewModel.formulario.value)
     }
 
     @Test

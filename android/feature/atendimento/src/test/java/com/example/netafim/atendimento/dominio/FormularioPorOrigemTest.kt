@@ -3,6 +3,7 @@ package com.example.netafim.atendimento.dominio
 import com.example.netafim.core.modelo.AreaDoSetor
 import com.example.netafim.core.modelo.MotivoAtendimento
 import com.example.netafim.core.modelo.OrigemAtendimento
+import com.example.netafim.core.modelo.TipoVenda
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -13,12 +14,13 @@ import org.junit.Test
 // Netafim). As regras comuns e as do cliente final continuam em FormularioAberturaTest.
 class FormularioPorOrigemTest {
 
-    // Campos comuns às três origens, já válidos.
+    // Campos comuns às três origens, já válidos. O tipo de venda é obrigatório em todas.
     private val comum = FormularioAbertura(
         motivo = MotivoAtendimento.POS_VENDA,
         culturas = setOf(1),
         cidade = "Bauru",
         contato = "14988880000",
+        tipoVenda = TipoVenda.VENDA_REGULAR,
     )
     private val doCliente = comum.copy(nomeFazenda = "Fazenda Santa Rita", idDistribuidor = 9)
     private val doDistribuidor = comum.copy(nomeProdutor = "José da Silva")
@@ -53,6 +55,7 @@ class FormularioPorOrigemTest {
                 culturas = ErroCampo.OBRIGATORIO,
                 contato = ErroCampo.OBRIGATORIO,
                 nomeProdutor = ErroCampo.OBRIGATORIO,
+                tipoVenda = ErroCampo.OBRIGATORIO,
             ),
             erros,
         )
@@ -69,6 +72,7 @@ class FormularioPorOrigemTest {
                 contato = ErroCampo.OBRIGATORIO,
                 nomeProdutor = ErroCampo.OBRIGATORIO,
                 areaSetor = ErroCampo.OBRIGATORIO,
+                tipoVenda = ErroCampo.OBRIGATORIO,
             ),
             erros,
         )
@@ -83,8 +87,8 @@ class FormularioPorOrigemTest {
                 cidade = ErroCampo.OBRIGATORIO,
                 nomeFazenda = ErroCampo.OBRIGATORIO,
                 culturas = ErroCampo.OBRIGATORIO,
-                distribuidor = ErroCampo.OBRIGATORIO,
                 contato = ErroCampo.OBRIGATORIO,
+                tipoVenda = ErroCampo.OBRIGATORIO,
             ),
             erros,
         )
@@ -126,6 +130,52 @@ class FormularioPorOrigemTest {
     }
 
     @Test
+    fun clienteFinalSemDistribuidorEValidoEAsOutrasOrigensNaoCobramDistribuidor() {
+        // O distribuidor não é cobrado de nenhuma origem (opcional), e o erro do distribuidor nem existe mais.
+        assertTrue(validar(doCliente.copy(idDistribuidor = null), OrigemAtendimento.CLIENTE_FINAL).valido)
+        assertTrue(validar(doDistribuidor.copy(idDistribuidor = null), OrigemAtendimento.DISTRIBUIDOR).valido)
+        assertTrue(validar(daNetafim.copy(idDistribuidor = null), OrigemAtendimento.NETAFIM).valido)
+    }
+
+    @Test
+    fun cidadeEObrigatoriaNasTresOrigens() {
+        listOf(
+            OrigemAtendimento.CLIENTE_FINAL to doCliente,
+            OrigemAtendimento.DISTRIBUIDOR to doDistribuidor,
+            OrigemAtendimento.NETAFIM to daNetafim,
+        ).forEach { (origem, formulario) ->
+            assertEquals(origem.name, ErroCampo.OBRIGATORIO, validar(formulario.copy(cidade = ""), origem).cidade)
+            assertEquals(origem.name, ErroCampo.OBRIGATORIO, validar(formulario.copy(cidade = "  "), origem).cidade)
+        }
+    }
+
+    @Test
+    fun nomeDaFazendaEObrigatorioSoNoClienteFinal() {
+        assertEquals(
+            ErroCampo.OBRIGATORIO,
+            validar(doCliente.copy(nomeFazenda = ""), OrigemAtendimento.CLIENTE_FINAL).nomeFazenda,
+        )
+        // Distribuidor e Netafim seguem válidos sem a fazenda.
+        assertTrue(validar(doDistribuidor.copy(nomeFazenda = ""), OrigemAtendimento.DISTRIBUIDOR).valido)
+        assertTrue(validar(daNetafim.copy(nomeFazenda = ""), OrigemAtendimento.NETAFIM).valido)
+    }
+
+    @Test
+    fun semTipoDeVendaCadaOrigemApontaSoOTipo() {
+        listOf(
+            OrigemAtendimento.CLIENTE_FINAL to doCliente,
+            OrigemAtendimento.DISTRIBUIDOR to doDistribuidor,
+            OrigemAtendimento.NETAFIM to daNetafim,
+        ).forEach { (origem, formulario) ->
+            assertEquals(
+                origem.name,
+                ErrosFormulario(tipoVenda = ErroCampo.OBRIGATORIO),
+                validar(formulario.copy(tipoVenda = null), origem),
+            )
+        }
+    }
+
+    @Test
     fun campoDeOutraOrigemEIgnorado() {
         // Valores que sobraram de outra origem, inclusive inválidos, não geram erro onde o campo não existe.
         val sobras = FormularioAbertura(
@@ -162,6 +212,16 @@ class FormularioPorOrigemTest {
         assertEquals("Fazenda Santa Rita", solicitacao.nomeFazenda)
         assertEquals("", solicitacao.nomeProdutor)
         assertNull(solicitacao.areaSetor)
+    }
+
+    @Test
+    fun clienteFinalSemDistribuidorMandaDistribuidorNulo() {
+        // Sem distribuidor escolhido a solicitação sai com o distribuidor de origem nulo, e o tipo de venda
+        // sempre preenchido.
+        val solicitacao = comoSolicitacao(doCliente.copy(idDistribuidor = null), id, origemCliente, agora)!!
+        assertNull(solicitacao.idDistribuidorOrigem)
+        assertEquals(42, solicitacao.idCliente)
+        assertEquals(TipoVenda.VENDA_REGULAR, solicitacao.tipoVenda)
     }
 
     @Test
@@ -205,6 +265,7 @@ class FormularioPorOrigemTest {
                 assertEquals("Bauru", solicitacao.cidade)
                 assertEquals("14988880000", solicitacao.contato)
                 assertEquals(setOf(1), solicitacao.culturas)
+                assertEquals(TipoVenda.VENDA_REGULAR, solicitacao.tipoVenda)
             }
     }
 

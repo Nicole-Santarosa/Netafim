@@ -12,6 +12,7 @@ import com.example.netafim.atendimento.dominio.OrigemDaAbertura
 import com.example.netafim.atendimento.dominio.comoOrigemDaAbertura
 import com.example.netafim.atendimento.dominio.comoSolicitacao
 import com.example.netafim.atendimento.dominio.erroDoResultado
+import com.example.netafim.atendimento.dominio.limparParaOrigem
 import com.example.netafim.atendimento.dominio.validar
 import com.example.netafim.atendimento.ui.lista.ESPERA_SEM_TELA_MS
 import com.example.netafim.core.modelo.AtendimentoRepository
@@ -25,8 +26,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 // Estado do formulário de abertura de atendimento.
@@ -89,6 +92,25 @@ class AbrirAtendimentoViewModel(
     // com o mesmo id não cria um segundo atendimento. Não precisa ser limpo depois do Sucesso porque a tela
     // sai (e o próximo atendimento nasce de um ViewModel novo).
     private var idDoEnvio: String? = null
+
+    init {
+        // Se a origem de quem está logado mudar com o formulário aberto (outro usuário entra na sessão, por
+        // exemplo), o que foi preenchido para a origem anterior e não vale na nova é descartado: um
+        // distribuidor escolhido como cliente final não pode ficar escondido no estado e valer numa origem que
+        // nem o desenha. Os campos comuns são mantidos. Os erros por campo voltam a zero, porque eram de outra
+        // origem, e a validação só reaparece depois da próxima tentativa de envio. distinctUntilChanged evita
+        // limpar quando a sessão muda sem mudar de origem (a primeira emissão só confirma o estado inicial).
+        viewModelScope.launch {
+            sessao.usuario
+                .map { it?.comoOrigemDaAbertura()?.origem }
+                .distinctUntilChanged()
+                .collect { novaOrigem ->
+                    _formulario.update { it.limparParaOrigem(novaOrigem) }
+                    _erros.value = ErrosFormulario()
+                    tentouEnviar = false
+                }
+        }
+    }
 
     fun alterar(novo: FormularioAbertura) {
         _formulario.value = novo

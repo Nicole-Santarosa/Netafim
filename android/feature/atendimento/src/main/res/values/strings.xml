@@ -65,6 +65,10 @@
     <string name="atendimento_abrir_contato">Seu contato (telefone / WhatsApp)</string>
     <string name="atendimento_abrir_distribuidor">Distribuidor / revenda que te atende</string>
     <string name="atendimento_abrir_distribuidor_selecione">Selecione o distribuidor</string>
+    <string name="atendimento_abrir_distribuidor_nenhum">Sem distribuidor</string>
+    <string name="atendimento_abrir_distribuidor_apoio">Sem distribuidor, o atendimento vai para a fila da Netafim.</string>
+    <string name="atendimento_abrir_obrigatorio_descricao">%1$s, obrigatório</string>
+    <string name="atendimento_abrir_erro_tipo_venda">Escolha o tipo de venda</string>
     <string name="atendimento_abrir_tipo_venda">Tipo de venda</string>
     <string name="atendimento_abrir_tipo_venda_projeto">Projeto</string>
     <string name="atendimento_abrir_tipo_venda_regular">Venda regular</string>
@@ -73,7 +77,6 @@
     <string name="atendimento_abrir_erro_cidade">Informe a cidade</string>
     <string name="atendimento_abrir_erro_nome_fazenda">Informe o nome da fazenda</string>
     <string name="atendimento_abrir_erro_cultura">Selecione ao menos uma cultura</string>
-    <string name="atendimento_abrir_erro_distribuidor">Escolha o distribuidor que te atende</string>
     <string name="atendimento_abrir_erro_contato">Informe um telefone para contato</string>
     <string name="atendimento_abrir_erro_muito_longo">Use no máximo %d caracteres</string>
     <string name="atendimento_abrir_nome_produtor">Nome do produtor</string>
