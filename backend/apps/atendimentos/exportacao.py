@@ -55,10 +55,22 @@ CAMPOS_INFORMADOS_PELO_SOLICITANTE = (
 # Ficam fora de propósito:
 # - snapshot_cliente e snapshot_propriedade: cópia do cadastro do cliente e da
 #   fazenda, montada pelo servidor. São dados do cliente, não do titular.
-# - ids de outros usuários, do cliente, da propriedade e dos distribuidores:
-#   no lugar deles a saída diz o papel do titular em cada atendimento.
+# - as colunas de id de usuário, de cliente, de propriedade e de distribuidor
+#   do atendimento: no lugar delas a saída diz o papel do titular em cada
+#   atendimento.
 # - versao e sync_seq: controle interno do app e da sincronização.
 # - observacao do histórico: texto livre que pode citar terceiros.
+#
+# No histórico, valor_anterior e valor_novo saem como o banco gravou, com uma
+# exceção: nos eventos que guardam o id de um usuário (uma pessoa), o id de
+# outra pessoa é trocado por nulo. O id do próprio titular fica, porque é dado
+# dele. O id de distribuidor (evento "destinado") é de organização, não de
+# pessoa, e por isso sai como está.
+EVENTOS_COM_ID_DE_USUARIO = ("atribuido",)
+
+# Valor que o banco grava no evento "atribuido" quando o técnico é retirado do
+# atendimento. Não é id de ninguém, então não é mascarado.
+SEM_TECNICO = "nenhum"
 
 # Colunas que guardam o usuário no atendimento e o nome do papel na saída.
 PAPEIS = (
@@ -125,9 +137,7 @@ def exportar_atendimentos(usuario):
             "data_evento",
         )
     )
-    historico = [
-        {campo: _texto(valor) for campo, valor in evento.items()} for evento in eventos
-    ]
+    historico = [_evento_exportado(evento, id_usuario) for evento in eventos]
 
     return {
         "id_usuario": id_usuario,
@@ -160,6 +170,26 @@ def _atendimento_exportado(linha, id_usuario):
     else:
         exportado["dados_informados"] = None
     return exportado
+
+
+def _evento_exportado(evento, id_usuario):
+    """Monta um evento do histórico da saída. Converte os tipos para JSON e, nos
+    eventos que guardam o id de um usuário, esconde o id de outra pessoa."""
+    exportado = {campo: _texto(valor) for campo, valor in evento.items()}
+    if exportado["tipo_evento"] in EVENTOS_COM_ID_DE_USUARIO:
+        for campo in ("valor_anterior", "valor_novo"):
+            exportado[campo] = _id_de_pessoa_mascarado(exportado[campo], id_usuario)
+    return exportado
+
+
+def _id_de_pessoa_mascarado(valor, id_usuario):
+    """Devolve o valor só se não identificar outra pessoa: nulo (não havia
+    técnico antes), o marcador de técnico retirado ou o id do próprio titular.
+    Qualquer outro valor é o id de outro usuário e vira nulo. O banco grava o id
+    como texto, por isso a comparação é com o id do titular também em texto."""
+    if valor is None or valor == SEM_TECNICO or valor == str(id_usuario):
+        return valor
+    return None
 
 
 def _texto(valor):
