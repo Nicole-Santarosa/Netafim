@@ -37,9 +37,10 @@ Telas com quadro no Figma (arquivo "Netafim", seção Acesso): Login (quadro "HD
 | Aprovação de cadastro | `acesso/aprovacao` | Permissão `aprovar_cadastro` | Início | `GET usuarios`, `POST usuarios/{id}/aprovar` e `recusar`, `GET distribuidores`, `GET clientes`, `GET perfis` |
 | Gestão de usuários | `acesso/usuarios` | Admins | Início | `GET usuarios` |
 | Novo usuário | `acesso/usuarios/novo` | Admin de distribuidor e de cliente | Gestão, "Adicionar usuário" | `POST usuarios` |
-| Detalhe do usuário | `acesso/usuarios/{id}` | Admins | Gestão, cartão do usuário | `GET usuarios/{id}`, `POST .../situacao`, `POST .../perfil`, `POST .../reenviar-convite`, `DELETE usuarios/{id}` |
+| Detalhe do usuário | `acesso/usuarios/{id}` | Admins | Gestão, cartão do usuário | `GET usuarios/{id}`, `POST .../situacao`, `POST .../perfil`, `POST .../reenviar-convite`, `DELETE usuarios/{id}`, `POST usuarios/{id}/mfa/resetar`, `GET usuarios/{id}/dispositivos`, `POST dispositivos/{id}/revogar` |
 | Editar usuário | `acesso/usuarios/{id}/editar` | Admins | Detalhe, "Editar dados" | `PATCH usuarios/{id}` |
 | Permissões por perfil | `acesso/permissoes` | Netafim Admin | Início | `GET perfis`, `GET permissoes` |
+| Domínios de e-mail | `acesso/dominios` | Netafim Admin | Início | `GET/POST dominios`, `PATCH/DELETE dominios/{id}` |
 | Editar permissões de um perfil | `acesso/permissoes/{id}` | Netafim Admin | Lista de perfis | `PUT perfis/{id}/permissoes` |
 
 O Início (`InicioTela`) pertence ao módulo `app`; ele mostra os atalhos conforme a permissão da pessoa.
@@ -69,6 +70,16 @@ A tela de detalhe só mostra os botões que a API aceitaria (a API continua deci
 - o **Netafim Admin** gerencia todos; só ele desbloqueia contas e define o perfil (permissão `definir_perfil`);
 - o **admin de distribuidor ou de cliente** gerencia só usuários de nível Usuário da própria organização;
 - **reenviar convite** só para pendente; **ativar** só para inativo (ou bloqueado, para o Netafim Admin); **desativar** só para ativo; desativar e excluir pedem confirmação.
+
+### 2.3.1 MFA e aparelhos no detalhe do usuário
+
+- **Redefinir verificação em duas etapas** (só Netafim Admin): `POST usuarios/{id}/mfa/resetar`, com confirmação. Desativa o MFA da pessoa e encerra as sessões dela, para quem perdeu o aparelho e os códigos de recuperação. Sem MFA ativo a API responde 409 `mfa_inativo`.
+- **Ver aparelhos**: quem gerencia a pessoa vê a lista (modelo, versão do app, último acesso, se foi revogado). **Revogar o acesso** de um aparelho é só do Netafim Admin (`POST dispositivos/{id}/revogar`), com confirmação.
+- As ações seguem o servidor: as rotas ficam em `UsuarioViewSet`, que exige uma das permissões de gestão (editar, criar ou aprovar cadastro); revogar aparelho e redefinir MFA são só do Netafim Admin.
+
+### 2.3.2 Domínios de e-mail (Netafim Admin)
+
+Lista, cadastro, ativar e desativar, e excluir (com confirmação) dos domínios aceitos para a Netafim e para cada distribuidor (RNF18). O domínio é validado no aparelho (formato, sem `@`, em minúsculas) e de novo no servidor; domínio de distribuidor exige escolher o distribuidor. Atalho na tela inicial, só para o Netafim Admin.
 
 ### 2.4 Permissões por perfil (RF20)
 
@@ -144,6 +155,6 @@ Empilhadas (cada uma depende da anterior): `pr/04` → `pr/06-android-mfa` → `
 ## 6. O que ainda não existe
 
 - Fotos de perfil ficam só no aparelho (a API ainda não tem onde receber a foto).
-- Aviso por e-mail ao titular quando o pedido é concluído (depende do SMTP do servidor).
+- Aviso por e-mail ao titular quando o pedido é concluído: o código do **servidor** existe na branch `feat/acesso-aviso-titular-e-erros` (não mesclada); o envio de verdade depende do SMTP do servidor.
 - Confirmação do prazo de 15 dias com o jurídico (o servidor usa 15 dias; o app só mostra o prazo que vem da API).
 - Os campos "propriedade" e "distribuidor" do cadastro são descartados pela API; `GET distribuidores/opcoes` (branch `feat/distribuidores-opcoes` do back-end) lista os distribuidores ativos para o cliente logado, mas o app ainda não a usa.
