@@ -37,6 +37,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.netafim.acesso.R
 import com.example.netafim.acesso.dominio.AcoesDoUsuario
+import com.example.netafim.acesso.dominio.Aparelho
 import com.example.netafim.acesso.dominio.Organizacao
 import com.example.netafim.acesso.dominio.Perfil
 import com.example.netafim.acesso.dominio.SituacoesUsuario
@@ -53,6 +54,7 @@ import com.example.netafim.acesso.ui.comum.esc
 import com.example.netafim.acesso.ui.comum.estilo
 import com.example.netafim.acesso.ui.comum.larguraConteudo
 import com.example.netafim.acesso.ui.perfil.formatarTelefone
+import com.example.netafim.acesso.ui.privacidade.formatarDataDoPedido
 
 @Composable
 fun UsuarioDetalheRota(viewModel: UsuarioDetalheViewModel, aoVoltar: () -> Unit, aoEditar: () -> Unit) {
@@ -75,6 +77,13 @@ fun UsuarioDetalheRota(viewModel: UsuarioDetalheViewModel, aoVoltar: () -> Unit,
         aoEscolherPerfil = viewModel::escolherPerfil,
         aoFecharPerfis = viewModel::fecharPerfis,
         aoRecarregarPerfis = viewModel::abrirPerfis,
+        aoRedefinirMfa = viewModel::pedirRedefinirMfa,
+        aoVerAparelhos = viewModel::abrirAparelhos,
+        aoFecharAparelhos = viewModel::fecharAparelhos,
+        aoRecarregarAparelhos = viewModel::abrirAparelhos,
+        aoRevogarAparelho = viewModel::pedirRevogarAparelho,
+        aoConfirmarRevogar = viewModel::confirmarRevogarAparelho,
+        aoCancelarRevogar = viewModel::cancelarRevogarAparelho,
     )
 }
 
@@ -98,6 +107,13 @@ fun UsuarioDetalheTela(
     aoEscolherPerfil: (Int) -> Unit,
     aoFecharPerfis: () -> Unit,
     aoRecarregarPerfis: () -> Unit,
+    aoRedefinirMfa: () -> Unit = {},
+    aoVerAparelhos: () -> Unit = {},
+    aoFecharAparelhos: () -> Unit = {},
+    aoRecarregarAparelhos: () -> Unit = {},
+    aoRevogarAparelho: (Aparelho) -> Unit = {},
+    aoConfirmarRevogar: () -> Unit = {},
+    aoCancelarRevogar: () -> Unit = {},
 ) {
     PaginaComCabecalho(stringResource(R.string.usuario_detalhe_titulo)) {
         val usuario = estado.usuario
@@ -110,7 +126,10 @@ fun UsuarioDetalheTela(
                 Spacer(Modifier.height(esc(20)))
                 BotaoContorno(stringResource(R.string.acesso_tentar_novamente), aoRecarregar)
             }
-            else -> Conteudo(estado, usuario, aoEditar, aoAtivar, aoDesativar, aoExcluir, aoReenviarConvite, aoDefinirPerfil)
+            else -> Conteudo(
+                estado, usuario, aoEditar, aoAtivar, aoDesativar, aoExcluir, aoReenviarConvite, aoDefinirPerfil,
+                aoRedefinirMfa, aoVerAparelhos,
+            )
         }
     }
     estado.confirmando?.let { acao ->
@@ -118,6 +137,12 @@ fun UsuarioDetalheTela(
     }
     if (estado.escolhendoPerfil) {
         FolhaDePerfil(estado, aoEscolherPerfil, aoFecharPerfis, aoRecarregarPerfis)
+    }
+    if (estado.aparelhosAbertos) {
+        FolhaDeAparelhos(estado, aoFecharAparelhos, aoRecarregarAparelhos, aoRevogarAparelho)
+    }
+    estado.aparelhoParaRevogar?.let {
+        ConfirmarRevogar(estado.revogando, aoConfirmarRevogar, aoCancelarRevogar)
     }
 }
 
@@ -131,6 +156,8 @@ private fun Conteudo(
     aoExcluir: () -> Unit,
     aoReenviarConvite: () -> Unit,
     aoDefinirPerfil: () -> Unit,
+    aoRedefinirMfa: () -> Unit,
+    aoVerAparelhos: () -> Unit,
 ) {
     val cores = MaterialTheme.colorScheme
     CartaoDoPrototipo {
@@ -169,6 +196,8 @@ private fun Conteudo(
         if (acoes.editar) BotaoContorno(stringResource(R.string.usuario_acao_editar), aoEditar, habilitado = livre)
         if (acoes.definirPerfil) BotaoContorno(stringResource(R.string.usuario_acao_perfil), aoDefinirPerfil, habilitado = livre)
         if (acoes.reenviarConvite) BotaoContorno(stringResource(R.string.usuario_acao_convite), aoReenviarConvite, habilitado = livre)
+        if (acoes.verAparelhos) BotaoContorno(stringResource(R.string.usuario_acao_aparelhos), aoVerAparelhos, habilitado = livre)
+        if (acoes.redefinirMfa) BotaoContorno(stringResource(R.string.usuario_acao_mfa), aoRedefinirMfa, habilitado = livre)
         if (acoes.ativar) BotaoCheio(stringResource(R.string.usuario_acao_ativar), aoAtivar, carregando = estado.processando)
         if (acoes.desativar) BotaoContorno(stringResource(R.string.usuario_acao_desativar), aoDesativar, habilitado = livre)
         if (acoes.excluir) {
@@ -208,6 +237,8 @@ private fun textoDoAviso(aviso: AvisoUsuario): Int = when (aviso) {
     AvisoUsuario.DESATIVADO -> R.string.usuario_aviso_desativado
     AvisoUsuario.PERFIL_ALTERADO -> R.string.usuario_aviso_perfil
     AvisoUsuario.CONVITE_REENVIADO -> R.string.usuario_aviso_convite
+    AvisoUsuario.MFA_REDEFINIDO -> R.string.usuario_aviso_mfa
+    AvisoUsuario.APARELHO_REVOGADO -> R.string.usuario_aviso_aparelho
 }
 
 @Composable
@@ -218,18 +249,29 @@ private fun ConfirmarAcao(
     aoConfirmar: () -> Unit,
     aoCancelar: () -> Unit,
 ) {
-    val excluir = acao == ConfirmacaoUsuario.EXCLUIR
+    val titulo = when (acao) {
+        ConfirmacaoUsuario.EXCLUIR -> R.string.usuario_excluir_titulo
+        ConfirmacaoUsuario.DESATIVAR -> R.string.usuario_desativar_titulo
+        ConfirmacaoUsuario.REDEFINIR_MFA -> R.string.usuario_mfa_titulo
+    }
+    val texto = when (acao) {
+        ConfirmacaoUsuario.EXCLUIR -> R.string.usuario_excluir_texto
+        ConfirmacaoUsuario.DESATIVAR -> R.string.usuario_desativar_texto
+        ConfirmacaoUsuario.REDEFINIR_MFA -> R.string.usuario_mfa_texto
+    }
+    val botao = when (acao) {
+        ConfirmacaoUsuario.EXCLUIR -> R.string.usuario_confirmar_excluir
+        ConfirmacaoUsuario.DESATIVAR -> R.string.usuario_confirmar_desativar
+        ConfirmacaoUsuario.REDEFINIR_MFA -> R.string.usuario_confirmar_mfa
+    }
     AlertDialog(
         onDismissRequest = { if (!processando) aoCancelar() },
         containerColor = MaterialTheme.colorScheme.background,
-        title = { Text(stringResource(if (excluir) R.string.usuario_excluir_titulo else R.string.usuario_desativar_titulo, nome)) },
-        text = { Text(stringResource(if (excluir) R.string.usuario_excluir_texto else R.string.usuario_desativar_texto)) },
+        title = { Text(stringResource(titulo, nome)) },
+        text = { Text(stringResource(texto)) },
         confirmButton = {
             TextButton(onClick = aoConfirmar, enabled = !processando) {
-                Text(
-                    stringResource(if (excluir) R.string.usuario_confirmar_excluir else R.string.usuario_confirmar_desativar),
-                    color = MaterialTheme.colorScheme.error,
-                )
+                Text(stringResource(botao), color = MaterialTheme.colorScheme.error)
             }
         },
         dismissButton = {
@@ -280,6 +322,105 @@ private fun FolhaDePerfil(
                             selecionada = estado.usuario?.perfil?.id == perfil.id,
                             aoClicar = { if (!estado.processando) aoEscolher(perfil.id) },
                         )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConfirmarRevogar(revogando: Boolean, aoConfirmar: () -> Unit, aoCancelar: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = { if (!revogando) aoCancelar() },
+        containerColor = MaterialTheme.colorScheme.background,
+        title = { Text(stringResource(R.string.usuario_aparelho_revogar_titulo)) },
+        text = { Text(stringResource(R.string.usuario_aparelho_revogar_texto)) },
+        confirmButton = {
+            TextButton(onClick = aoConfirmar, enabled = !revogando) {
+                Text(stringResource(R.string.usuario_confirmar_revogar), color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = aoCancelar, enabled = !revogando) { Text(stringResource(R.string.acesso_cancelar)) }
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FolhaDeAparelhos(
+    estado: UsuarioDetalheEstado,
+    aoFechar: () -> Unit,
+    aoRecarregar: () -> Unit,
+    aoRevogar: (Aparelho) -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = aoFechar,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.background,
+    ) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = larguraConteudo())
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .navigationBarsPadding()
+                    .padding(start = esc(20), end = esc(20), bottom = esc(24)),
+                verticalArrangement = Arrangement.spacedBy(esc(12)),
+            ) {
+                Text(
+                    stringResource(R.string.usuario_aparelhos_titulo),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = estilo(18, FontWeight.SemiBold),
+                )
+                estado.erroAparelhos?.let { MensagemErro(it) }
+                when {
+                    estado.carregandoAparelhos -> Box(Modifier.fillMaxWidth().padding(vertical = esc(24)), Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                    estado.aparelhos.isEmpty() && estado.erroAparelhos != null ->
+                        BotaoContorno(stringResource(R.string.acesso_tentar_novamente), aoRecarregar)
+                    estado.aparelhos.isEmpty() -> DetalheDeEstado(stringResource(R.string.usuario_aparelhos_vazio))
+                    else -> estado.aparelhos.forEach { aparelho ->
+                        CartaoDoPrototipo {
+                            Column(verticalArrangement = Arrangement.spacedBy(esc(6))) {
+                                Text(
+                                    aparelho.modelo?.takeIf { it.isNotBlank() } ?: stringResource(R.string.usuario_aparelho_sem_nome),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    style = estilo(13, FontWeight.Medium),
+                                )
+                                aparelho.versaoApp?.takeIf { it.isNotBlank() }?.let {
+                                    Text(
+                                        stringResource(R.string.usuario_aparelho_versao, it),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = estilo(11),
+                                    )
+                                }
+                                Text(
+                                    aparelho.ultimaSincronizacao?.let { stringResource(R.string.usuario_aparelho_ultimo, formatarDataDoPedido(it)) }
+                                        ?: stringResource(R.string.usuario_aparelho_nunca),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = estilo(11),
+                                )
+                                if (aparelho.revogado) {
+                                    Text(
+                                        stringResource(R.string.usuario_aparelho_revogado),
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = estilo(11, FontWeight.Medium),
+                                    )
+                                } else if (estado.acoes.revogarAparelhos) {
+                                    BotaoAcao(
+                                        texto = stringResource(R.string.usuario_aparelho_revogar),
+                                        aoClicar = { if (!estado.revogando) aoRevogar(aparelho) },
+                                        cor = MaterialTheme.colorScheme.error,
+                                        preenchido = false,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

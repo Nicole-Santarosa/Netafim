@@ -115,6 +115,17 @@ interface AcessoApi {
     @DELETE("usuarios/{id}")
     suspend fun excluirUsuario(@Path("id") id: Int)
 
+    /** Netafim Admin remove o MFA de quem perdeu o aparelho e os códigos (204); encerra as sessões da pessoa. */
+    @POST("usuarios/{id}/mfa/resetar")
+    suspend fun resetarMfa(@Path("id") id: Int)
+
+    @GET("usuarios/{id}/dispositivos")
+    suspend fun aparelhosDoUsuario(@Path("id") id: Int): List<AparelhoDto>
+
+    /** Aparelho perdido ou roubado: revoga o acesso e os tokens dele (só o Netafim Admin). */
+    @POST("dispositivos/{id}/revogar")
+    suspend fun revogarAparelho(@Path("id") id: String): AparelhoDto
+
     @POST("usuarios/{id}/aprovar")
     suspend fun aprovarUsuario(@Path("id") id: Int, @Body corpo: AprovarRequisicao): UsuarioDto
 

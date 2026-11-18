@@ -4,6 +4,7 @@ import com.example.netafim.acesso.dados.AcessoApi
 import com.example.netafim.acesso.dados.ProvedorTokens
 import com.example.netafim.acesso.dados.Rede
 import com.example.netafim.acesso.dados.RepositorioUsuariosRemoto
+import com.example.netafim.acesso.dominio.Aparelho
 import com.example.netafim.acesso.dominio.DadosNovoUsuario
 import com.example.netafim.acesso.dominio.ErroAcesso
 import com.example.netafim.acesso.dominio.Perfil
@@ -48,6 +49,11 @@ private class UsuariosFalso : RepositorioUsuarios {
         chamadasListar++
         return lista
     }
+
+    override suspend fun redefinirMfa(idUsuario: Int): Resultado<Unit> = Resultado.Sucesso(Unit)
+    override suspend fun aparelhos(idUsuario: Int): Resultado<List<Aparelho>> = Resultado.Sucesso(emptyList())
+    override suspend fun revogarAparelho(idAparelho: String): Resultado<Aparelho> =
+        Resultado.Sucesso(Aparelho(idAparelho, null, null, null, true))
 
     override suspend fun criar(dados: DadosNovoUsuario): Resultado<Usuario> {
         criados += dados

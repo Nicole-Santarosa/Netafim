@@ -1,5 +1,6 @@
 package com.example.netafim.acesso
 
+import com.example.netafim.acesso.dominio.Aparelho
 import com.example.netafim.acesso.dominio.DadosNovoUsuario
 import com.example.netafim.acesso.dominio.ErroAcesso
 import com.example.netafim.acesso.dominio.Perfil
@@ -37,6 +38,10 @@ private class UsuariosEdicaoFalso : RepositorioUsuarios {
 
     override suspend fun listar(): Resultado<List<Usuario>> = Resultado.Sucesso(emptyList())
     override suspend fun criar(dados: DadosNovoUsuario): Resultado<Usuario> = Resultado.Sucesso(alvo)
+    override suspend fun redefinirMfa(idUsuario: Int): Resultado<Unit> = Resultado.Sucesso(Unit)
+    override suspend fun aparelhos(idUsuario: Int): Resultado<List<Aparelho>> = Resultado.Sucesso(emptyList())
+    override suspend fun revogarAparelho(idAparelho: String): Resultado<Aparelho> =
+        Resultado.Sucesso(Aparelho(idAparelho, null, null, null, true))
     override suspend fun obter(idUsuario: Int): Resultado<Usuario> = resultadoObter ?: Resultado.Sucesso(alvo)
     override suspend fun editar(idUsuario: Int, nome: String, telefone: String): Resultado<Usuario> {
         edicoes += Triple(idUsuario, nome, telefone)

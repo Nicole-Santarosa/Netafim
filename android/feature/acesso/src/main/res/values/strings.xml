@@ -171,6 +171,24 @@
     <string name="usuario_aviso_desativado">Usuário desativado.</string>
     <string name="usuario_aviso_perfil">Perfil alterado.</string>
     <string name="usuario_aviso_convite">Convite reenviado.</string>
+    <string name="usuario_aviso_mfa">Verificação em duas etapas redefinida.</string>
+    <string name="usuario_aviso_aparelho">Acesso do aparelho revogado.</string>
+    <string name="usuario_acao_mfa">Redefinir verificação em duas etapas</string>
+    <string name="usuario_mfa_titulo">Redefinir a verificação em duas etapas de %1$s?</string>
+    <string name="usuario_mfa_texto">A verificação em duas etapas da pessoa é desativada e as sessões dela são encerradas. Use quando ela perder o aparelho e os códigos de recuperação. Ela pode ativar de novo no próprio perfil.</string>
+    <string name="usuario_confirmar_mfa">Redefinir</string>
+    <string name="usuario_acao_aparelhos">Ver aparelhos</string>
+    <string name="usuario_aparelhos_titulo">Aparelhos</string>
+    <string name="usuario_aparelhos_vazio">Nenhum aparelho registrado.</string>
+    <string name="usuario_aparelho_sem_nome">Aparelho sem identificação</string>
+    <string name="usuario_aparelho_revogado">Acesso revogado</string>
+    <string name="usuario_aparelho_ultimo">Último acesso: %1$s</string>
+    <string name="usuario_aparelho_nunca">Nunca sincronizou</string>
+    <string name="usuario_aparelho_versao">Versão do app: %1$s</string>
+    <string name="usuario_aparelho_revogar">Revogar acesso</string>
+    <string name="usuario_aparelho_revogar_titulo">Revogar o acesso deste aparelho?</string>
+    <string name="usuario_aparelho_revogar_texto">O aparelho deixa de acessar o aplicativo e as sessões dele são encerradas. Use quando ele for perdido ou roubado. Esta ação não pode ser desfeita pelo aplicativo.</string>
+    <string name="usuario_confirmar_revogar">Revogar</string>
     <!-- Permissões por perfil (RF20) -->
     <string name="permissoes_titulo">Permissões por perfil</string>
     <string name="permissoes_explicacao_lista">Escolha um perfil para ver e alterar o que ele pode fazer. A mudança vale para todas as pessoas com esse perfil.</string>
