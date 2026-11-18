@@ -24,6 +24,14 @@ def _enviar(usuario: Usuario, assunto: str, corpo: str) -> None:
         logger.exception("Falha ao enviar e-mail '%s' para o usuário %s", assunto, usuario.pk)
 
 
+def _enviar_para(email: str, assunto: str, corpo: str, referencia: str) -> None:
+    """Envio para um endereço que não é de um Usuario (por exemplo, o do pedido de um titular)."""
+    try:
+        send_mail(assunto, corpo, settings.DEFAULT_FROM_EMAIL, [email])
+    except Exception:  # e-mail não pode derrubar o fluxo do pedido
+        logger.exception("Falha ao enviar e-mail '%s' (%s)", assunto, referencia)
+
+
 def _link(acao: str, token: str) -> str:
     return f"{settings.CONTAS['URL_APP_CONVITE']}?acao={acao}&token={token}"
 
@@ -66,3 +74,49 @@ def cadastro_recusado(usuario: Usuario) -> None:
         f"Olá, {usuario.nome}.\n\nSua solicitação de acesso não foi aprovada. Em caso de dúvida, "
         "procure o seu contato na Netafim ou no distribuidor.",
     )
+
+
+# Pedidos de direitos do titular (LGPD, art. 18): como o tipo aparece no texto do e-mail.
+_ROTULO_DO_PEDIDO = {
+    "confirmacao": "confirmação da existência de tratamento",
+    "acesso": "acesso aos dados",
+    "correcao": "correção de dados",
+    "anonimizacao": "anonimização",
+    "eliminacao": "eliminação de dados",
+    "portabilidade": "portabilidade dos dados",
+    "compartilhamento": "informação sobre compartilhamento",
+    "revogacao_consentimento": "revogação do consentimento",
+}
+
+
+def pedido_titular_concluido(
+    *,
+    email: str | None,
+    nome: str | None,
+    tipo: str,
+    status: str,
+    justificativa: str | None = None,
+    anonimizou: bool = False,
+) -> None:
+    """
+    Avisa o titular de que o pedido de privacidade foi atendido ou negado. Sem links (a API só
+    informa o resultado; os detalhes ficam no aplicativo) e sem dados além do nome. O e-mail vem do
+    próprio pedido, lido antes da anonimização, que troca o endereço da conta por um valor inválido.
+    """
+    if not email:
+        return
+    rotulo = _ROTULO_DO_PEDIDO.get(tipo, tipo)
+    saudacao = f"Olá, {nome}." if nome else "Olá."
+    if status == "negada":
+        assunto = "Resposta ao seu pedido de privacidade – Netafim"
+        corpo = f"{saudacao}\n\nSeu pedido de {rotulo} não pôde ser atendido."
+        motivo = (justificativa or "").strip()
+        if motivo:
+            corpo += f"\n\nMotivo: {motivo}"
+        corpo += "\n\nEm caso de dúvida, procure a Netafim."
+    else:
+        assunto = "Seu pedido de privacidade foi atendido – Netafim"
+        corpo = f"{saudacao}\n\nSeu pedido de {rotulo} foi atendido."
+        if anonimizou:
+            corpo += "\n\nSua conta foi anonimizada e o acesso ao aplicativo foi encerrado."
+    _enviar_para(email, assunto, corpo, "pedido do titular")
