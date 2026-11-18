@@ -28,8 +28,8 @@ def cliente_autenticado(id_usuario):
 
 def corpo_valido(mundo, **extras):
     """Corpo mínimo de um pedido de cliente final, com UUID novo. Traz os
-    campos que o formulário exige nessa origem (distribuidor, cidade, fazenda e
-    uma cultura). A cultura é lida do banco, então quem chama precisa ter feito
+    campos que o formulário exige nessa origem (distribuidor, cidade, fazenda,
+    tipo de venda e uma cultura). A cultura é lida do banco, então quem chama precisa ter feito
     o entrar_como antes."""
     corpo = {
         "id_atendimento": str(uuid.uuid4()),
@@ -39,6 +39,8 @@ def corpo_valido(mundo, **extras):
         "id_distribuidor_origem": mundo["id_distribuidor"],
         "cidade": "Ribeirão Preto",
         "nome_fazenda_informado": "Fazenda Santa Rita",
+        # Obrigatório em todo atendimento (decisão da Netafim de 18/11/2026).
+        "tipo_venda": "projeto",
         "culturas": [duas_culturas_ativas()[0][0]],
         "contato_solicitante": "11999990000",
     }

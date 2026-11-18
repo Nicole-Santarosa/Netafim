@@ -22,7 +22,10 @@ from apps.atendimentos.servicos import COLUNAS_ALTERAVEIS
 #
 # O id_distribuidor_origem entra, porque o usuário escolhe o distribuidor numa
 # lista na tela. Não há validação extra aqui: se o id não existir, o banco recusa
-# com erro de chave estrangeira e o tradutor de erros responde 422.
+# com erro de chave estrangeira e o tradutor de erros responde 422. Ele é sempre
+# opcional (decisão da Netafim de 18/11/2026): o cliente final sem distribuidor
+# padrão abre o atendimento sem ele, e o atendimento fica sem distribuidor de
+# origem, direto na fila do Netafim Admin. O banco já aceita o campo nulo.
 #
 # Além das colunas, aceita a lista opcional culturas (ids de cultura), que não é
 # coluna do atendimento: o serviço grava cada id em atendimento_cultura.
@@ -40,9 +43,17 @@ from apps.atendimentos.servicos import COLUNAS_ALTERAVEIS
 
 # Campos que o formulário exige em cada origem, conferidos no validate. Dois
 # deles já eram exigidos também pelos CHECKs do banco: id_cliente no
-# cliente_final e area_setor na netafim. Os outros são só da API.
+# cliente_final e area_setor na netafim. Os outros são só da API. A cidade vale
+# nas três origens e o nome da fazenda só no cliente_final. O distribuidor de
+# origem não aparece aqui: é opcional em todas as origens.
+#
+# O tipo_venda também não aparece, porque é obrigatório em todas as origens e
+# por isso é declarado direto no campo (extra_kwargs), e não por origem.
+# Texto único do erro do tipo_venda (ausente, nulo, vazio ou fora da lista).
+MENSAGEM_TIPO_VENDA = "Informe o tipo de venda (projeto ou venda_regular)."
+
 OBRIGATORIOS_POR_ORIGEM = {
-    "cliente_final": ("id_cliente", "id_distribuidor_origem", "cidade", "nome_fazenda_informado"),
+    "cliente_final": ("id_cliente", "cidade", "nome_fazenda_informado"),
     "distribuidor": ("nome_produtor", "cidade"),
     "netafim": ("area_setor", "nome_produtor", "cidade"),
 }
@@ -87,7 +98,9 @@ class AberturaAtendimentoSerializer(serializers.ModelSerializer):
         # Os campos de lista fixa (origem, motivo, area_setor etc.) viram
         # ChoiceField sozinhos, porque o model usa TextChoices. Obrigatórios
         # ficam id_atendimento, origem, motivo e contato_solicitante, que o
-        # banco exige e não têm valor padrão. O resto aceita nulo.
+        # banco exige e não têm valor padrão, e o tipo_venda, que o banco aceita
+        # nulo mas a API exige (veja o bloco do tipo_venda mais abaixo). O resto
+        # aceita nulo.
         extra_kwargs = {
             # O DRF criaria um validador de unicidade para o pk, que consulta o
             # banco. Aqui não: quem decide duplicado é o banco, e o tradutor de
@@ -98,7 +111,7 @@ class AberturaAtendimentoSerializer(serializers.ModelSerializer):
             "data_abertura": {"required": False},
             # Mesma regra do CHECK ck_atend_qtd_participantes: maior que zero.
             "qtd_participantes_prevista": {"min_value": 1},
-            # Lista fechada: o model tem blank=True nesses cinco campos e o DRF
+            # Lista fechada: o model tem blank=True nesses quatro campos e o DRF
             # copia isso para allow_blank, então "" passaria na validação e o
             # CHECK do banco ("nulo ou um dos valores") recusaria depois, com um
             # 422 genérico. Sem allow_blank, "" vira 400 apontando o campo. O
@@ -106,9 +119,29 @@ class AberturaAtendimentoSerializer(serializers.ModelSerializer):
             # ausente seguem aceitos.
             "situacao_projeto": {"allow_blank": False},
             "estado_projeto": {"allow_blank": False},
-            "tipo_venda": {"allow_blank": False},
             "tipo_atendimento": {"allow_blank": False},
             "area_setor": {"allow_blank": False},
+            # O tipo de venda é obrigatório em todo atendimento, em todas as
+            # origens (decisão da Netafim de 18/11/2026). Por isso, ao contrário
+            # dos outros campos de lista, não aceita ausente, nulo nem "": cada
+            # caso devolve 400 no campo, com mensagem em português. Os valores
+            # aceitos continuam sendo os do model (projeto e venda_regular). O
+            # PATCH não usa este serializer, então a edição parcial não muda.
+            "tipo_venda": {
+                "required": True,
+                "allow_null": False,
+                "allow_blank": False,
+                # A mesma mensagem nos quatro casos. O "" cai em invalid_choice
+                # (o ChoiceField do DRF só usa "blank" quando allow_blank é
+                # verdadeiro) e um valor fora da lista também; para quem usa a
+                # API não importa a diferença, o que falta é escolher um dos dois.
+                "error_messages": {
+                    "required": MENSAGEM_TIPO_VENDA,
+                    "null": MENSAGEM_TIPO_VENDA,
+                    "blank": MENSAGEM_TIPO_VENDA,
+                    "invalid_choice": MENSAGEM_TIPO_VENDA,
+                },
+            },
         }
 
     def validate_culturas(self, ids):

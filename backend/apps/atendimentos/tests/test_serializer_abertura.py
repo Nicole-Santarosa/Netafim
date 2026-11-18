@@ -30,6 +30,8 @@ def dados_minimos(**extras):
         "id_distribuidor_origem": 1,
         "cidade": "Ribeirão Preto",
         "nome_fazenda_informado": "Fazenda Santa Rita",
+        # Obrigatório em todo atendimento (decisão da Netafim de 18/11/2026).
+        "tipo_venda": "projeto",
         "culturas": [
             Cultura.objects.filter(deletado_em__isnull=True)
             .values_list("id_cultura", flat=True)
@@ -158,7 +160,12 @@ def test_texto_vazio_em_campo_de_lista_gera_erro_no_campo(campo):
     assert campo in serializer.errors
 
 
-@pytest.mark.parametrize("campo", list(CAMPOS_DE_LISTA))
+# O tipo_venda saiu deste grupo: deixou de aceitar ausente e nulo, porque agora
+# é obrigatório em todo atendimento (testado em test_abertura_obrigatorios.py).
+CAMPOS_DE_LISTA_OPCIONAIS = [campo for campo in CAMPOS_DE_LISTA if campo != "tipo_venda"]
+
+
+@pytest.mark.parametrize("campo", CAMPOS_DE_LISTA_OPCIONAIS)
 def test_campo_de_lista_ausente_ou_nulo_continua_aceito(campo):
     serializer, valido = validar(dados_minimos())
     assert valido, serializer.errors

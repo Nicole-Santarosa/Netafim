@@ -137,8 +137,9 @@ paths:
             regra entre campos (obrigatório da origem ausente, nulo, vazio ou só
             com espaços, com o erro em cada campo que falta; veja a descrição de
             AberturaAtendimento), culturas ausente ou vazia, motivo
-            programacao_feiras, texto vazio em situacao_projeto, estado_projeto,
-            tipo_venda, tipo_atendimento ou area_setor, ou culturas com id repetido, inexistente ou excluído (erro
+            programacao_feiras, tipo_venda ausente, nulo, vazio ou fora da lista,
+            texto vazio em situacao_projeto, estado_projeto,
+            tipo_atendimento ou area_setor, ou culturas com id repetido, inexistente ou excluído (erro
             no campo culturas). Também vem como 400 "valor_invalido" quando o banco recusa
             o formato ou o tamanho de um valor.
           content:
@@ -407,10 +408,13 @@ components:
       type: object
       description: >-
         Obrigatórios por origem, conforme o formulário de solicitação da Netafim
-        (regra da API, não do banco). cliente_final: id_cliente,
-        id_distribuidor_origem, cidade e nome_fazenda_informado. distribuidor:
-        nome_produtor e cidade. netafim: area_setor, nome_produtor e cidade. Em
-        todas as origens, culturas com ao menos um item. Nulo, texto vazio ou só
+        (regra da API, não do banco). cliente_final: id_cliente, cidade e
+        nome_fazenda_informado. distribuidor: nome_produtor e cidade. netafim:
+        area_setor, nome_produtor e cidade. Em todas as origens, tipo_venda e
+        culturas com ao menos um item. O id_distribuidor_origem é opcional em
+        todas as origens: o cliente final sem distribuidor padrão abre o
+        atendimento sem ele, e o atendimento vai direto à fila do Netafim Admin
+        (decisão da Netafim de 18/11/2026). Nulo, texto vazio ou só
         com espaços contam como ausente. Cada campo que falta responde 400 com o
         erro no próprio campo, todos juntos na mesma resposta.
       required:
@@ -418,6 +422,7 @@ components:
       - origem
       - motivo
       - contato_solicitante
+      - tipo_venda
       - culturas
       properties:
         id_atendimento:
@@ -446,8 +451,9 @@ components:
           type: integer
           nullable: true
           description: >-
-            Distribuidor escolhido na tela. Obrigatório quando a origem é
-            cliente_final. Id que não existe responde 422.
+            Distribuidor escolhido na tela. Opcional: sem ele (nulo ou campo
+            omitido) o atendimento nasce sem distribuidor de origem. Id que não
+            existe responde 422.
         nome_produtor:
           type: string
           nullable: true
@@ -494,10 +500,9 @@ components:
         tipo_venda:
           allOf:
           - $ref: '#/components/schemas/TipoVenda'
-          nullable: true
           description: >-
-            Opcional. Texto vazio ("") responde 400 no campo; para não informar,
-            use nulo ou omita o campo.
+            Obrigatório em todas as origens. Ausente, nulo, texto vazio ("") ou
+            valor fora da lista respondem 400 no campo.
         tipo_atendimento:
           allOf:
           - $ref: '#/components/schemas/TipoAtendimento'

@@ -1,5 +1,8 @@
 """Campos obrigatórios da abertura conforme o formulário de solicitação da
-Netafim: obrigatórios por origem, cultura obrigatória e os 5 motivos aceitos.
+Netafim: obrigatórios por origem, cultura obrigatória, tipo de venda
+obrigatório em todas as origens e os 5 motivos aceitos. O distribuidor de
+origem é opcional (decisão da Netafim de 18/11/2026): o cliente final sem
+distribuidor padrão abre o atendimento e ele fica sem distribuidor de origem.
 
 Essas regras são da API (AberturaAtendimentoSerializer), não do banco. A maior
 parte dos casos roda só no serializer, que é mais rápido; no fim, alguns pela
@@ -11,7 +14,11 @@ import uuid
 import pytest
 
 from apps.atendimentos.models import Atendimento, Cultura
-from apps.atendimentos.serializers import OBRIGATORIOS_POR_ORIGEM, AberturaAtendimentoSerializer
+from apps.atendimentos.serializers import (
+    MENSAGEM_TIPO_VENDA,
+    OBRIGATORIOS_POR_ORIGEM,
+    AberturaAtendimentoSerializer,
+)
 from apps.atendimentos.tests.test_view_abertura import URL, cliente_autenticado, corpo_valido
 
 # O validate_culturas consulta o catálogo, então todo teste precisa do banco e
@@ -44,6 +51,8 @@ def corpo_completo(origem, **extras):
         "origem": origem,
         "motivo": "pos_venda",
         "contato_solicitante": "11999990000",
+        # Obrigatório em todas as origens.
+        "tipo_venda": "projeto",
         "culturas": [uma_cultura()],
     }
     if origem == "cliente_final":
@@ -77,13 +86,10 @@ PARES_ORIGEM_CAMPO = [
 def test_regra_cobre_os_obrigatorios_do_formulario():
     # Guarda contra alguém tirar um campo da regra sem perceber: é a lista do
     # formulário de solicitação (a cultura e o motivo são conferidos à parte).
+    # A cidade vale nas três origens e o nome da fazenda só no cliente final. O
+    # id_distribuidor_origem saiu da lista do cliente final em 18/11/2026.
     assert OBRIGATORIOS_POR_ORIGEM == {
-        "cliente_final": (
-            "id_cliente",
-            "id_distribuidor_origem",
-            "cidade",
-            "nome_fazenda_informado",
-        ),
+        "cliente_final": ("id_cliente", "cidade", "nome_fazenda_informado"),
         "distribuidor": ("nome_produtor", "cidade"),
         "netafim": ("area_setor", "nome_produtor", "cidade"),
     }
@@ -198,3 +204,156 @@ def test_post_com_programacao_feiras_devolve_400_no_campo_motivo(mundo):
     assert resposta.status_code == 400
     assert list(resposta.json()) == ["motivo"]
     assert not Atendimento.objects.filter(id_atendimento=corpo["id_atendimento"]).exists()
+
+
+# Tipo de venda: obrigatório em todo atendimento, em todas as origens.
+
+ORIGENS = list(OBRIGATORIOS_POR_ORIGEM)
+
+
+@pytest.mark.parametrize("origem", ORIGENS)
+def test_tipo_venda_ausente_gera_erro_no_campo(origem):
+    corpo = corpo_completo(origem)
+    del corpo["tipo_venda"]
+
+    serializer, valido = validar(corpo)
+
+    assert not valido
+    # Só o tipo de venda falta, e a mensagem é a específica do campo.
+    assert set(serializer.errors) == {"tipo_venda"}
+    assert [str(erro) for erro in serializer.errors["tipo_venda"]] == [MENSAGEM_TIPO_VENDA]
+
+
+@pytest.mark.parametrize("valor", [None, "", "   "], ids=["nulo", "vazio", "so_espacos"])
+@pytest.mark.parametrize("origem", ORIGENS)
+def test_tipo_venda_nulo_ou_vazio_gera_erro_no_campo(origem, valor):
+    serializer, valido = validar(corpo_completo(origem, tipo_venda=valor))
+
+    assert not valido
+    assert "tipo_venda" in serializer.errors
+
+
+def test_tipo_venda_fora_da_lista_gera_erro_no_campo():
+    serializer, valido = validar(corpo_completo("cliente_final", tipo_venda="outro"))
+
+    assert not valido
+    assert "tipo_venda" in serializer.errors
+
+
+@pytest.mark.parametrize("tipo_venda", ["projeto", "venda_regular"])
+@pytest.mark.parametrize("origem", ORIGENS)
+def test_cada_tipo_de_venda_valido_e_aceito_em_cada_origem(origem, tipo_venda):
+    serializer, valido = validar(corpo_completo(origem, tipo_venda=tipo_venda))
+
+    assert valido, serializer.errors
+    assert serializer.validated_data["tipo_venda"] == tipo_venda
+
+
+# Cidade e nome da fazenda por origem. A cidade ausente nas três origens já é
+# coberta por test_obrigatorio_ausente_gera_erro_no_campo (o par (origem,
+# "cidade") existe para cada uma); aqui fica a regra da fazenda, que é só do
+# cliente final.
+
+
+def test_nome_da_fazenda_ausente_gera_erro_so_no_cliente_final():
+    corpo = corpo_completo("cliente_final")
+    del corpo["nome_fazenda_informado"]
+    serializer, valido = validar(corpo)
+
+    assert not valido
+    assert set(serializer.errors) == {"nome_fazenda_informado"}
+
+
+@pytest.mark.parametrize("origem", ["netafim", "distribuidor"])
+def test_nome_da_fazenda_ausente_passa_na_netafim_e_no_distribuidor(origem):
+    corpo = corpo_completo(origem)
+    assert "nome_fazenda_informado" not in corpo
+
+    serializer, valido = validar(corpo)
+
+    assert valido, serializer.errors
+
+
+# Distribuidor de origem opcional. Pela view, com POST de verdade.
+
+
+def test_cliente_final_sem_distribuidor_e_aceito_no_serializer():
+    corpo = corpo_completo("cliente_final")
+    del corpo["id_distribuidor_origem"]
+
+    serializer, valido = validar(corpo)
+
+    assert valido, serializer.errors
+    assert "id_distribuidor_origem" not in serializer.validated_data
+
+
+def test_cliente_final_com_distribuidor_nulo_e_aceito_no_serializer():
+    serializer, valido = validar(corpo_completo("cliente_final", id_distribuidor_origem=None))
+
+    assert valido, serializer.errors
+    assert serializer.validated_data["id_distribuidor_origem"] is None
+
+
+def test_post_cliente_final_sem_distribuidor_devolve_201_e_fica_sem_distribuidor(mundo):
+    corpo = corpo_valido(mundo)
+    del corpo["id_distribuidor_origem"]
+    cliente = cliente_autenticado(mundo["id_usuario_cliente"])
+
+    resposta = cliente.post(URL, corpo, format="json")
+
+    assert resposta.status_code == 201
+    assert resposta.data["status"] == "aberto"
+    # O distribuidor de origem não vem na resposta da abertura; confere no
+    # detalhe e no banco que o atendimento nasceu sem ele.
+    detalhe = cliente.get(f"{URL}/{corpo['id_atendimento']}")
+    assert detalhe.status_code == 200
+    assert detalhe.data["id_distribuidor_origem"] is None
+    assert detalhe.data["status"] == "aberto"
+    atendimento = Atendimento.objects.get(id_atendimento=corpo["id_atendimento"])
+    assert atendimento.id_distribuidor_origem is None
+
+
+def test_post_cliente_final_com_distribuidor_continua_devolvendo_201(mundo):
+    corpo = corpo_valido(mundo)
+    assert corpo["id_distribuidor_origem"] == mundo["id_distribuidor"]
+    cliente = cliente_autenticado(mundo["id_usuario_cliente"])
+
+    resposta = cliente.post(URL, corpo, format="json")
+
+    assert resposta.status_code == 201
+    detalhe = cliente.get(f"{URL}/{corpo['id_atendimento']}")
+    assert detalhe.data["id_distribuidor_origem"] == mundo["id_distribuidor"]
+
+
+def test_post_sem_tipo_venda_devolve_400_com_o_erro_no_campo(mundo):
+    corpo = corpo_valido(mundo)
+    del corpo["tipo_venda"]
+
+    resposta = cliente_autenticado(mundo["id_usuario_cliente"]).post(URL, corpo, format="json")
+
+    assert resposta.status_code == 400
+    assert resposta.json() == {"tipo_venda": [MENSAGEM_TIPO_VENDA]}
+    assert not Atendimento.objects.filter(id_atendimento=corpo["id_atendimento"]).exists()
+
+
+def test_post_com_tipo_venda_vazio_devolve_400_no_campo(mundo):
+    corpo = corpo_valido(mundo, tipo_venda="")
+
+    resposta = cliente_autenticado(mundo["id_usuario_cliente"]).post(URL, corpo, format="json")
+
+    assert resposta.status_code == 400
+    assert resposta.json() == {"tipo_venda": [MENSAGEM_TIPO_VENDA]}
+    assert not Atendimento.objects.filter(id_atendimento=corpo["id_atendimento"]).exists()
+
+
+def test_reenvio_do_mesmo_uuid_sem_distribuidor_continua_devolvendo_409_duplicado(mundo):
+    corpo = corpo_valido(mundo)
+    del corpo["id_distribuidor_origem"]
+    cliente = cliente_autenticado(mundo["id_usuario_cliente"])
+    assert cliente.post(URL, corpo, format="json").status_code == 201
+
+    resposta = cliente.post(URL, corpo, format="json")
+
+    # Mesmo comportamento de antes: duplicado, e o app confirma com o GET.
+    assert resposta.status_code == 409
+    assert resposta.data["codigo"] == "duplicado"
