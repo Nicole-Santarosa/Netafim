@@ -1,9 +1,7 @@
 package com.example.netafim.data.repository
 
-import kotlinx.coroutines.flow.Flow
-
-interface RelatorioRepositorio {
-    suspend fun salvarRascunho(
+class RelatorioRepositorioImpl : RelatorioRepositorio {
+    override suspend fun salvarRascunho(
         motivo: String,
         constatacoes: String,
         atividades: String,
@@ -11,7 +9,11 @@ interface RelatorioRepositorio {
         conclusao: String,
         fotos: List<String>,
         videos: List<String>,
+        anexos: List<String>,
         assinaturaCliente: String?,
         assinaturaEspecialista: String?
-    )
+    ): Boolean {
+        // Ponto de integração com a persistência Room (Pessoa 4 -)
+        return true
+    }
 }

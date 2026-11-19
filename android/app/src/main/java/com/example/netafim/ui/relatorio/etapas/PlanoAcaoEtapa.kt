@@ -1,5 +1,8 @@
 package com.example.netafim.ui.relatorio.etapas
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,33 +17,34 @@ fun PlanoAcaoEtapa(viewModel: RelatorioViewModel) {
     val conclusao by viewModel.conclusaoVisita.collectAsState()
     val anexos by viewModel.anexosExtras.collectAsState()
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
+    val pdfLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let { viewModel.adicionarAnexoExtra(it.toString()) }
+    }
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Etapa 3: Plano de Ação e Conclusão", style = MaterialTheme.typography.titleLarge, color = Color(0xFF181F4E))
 
         OutlinedTextField(
             value = planoAcao,
             onValueChange = { viewModel.atualizarPlanoAcao(it) },
-            label = { Text("Recomendações / Plano de Ação") },
-            modifier = Modifier.fillMaxWidth().height(120.dp)
+            label = { Text("Recomendações e Plano de Ação") },
+            modifier = Modifier.fillMaxWidth().height(110.dp)
         )
 
         OutlinedTextField(
             value = conclusao,
             onValueChange = { viewModel.atualizarConclusaoVisita(it) },
             label = { Text("Conclusão sobre a visita técnica *") },
-            modifier = Modifier.fillMaxWidth().height(120.dp)
+            modifier = Modifier.fillMaxWidth().height(110.dp)
         )
 
         Button(
-            onClick = { viewModel.adicionarAnexoExtra("documento_exemplo.pdf") },
+            onClick = { pdfLauncher.launch("application/pdf") },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3698FF))
         ) {
-            Text("Adicionar Anexo PDF", color = Color(0xFFFFFBEB))
+            Text("Selecionar Anexo PDF Real", color = Color(0xFFFFFBEB))
         }
 
-        Text("Anexos PDF adicionados: ${anexos.size}", style = MaterialTheme.typography.bodyMedium)
+        Text("Anexos PDF anexados: ${anexos.size}", style = MaterialTheme.typography.bodyMedium)
     }
 }

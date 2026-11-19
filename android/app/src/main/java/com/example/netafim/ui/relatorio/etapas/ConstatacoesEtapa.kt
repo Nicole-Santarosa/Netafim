@@ -26,71 +26,59 @@ fun ConstatacoesEtapa(viewModel: RelatorioViewModel) {
     val fotos by viewModel.fotosConstatacao.collectAsState()
     val videos by viewModel.videosAtividade.collectAsState()
 
-    var uriTempFoto by remember { mutableStateOf<Uri?>(null) }
-    var uriTempVideo by remember { mutableStateOf<Uri?>(null) }
+    var uriFotoTemp by remember { mutableStateOf<Uri?>(null) }
+    var uriVideoTemp by remember { mutableStateOf<Uri?>(null) }
 
-    val takePictureLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success) {
-            uriTempFoto?.let { viewModel.adicionarFotoConstatacao(it.toString()) }
-        }
+    val fotoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success) uriFotoTemp?.let { viewModel.adicionarFotoConstatacao(it.toString()) }
     }
 
-    val captureVideoLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CaptureVideo()
-    ) { success ->
-        if (success) {
-            uriTempVideo?.let { viewModel.adicionarVideoAtividade(it.toString()) }
-        }
+    val videoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CaptureVideo()) { success ->
+        if (success) uriVideoTemp?.let { viewModel.adicionarVideoAtividade(it.toString()) }
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text("Etapa 1: Constatações e Mídia", style = MaterialTheme.typography.titleLarge, color = Color(0xFF181F4E))
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text("Etapa 1: Constatações e Evidências", style = MaterialTheme.typography.titleLarge, color = Color(0xFF181F4E))
 
         OutlinedTextField(
             value = constatacoes,
             onValueChange = { viewModel.atualizarConstatacoes(it) },
             label = { Text("Descreva as constatações de campo *") },
-            modifier = Modifier.fillMaxWidth().height(140.dp),
-            maxLines = 4
+            modifier = Modifier.fillMaxWidth().height(150.dp)
         )
 
         Button(
             onClick = {
-                val file = criarArquivoMidia(context, "jpg")
+                val file = criarArquivo(context, "jpg")
                 val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-                uriTempFoto = uri
-                takePictureLauncher.launch(uri)
+                uriFotoTemp = uri
+                fotoLauncher.launch(uri)
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3698FF))
         ) {
-            Text("Tirar Foto HD", color = Color(0xFFFFFBEB))
+            Text("Capturar Foto HD", color = Color(0xFFFFFBEB))
         }
 
         Button(
             onClick = {
-                val file = criarArquivoMidia(context, "mp4")
+                val file = criarArquivo(context, "mp4")
                 val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-                uriTempVideo = uri
-                captureVideoLauncher.launch(uri)
+                uriVideoTemp = uri
+                videoLauncher.launch(uri)
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3698FF))
         ) {
-            Text("Gravar Vídeo de Evidência", color = Color(0xFFFFFBEB))
+            Text("Gravar Vídeo de Vistoria", color = Color(0xFFFFFBEB))
         }
 
-        Text("Fotos registradas: ${fotos.size} | Vídeos registrados: ${videos.size}", style = MaterialTheme.typography.bodyMedium)
+        Text("Fotos: ${fotos.size} | Vídeos: ${videos.size}", style = MaterialTheme.typography.bodyMedium)
     }
 }
 
-private fun criarArquivoMidia(context: Context, extensao: String): File {
-    val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+private fun criarArquivo(context: Context, ext: String): File {
+    val time = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
     val dir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-    return File.createTempFile("MEDIA_${timeStamp}_", ".$extensao", dir)
+    return File.createTempFile("MEDIA_${time}_", ".$ext", dir)
 }

@@ -12,18 +12,14 @@ import com.example.netafim.ui.relatorio.RelatorioViewModel
 fun AtividadesEtapa(viewModel: RelatorioViewModel) {
     val atividades by viewModel.atividades.collectAsState()
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Etapa 2: Atividades Realizadas", style = MaterialTheme.typography.titleLarge, color = Color(0xFF181F4E))
 
         OutlinedTextField(
             value = atividades,
             onValueChange = { viewModel.atualizarAtividades(it) },
-            label = { Text("Descreva os serviços e intervenções executados *") },
-            modifier = Modifier.fillMaxWidth().height(200.dp),
-            maxLines = 8
+            label = { Text("Descreva os serviços e intervenções *") },
+            modifier = Modifier.fillMaxWidth().height(220.dp)
         )
     }
 }

@@ -18,7 +18,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.example.netafim.ui.relatorio.RelatorioViewModel
 import java.io.File
@@ -33,26 +35,21 @@ fun AssinaturaEtapa(viewModel: RelatorioViewModel) {
     val scrollState = rememberScrollState()
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(16.dp),
+        modifier = Modifier.fillMaxSize().verticalScroll(scrollState).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         Text("Etapa 4: Assinaturas Digitais", style = MaterialTheme.typography.titleLarge, color = Color(0xFF181F4E))
 
-        // Assinatura do Cliente
-        SecaoAssinatura(
+        BlocoAssinatura(
             titulo = "Assinatura do Cliente *",
-            onSalvar = { linhas -> salvarAssinaturaPng(context, linhas, "CLIENTE") }
+            onSalvar = { linhas, size -> salvarPngProporcional(context, linhas, size, "CLIENTE") }
         ) { caminho ->
             viewModel.definirAssinaturaCliente(caminho)
         }
 
-        // Assinatura do Especialista / Técnico
-        SecaoAssinatura(
+        BlocoAssinatura(
             titulo = "Assinatura do Especialista *",
-            onSalvar = { linhas -> salvarAssinaturaPng(context, linhas, "ESPECIALISTA") }
+            onSalvar = { linhas, size -> salvarPngProporcional(context, linhas, size, "ESPECIALISTA") }
         ) { caminho ->
             viewModel.definirAssinaturaEspecialista(caminho)
         }
@@ -60,13 +57,14 @@ fun AssinaturaEtapa(viewModel: RelatorioViewModel) {
 }
 
 @Composable
-fun SecaoAssinatura(
+fun BlocoAssinatura(
     titulo: String,
-    onSalvar: (List<List<Offset>>) -> File?,
-    onCaminhoSalvo: (String) -> Unit
+    onSalvar: (List<List<Offset>>, IntSize) -> File?,
+    onSalvo: (String) -> Unit
 ) {
     val linhas = remember { mutableStateListOf<List<Offset>>() }
     var linhaAtual = remember { mutableStateListOf<Offset>() }
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     var assinado by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -77,6 +75,7 @@ fun SecaoAssinatura(
                 .fillMaxWidth()
                 .height(180.dp)
                 .background(Color(0xFFFFFBEB))
+                .onSizeChanged { canvasSize = it }
                 .pointerInput(true) {
                     detectDragGestures(
                         onDragStart = { offset ->
@@ -119,29 +118,30 @@ fun SecaoAssinatura(
             Button(
                 onClick = {
                     if (assinado) {
-                        val arquivo = onSalvar(linhas)
-                        if (arquivo != null) {
-                            onCaminhoSalvo(arquivo.absolutePath)
-                        }
+                        val arquivo = onSalvar(linhas, canvasSize)
+                        if (arquivo != null) onSalvo(arquivo.absolutePath)
                     }
                 },
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF181F4E)),
                 enabled = assinado
             ) {
-                Text("Salvar Assinatura", color = Color(0xFFFFFBEB))
+                Text("Confirmar Assinatura", color = Color(0xFFFFFBEB))
             }
         }
     }
 }
 
-private fun salvarAssinaturaPng(context: Context, linhas: List<List<Offset>>, tipo: String): File? {
+private fun salvarPngProporcional(context: Context, linhas: List<List<Offset>>, size: IntSize, tipo: String): File? {
     return try {
-        val largura = 1000
-        val altura = 400
-        val bitmap = Bitmap.createBitmap(largura, altura, Bitmap.Config.ARGB_8888)
+        val larguraBitmap = 1000f
+        val alturaBitmap = 400f
+        val bitmap = Bitmap.createBitmap(larguraBitmap.toInt(), alturaBitmap.toInt(), Bitmap.Config.ARGB_8888)
         val canvas = AndroidCanvas(bitmap)
         canvas.drawColor(android.graphics.Color.parseColor("#FFFBEB"))
+
+        val scaleX = if (size.width > 0) larguraBitmap / size.width else 1f
+        val scaleY = if (size.height > 0) alturaBitmap / size.height else 1f
 
         val paint = Paint().apply {
             color = android.graphics.Color.parseColor("#181F4E")
@@ -155,25 +155,25 @@ private fun salvarAssinaturaPng(context: Context, linhas: List<List<Offset>>, ti
         linhas.forEach { linha ->
             if (linha.size > 1) {
                 val path = AndroidPath().apply {
-                    moveTo(linha[0].x, linha[0].y)
+                    moveTo(linha[0].x * scaleX, linha[0].y * scaleY)
                     for (i in 1 until linha.size) {
-                        lineTo(linha[i].x, linha[i].y)
+                        lineTo(linha[i].x * scaleX, linha[i].y * scaleY)
                     }
                 }
                 canvas.drawPath(path, paint)
             }
         }
 
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val time = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
         val dir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-        val arquivo = File.createTempFile("ASSINATURA_${tipo}_${timeStamp}_", ".png", dir)
+        val file = File.createTempFile("ASSINATURA_${tipo}_${time}_", ".png", dir)
 
-        val fos = FileOutputStream(arquivo)
+        val fos = FileOutputStream(file)
         bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
         fos.flush()
         fos.close()
 
-        arquivo
+        file
     } catch (e: Exception) {
         e.printStackTrace()
         null
