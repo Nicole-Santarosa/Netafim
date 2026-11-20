@@ -49,6 +49,13 @@ servers:
 tags:
 - name: atendimentos
   description: Abertura, consulta e alteração de atendimentos.
+- name: sync
+  description: >-
+    Sincronização com o aplicativo (pull e push). As duas rotas são
+    independentes: quem orquestra o ciclo (ordem de push e pull) é o app,
+    decisão do grupo ainda pendente. As duas rotas estão na branch
+    rafael-atendimentos-models, sem merge na main, com 316 testes passando e
+    sem teste com JWT real (usam force_authenticate). Veja docs/api/sync.md.
 security:
 - jwtAuth: []
 paths:
@@ -327,6 +334,131 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Cultura'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+  /api/v1/sync/pull:
+    get:
+      operationId: v1_sync_pull
+      tags:
+      - sync
+      summary: Pull da sincronização
+      description: |-
+        Devolve os atendimentos com sync_seq maior que desde, em ordem crescente,
+        no máximo limite por chamada. Base: a função pull_atendimentos. Quem
+        decide o que cada perfil recebe é o RLS (a rota não filtra por usuário).
+
+        Regras: o cursor é tirado na escrita e não no commit, então o app pode
+        receber registros repetidos; a mitigação combinada é pedir com
+        sobreposição de 1.000 (desde = max(0, cursor - 1000)) e aplicar de forma
+        idempotente. O atendimento excluído logicamente desce como tombstone.
+        Repita a chamada com desde igual ao cursor enquanto tem_mais for true.
+
+        Limitação conhecida: os eventos de histórico reagendado, reclassificado e
+        editado_pos_finalizacao não avançam o sync_seq do atendimento, então só
+        chegam no pull quando o atendimento mudar por outro motivo. Proposta
+        pendente (não implementada, depende de migração): subir só o sync_seq do
+        atendimento nesses três eventos, sem somar na versao.
+      parameters:
+      - in: query
+        name: desde
+        required: false
+        description: Cursor. Só vêm registros com sync_seq maior que este valor.
+        schema:
+          type: integer
+          format: int64
+          minimum: 0
+          default: 0
+      - in: query
+        name: limite
+        required: false
+        description: Tamanho máximo da página.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 200
+      responses:
+        '200':
+          description: Página de itens, o cursor novo e se há mais páginas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullResposta'
+        '400':
+          description: >-
+            desde ou limite fora da faixa ou que não é inteiro. O corpo aponta o
+            campo, por exemplo {"desde": ["Informe um número inteiro."]}.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+  /api/v1/sync/push:
+    post:
+      operationId: v1_sync_push
+      tags:
+      - sync
+      summary: Push da sincronização
+      description: |-
+        Recebe um lote de 1 a 50 operações e processa na ordem do array. Cada
+        operação roda numa transação própria (savepoint): uma recusa não derruba
+        as outras. Reaproveita abrir_atendimento (criar) e atualizar_atendimento
+        (atualizar), então a máquina de estados e as permissões continuam sendo
+        do gatilho do banco.
+
+        O lote lido responde sempre 200, com um resultado por operação, na mesma
+        ordem. Resultados: criado (201), atualizado (200), duplicado (comparacao
+        igual: 200, sucesso; comparacao diferente: 409, conflito),
+        conflito_de_versao (409) e rejeitado (400, 403, 404 ou 422). O campo
+        status de cada resultado é o código HTTP equivalente da mesma operação
+        no endpoint isolado.
+
+        Idempotência: criar nunca duplica (a chave é o UUID do app). Atualizar
+        nunca soma a versao duas vezes (UPDATE com WHERE versao), mas o reenvio
+        de uma atualização cuja resposta se perdeu volta como conflito_de_versao
+        falso, porque o servidor não guarda as operações já processadas (não há
+        tabela de operações nem migração 009 nesta versão). O registro_servidor
+        do conflito deixa o app perceber que a atualização já foi aplicada.
+
+        Duplicado: se o UUID da criação já existe, o servidor relê o atendimento.
+        Invisível ao usuário: rejeitado 409 duplicado, sem registro. Visível: compara
+        só os campos que o POST de criação aceita (chave ausente vale nulo ou
+        vazio; culturas como conjunto sem ordem; data_abertura só se foi enviada,
+        pelo instante em UTC) e responde duplicado igual (200) ou diferente (409).
+
+        Operação com entidade diferente de atendimento, id_atendimento do payload
+        diferente do da operação ou campo inválido vira resultado rejeitado 400,
+        com os campos em erro.campos. Atualizar um atendimento inexistente,
+        excluído ou invisível vira rejeitado 404 com codigo nao_encontrado (só no
+        push; o PATCH isolado segue sem codigo).
+
+        A chamada das funções de notificação (migração 015) não foi implementada:
+        há só um ponto de extensão comentado no código, depois da criação.
+        Conflitos não são gravados em sync_conflito nesta versão.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushRequisicao'
+      responses:
+        '200':
+          description: Lote lido. Um resultado por operação, mesmo com falhas dentro.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushResposta'
+        '400':
+          description: >-
+            Problema do lote inteiro: corpo fora do formato, lista de operações
+            vazia ou com mais de 50 itens (mensagem "O lote aceita no máximo 50
+            operações."), id_operacao ausente, inválido ou repetido no lote.
+            Formato padrão do DRF, sem codigo. Nenhuma operação é executada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
         '401':
           $ref: '#/components/responses/NaoAutenticado'
 components:
@@ -828,6 +960,226 @@ components:
             limpa a situação. Depois da abertura só o Netafim Admin altera (422
             para os outros perfis).
       description: Além de versao, informe ao menos um dos outros campos.
+    Tombstone:
+      type: object
+      description: >-
+        Registro de um atendimento excluído logicamente, no pull. Só estas três
+        chaves, sem historico e sem culturas.
+      properties:
+        id_atendimento:
+          type: string
+          format: uuid
+        versao:
+          type: integer
+        sync_seq:
+          type: integer
+          format: int64
+    ItemDoPull:
+      type: object
+      properties:
+        entidade:
+          type: string
+          enum:
+          - atendimento
+          description: Só atendimento hoje. Reservado para outras entidades.
+        removido:
+          type: boolean
+          description: True quando o atendimento tem deletado_em preenchido.
+        registro:
+          description: >-
+            removido false: o mesmo JSON do detalhe, com culturas e historico
+            (o historico inteiro do atendimento, por data_evento e id_historico).
+            removido true: só id_atendimento, versao e sync_seq.
+          oneOf:
+          - $ref: '#/components/schemas/AtendimentoDetalhe'
+          - $ref: '#/components/schemas/Tombstone'
+    PullResposta:
+      type: object
+      properties:
+        itens:
+          type: array
+          description: Em ordem crescente de sync_seq, no máximo o limite pedido.
+          items:
+            $ref: '#/components/schemas/ItemDoPull'
+        cursor:
+          type: integer
+          format: int64
+          description: >-
+            Maior sync_seq da página. Com a página vazia, é o próprio desde
+            recebido.
+        tem_mais:
+          type: boolean
+          description: True quando existe outra página.
+    PayloadAtualizacao:
+      type: object
+      description: >-
+        Campos que o PATCH de atendimento aceita, sem a versao (que vai em
+        versao_esperada na operação). Ao menos um é obrigatório. Chaves
+        desconhecidas, inclusive tipo_venda e uma versao dentro do payload, são
+        ignoradas.
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        destinado_a:
+          $ref: '#/components/schemas/DestinadoA'
+        id_distribuidor:
+          type: integer
+        id_tecnico_responsavel:
+          type: integer
+          nullable: true
+          description: Use nulo para desvincular o técnico.
+        situacao_projeto:
+          allOf:
+          - $ref: '#/components/schemas/SituacaoProjeto'
+          nullable: true
+    OperacaoDoPush:
+      type: object
+      required:
+      - id_operacao
+      - entidade
+      - tipo
+      - id_atendimento
+      - payload
+      properties:
+        id_operacao:
+          type: string
+          format: uuid
+          description: >-
+            Gerado no app, único por operação. Hoje só correlaciona a resposta;
+            ao reenviar uma operação da fila, use o mesmo valor.
+        entidade:
+          type: string
+          enum:
+          - atendimento
+          description: Só atendimento na v1. Outro valor responde rejeitado 400.
+        tipo:
+          type: string
+          enum:
+          - criar
+          - atualizar
+        id_atendimento:
+          type: string
+          format: uuid
+          description: UUID do atendimento, gerado no app.
+        versao_esperada:
+          type: integer
+          minimum: 1
+          description: >-
+            Obrigatório em atualizar: a última versao que o app recebeu. Ignorado
+            em criar.
+        payload:
+          description: >-
+            tipo criar: o mesmo corpo do POST /atendimentos (AberturaAtendimento),
+            com o id_atendimento igual ao da operação (se diferir, rejeitado 400
+            no campo id_atendimento). tipo atualizar: PayloadAtualizacao.
+          oneOf:
+          - $ref: '#/components/schemas/AberturaAtendimento'
+          - $ref: '#/components/schemas/PayloadAtualizacao'
+    PushRequisicao:
+      type: object
+      required:
+      - operacoes
+      properties:
+        operacoes:
+          type: array
+          minItems: 1
+          maxItems: 50
+          description: Processadas na ordem do array, cada uma em savepoint.
+          items:
+            $ref: '#/components/schemas/OperacaoDoPush'
+    ErroDaOperacao:
+      type: object
+      required:
+      - detail
+      properties:
+        codigo:
+          type: string
+          description: >-
+            Opcional. Quando houver: regra_de_negocio, referencia_invalida,
+            campo_obrigatorio, valor_invalido, duplicado, sem_permissao,
+            conflito_de_versao ou nao_encontrado (este último só no push). A
+            validação por campo (400) vem sem codigo, como no DRF.
+        detail:
+          type: string
+        campos:
+          type: object
+          description: >-
+            Validação por campo (400). A chave é o campo e o valor é a lista de
+            mensagens.
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        versao_atual:
+          type: integer
+          description: Só no conflito_de_versao.
+    ResultadoDaOperacao:
+      type: object
+      required:
+      - id_operacao
+      - id_atendimento
+      - resultado
+      - status
+      properties:
+        id_operacao:
+          type: string
+          format: uuid
+        id_atendimento:
+          type: string
+          format: uuid
+          nullable: true
+          description: >-
+            Devolvido como veio na operação. Nulo só quando a operação veio sem
+            id_atendimento ou com um valor que não é texto.
+        resultado:
+          type: string
+          enum:
+          - criado
+          - atualizado
+          - duplicado
+          - conflito_de_versao
+          - rejeitado
+        status:
+          type: integer
+          description: >-
+            Código HTTP equivalente da mesma operação no endpoint isolado. criado
+            201; atualizado 200; duplicado igual 200; duplicado diferente 409;
+            conflito_de_versao 409; rejeitado 400, 403, 404, 409 (id existe mas o
+            usuário não o enxerga) ou 422.
+        comparacao:
+          type: string
+          enum:
+          - igual
+          - diferente
+          description: >-
+            Só em duplicado. igual é sucesso idempotente; diferente é conflito.
+            O servidor compara o conteúdo enviado com o gravado.
+        registro:
+          description: >-
+            Em criado, atualizado e duplicado igual: o detalhe completo do
+            atendimento (o mesmo formato do pull), com versao, sync_seq,
+            numero_protocolo e historico.
+          allOf:
+          - $ref: '#/components/schemas/AtendimentoDetalhe'
+        registro_servidor:
+          description: >-
+            Em duplicado diferente e em conflito_de_versao: o registro atual do
+            servidor, para o app mostrar e guardar. No conflito_de_versao isto só
+            existe no push; o PATCH isolado devolve apenas a versao_atual.
+          allOf:
+          - $ref: '#/components/schemas/AtendimentoDetalhe'
+        erro:
+          $ref: '#/components/schemas/ErroDaOperacao'
+    PushResposta:
+      type: object
+      required:
+      - resultados
+      properties:
+        resultados:
+          type: array
+          description: Um resultado por operação enviada, na mesma ordem e com o mesmo tamanho.
+          items:
+            $ref: '#/components/schemas/ResultadoDaOperacao'
     ErroRegra:
       type: object
       description: Erro de regra, de permissão ou de banco.
