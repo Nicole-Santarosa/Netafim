@@ -38,7 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -95,8 +95,9 @@ fun PerfilRota(
     val escopo = rememberCoroutineScope()
     val idUsuario = estado.usuario?.id
     val alteracoes by fotos.alteracoes.collectAsStateWithLifecycle()
-    val foto by produceState<ImageBitmap?>(null, idUsuario, alteracoes) {
-        value = idUsuario?.let { fotos.carregar(it) }?.asImageBitmap()
+    var foto by remember { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(idUsuario, alteracoes) {
+        foto = idUsuario?.let { fotos.carregar(it) }?.asImageBitmap()
     }
     var erroFoto by rememberSaveable { mutableStateOf(false) }
     val galeria = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->

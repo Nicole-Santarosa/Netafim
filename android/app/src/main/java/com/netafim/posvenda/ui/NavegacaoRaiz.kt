@@ -3,7 +3,9 @@ package com.netafim.posvenda.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -57,8 +59,9 @@ fun NavegacaoRaiz(iniciarLogado: Boolean, navController: NavHostController = rem
         composable(RotasApp.INICIO) {
             val usuario = sessao?.usuario
             val alteracoesDeFoto by AcessoGrafo.fotos.alteracoes.collectAsStateWithLifecycle()
-            val foto by produceState<ImageBitmap?>(null, usuario?.id, alteracoesDeFoto) {
-                value = usuario?.id?.let { AcessoGrafo.fotos.carregar(it) }?.asImageBitmap()
+            var foto by remember { mutableStateOf<ImageBitmap?>(null) }
+            LaunchedEffect(usuario?.id, alteracoesDeFoto) {
+                foto = usuario?.id?.let { AcessoGrafo.fotos.carregar(it) }?.asImageBitmap()
             }
             InicioTela(
                 nome = usuario?.nome.orEmpty(),
