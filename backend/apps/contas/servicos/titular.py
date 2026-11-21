@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from ..excecoes import ErroNegocio, SemPermissao
 from ..models import Usuario
-from . import auditoria, banco, usuarios
+from . import auditoria, banco, notificacoes, usuarios
 from .auditoria import Acao
 
 TIPOS = (
@@ -198,6 +198,21 @@ def _carregar(id_solicitacao: int, *, travar: bool = False) -> dict:
     return linhas[0]
 
 
+def _avisar_titular(pedido: dict, status: str, **extras) -> None:
+    """E-mail ao titular com o resultado do pedido, só depois que a transação confirmar (se
+    for desfeita, nada sai). O endereço e o nome vêm de ``pedido``, lido ANTES da anonimização,
+    que troca o e-mail da conta e do pedido por um valor inválido."""
+    transaction.on_commit(
+        lambda: notificacoes.pedido_titular_concluido(
+            email=pedido.get("email_contato"),
+            nome=pedido.get("nome_titular"),
+            tipo=pedido["tipo"],
+            status=status,
+            **extras,
+        )
+    )
+
+
 def _exigir_aberta(pedido: dict) -> None:
     if pedido["status"] not in ABERTOS:
         raise ErroNegocio("Este pedido já foi concluído.", "solicitacao_encerrada", status_code=409)
@@ -243,6 +258,7 @@ def atender(ator: Usuario, id_solicitacao: int, *, request=None) -> dict:
         tipo=pedido["tipo"],
         anonimizou=anonimizou,
     )
+    _avisar_titular(pedido, "atendida", anonimizou=anonimizou)
     return _carregar(id_solicitacao)
 
 
@@ -295,6 +311,7 @@ def negar(ator: Usuario, id_solicitacao: int, justificativa: str, *, request=Non
         andamento="negada",
         tipo=pedido["tipo"],
     )
+    _avisar_titular(pedido, "negada", justificativa=justificativa)
     return _carregar(id_solicitacao)
 
 

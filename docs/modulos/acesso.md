@@ -121,7 +121,7 @@ O contrato completo, gerado pelo código, está em [`docs/api/acesso-openapi.yam
 | `GET usuarios/{id}/dispositivos` · `POST dispositivos/{id}/revogar` | Netafim Admin |
 | `distribuidores` · `clientes` | leitura no escopo; escrita só Netafim Admin |
 | `GET perfis` · `GET permissoes` · `PUT perfis/{id}/permissoes` | leitura para todos; edição só Netafim Admin |
-| `dominios` | Netafim Admin |
+| `dominios` (`GET`, `POST`, `PATCH`; **sem `DELETE`**: domínio se desativa com `PATCH ativo=false`, porque o `app_django` só tem `select`, `insert` e `update` na tabela) | Netafim Admin |
 
 Erros de regra de negócio seguem o formato do DRF com um código estável:
 `{"detail": "mensagem em português", "codigo": "conta_pendente"}`.
