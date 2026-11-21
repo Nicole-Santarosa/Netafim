@@ -1,39 +1,135 @@
 package com.example.netafim.data.repository
 
-// Importa o DAO responsável pelas operações no banco local.
 import com.example.netafim.data.local.AtendimentoDao
-
-// Importa a entidade que representa um atendimento.
 import com.example.netafim.data.local.AtendimentoEntity
-
-// Permite observar alterações nos dados do banco continuamente.
 import kotlinx.coroutines.flow.Flow
 
-// Repository: camada intermediária entre o aplicativo e o banco de dados.
+// Camada intermediária entre o aplicativo e o banco de dados local.
 class AtendimentoRepository(
-    // Recebe o DAO por meio do construtor.
-    // Assim, o Repository não precisa criar o banco diretamente.
     private val atendimentoDao: AtendimentoDao
 ) {
 
-    // Salva um atendimento no banco de dados local.
-    suspend fun salvarAtendimento(atendimento: AtendimentoEntity) {
+    // ---------------------------------------------------------
+    // OPERAÇÕES LOCAIS
+    // ---------------------------------------------------------
 
-        // Encaminha a operação de gravação para o DAO.
-        atendimentoDao.salvar(atendimento)
+    // Insere um atendimento criado localmente.
+    // O proprietário informado deve corresponder ao da entidade.
+    suspend fun salvarAtendimento(
+        usuarioDonoId: Int,
+        atendimento: AtendimentoEntity
+    ) {
+        exigirProprietarioCorreto(usuarioDonoId, atendimento)
+
+        atendimentoDao.salvarLocalmente(atendimento)
     }
 
-    // Observa todos os atendimentos armazenados localmente.
-    fun observarAtendimentos(): Flow<List<AtendimentoEntity>> {
+    // ---------------------------------------------------------
+    // CONSULTAS
+    // ---------------------------------------------------------
 
-        // Delega ao DAO a consulta que acompanha alterações no banco.
-        return atendimentoDao.listarTodos()
+    // Observa os atendimentos pertencentes ao usuário informado.
+    fun observarAtendimentos(
+        usuarioDonoId: Int
+    ): Flow<List<AtendimentoEntity>> {
+        return atendimentoDao.listarTodos(usuarioDonoId)
     }
 
-    // Busca um atendimento específico utilizando seu UUID.
-    suspend fun buscarAtendimento(id: String): AtendimentoEntity? {
+    // Busca um atendimento específico do usuário.
+    suspend fun buscarAtendimento(
+        usuarioDonoId: Int,
+        idAtendimento: String
+    ): AtendimentoEntity? {
+        return atendimentoDao.buscarPorId(
+            usuarioDonoId = usuarioDonoId,
+            id = idAtendimento
+        )
+    }
 
-        // Solicita ao DAO o atendimento correspondente ao identificador.
-        return atendimentoDao.buscarPorId(id)
+    // Observa um atendimento específico e suas alterações.
+    fun observarAtendimento(
+        usuarioDonoId: Int,
+        idAtendimento: String
+    ): Flow<AtendimentoEntity?> {
+        return atendimentoDao.observarPorId(
+            usuarioDonoId = usuarioDonoId,
+            id = idAtendimento
+        )
+    }
+
+    // ---------------------------------------------------------
+    // DADOS RECEBIDOS DO SERVIDOR
+    // ---------------------------------------------------------
+
+    // Insere um atendimento recebido do servidor somente se
+    // ainda não existir para aquele usuário.
+    suspend fun inserirAtendimentoDoServidor(
+        usuarioDonoId: Int,
+        atendimento: AtendimentoEntity
+    ): Long {
+        exigirProprietarioCorreto(usuarioDonoId, atendimento)
+
+        return atendimentoDao.inserirSeNaoExistir(atendimento)
+    }
+
+    // Atualiza um atendimento somente se ele estiver sincronizado
+    // e a versão recebida for mais recente.
+    suspend fun atualizarAtendimentoDoServidor(
+        usuarioDonoId: Int,
+        atendimento: AtendimentoEntity
+    ): Int {
+        exigirProprietarioCorreto(usuarioDonoId, atendimento)
+
+        return atendimentoDao.atualizarSeSincronizado(
+            usuarioDonoId = usuarioDonoId,
+            idAtendimento = atendimento.idAtendimento,
+            numeroProtocolo = atendimento.numeroProtocolo,
+            dadosJson = atendimento.dadosJson,
+            origemRegistro = atendimento.origemRegistro,
+            versaoBase = atendimento.versaoBase,
+            syncSeqServidor = atendimento.syncSeqServidor,
+            dataCriacaoLocal = atendimento.dataCriacaoLocal
+        )
+    }
+
+    // ---------------------------------------------------------
+    // EXCLUSÕES
+    // ---------------------------------------------------------
+
+    // Remove somente um atendimento pertencente ao usuário.
+    suspend fun excluirAtendimento(
+        usuarioDonoId: Int,
+        idAtendimento: String
+    ): Int {
+        return atendimentoDao.excluirPorId(
+            usuarioDonoId = usuarioDonoId,
+            idAtendimento = idAtendimento
+        )
+    }
+
+    // Remove todos os atendimentos locais do usuário informado.
+    suspend fun excluirAtendimentosDoUsuario(
+        usuarioDonoId: Int
+    ): Int {
+        return atendimentoDao.excluirTodosDoUsuario(usuarioDonoId)
+    }
+
+    // ---------------------------------------------------------
+    // VALIDAÇÃO DE PROPRIEDADE
+    // ---------------------------------------------------------
+
+    // Impede que uma operação seja executada usando o ID
+    // de um usuário diferente daquele registrado na entidade.
+    private fun exigirProprietarioCorreto(
+        usuarioDonoId: Int,
+        atendimento: AtendimentoEntity
+    ) {
+        require(usuarioDonoId > 0) {
+            "O ID do usuário proprietário deve ser válido."
+        }
+
+        require(atendimento.usuarioDonoId == usuarioDonoId) {
+            "O atendimento não pertence ao usuário informado."
+        }
     }
 }
