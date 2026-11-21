@@ -25,8 +25,12 @@ import com.netafim.posvenda.acesso.ui.permissoes.PermissoesPerfilRota
 import com.netafim.posvenda.acesso.ui.permissoes.PermissoesPerfilViewModel
 import com.netafim.posvenda.acesso.ui.perfil.MfaViewModel
 import com.netafim.posvenda.acesso.ui.perfil.PerfilRota
+import com.netafim.posvenda.acesso.ui.privacidade.FilaPrivacidadeRota
+import com.netafim.posvenda.acesso.ui.privacidade.FilaPrivacidadeViewModel
 import com.netafim.posvenda.acesso.ui.privacidade.NovoPedidoRota
 import com.netafim.posvenda.acesso.ui.privacidade.NovoPedidoViewModel
+import com.netafim.posvenda.acesso.ui.privacidade.PedidoAdminRota
+import com.netafim.posvenda.acesso.ui.privacidade.PedidoAdminViewModel
 import com.netafim.posvenda.acesso.ui.privacidade.PrivacidadeRota
 import com.netafim.posvenda.acesso.ui.privacidade.PrivacidadeViewModel
 import com.netafim.posvenda.acesso.ui.perfil.PerfilViewModel
@@ -62,6 +66,10 @@ object RotasAcesso {
     const val PERMISSOES_PERFIL = "acesso/permissoes/{id}"
     const val PRIVACIDADE = "acesso/privacidade"
     const val NOVO_PEDIDO = "acesso/privacidade/novo"
+    const val FILA_PRIVACIDADE = "acesso/privacidade/fila"
+    const val PEDIDO_PRIVACIDADE = "acesso/privacidade/fila/{id}"
+
+    fun pedidoDePrivacidade(id: Int) = "acesso/privacidade/fila/$id"
 
     fun permissoesDoPerfil(id: Int) = "acesso/permissoes/$id"
 
@@ -70,7 +78,7 @@ object RotasAcesso {
 
     /** Telas de dentro do app: sem sessão, a navegação raiz leva ao login. */
     fun exigeSessao(rota: String): Boolean =
-        !rota.startsWith("$GRAFO/") || rota in setOf(PERFIL, TROCAR_SENHA, APROVACAO, USUARIOS, NOVO_USUARIO, USUARIO_DETALHE, USUARIO_EDITAR, PERMISSOES, PERMISSOES_PERFIL, PRIVACIDADE, NOVO_PEDIDO)
+        !rota.startsWith("$GRAFO/") || rota in setOf(PERFIL, TROCAR_SENHA, APROVACAO, USUARIOS, NOVO_USUARIO, USUARIO_DETALHE, USUARIO_EDITAR, PERMISSOES, PERMISSOES_PERFIL, PRIVACIDADE, NOVO_PEDIDO, FILA_PRIVACIDADE, PEDIDO_PRIVACIDADE)
 }
 
 private val fabrica = viewModelFactory {
@@ -87,6 +95,7 @@ private val fabrica = viewModelFactory {
     initializer { NovoUsuarioViewModel(AcessoGrafo.repositorioUsuarios) }
     initializer { PrivacidadeViewModel(AcessoGrafo.repositorioPrivacidade) }
     initializer { NovoPedidoViewModel(AcessoGrafo.repositorioPrivacidade) }
+    initializer { FilaPrivacidadeViewModel(AcessoGrafo.repositorioFilaPrivacidade) }
 }
 
 /**
@@ -246,3 +255,27 @@ fun NavGraphBuilder.telasPrivacidade(navController: NavHostController) {
         NovoPedidoRota(viewModel = viewModel(factory = fabrica), aoConcluir = { navController.popBackStack() })
     }
 }
+
+/** Fila de pedidos de privacidade dos titulares (LGPD) e o detalhe de um pedido, só para o Netafim Admin. */
+fun NavGraphBuilder.telasFilaPrivacidade(navController: NavHostController) {
+    composable(RotasAcesso.FILA_PRIVACIDADE) {
+        FilaPrivacidadeRota(
+            viewModel = viewModel(factory = fabrica),
+            aoAbrirPedido = { navController.navigate(RotasAcesso.pedidoDePrivacidade(it)) },
+        )
+    }
+    composable(
+        RotasAcesso.PEDIDO_PRIVACIDADE,
+        arguments = listOf(navArgument("id") { type = NavType.IntType }),
+    ) { entrada ->
+        val id = entrada.arguments?.getInt("id") ?: return@composable
+        val viewModel: PedidoAdminViewModel = viewModel(
+            key = "pedido-privacidade-$id",
+            factory = viewModelFactory {
+                initializer { PedidoAdminViewModel(AcessoGrafo.repositorioFilaPrivacidade, AcessoGrafo.repositorio, id) }
+            },
+        )
+        PedidoAdminRota(viewModel = viewModel)
+    }
+}
+

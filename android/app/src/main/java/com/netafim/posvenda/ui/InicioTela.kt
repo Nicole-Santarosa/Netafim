@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.MaterialTheme
@@ -47,10 +48,12 @@ fun InicioTela(
     podeGerenciarUsuarios: Boolean,
     podeAprovarCadastros: Boolean,
     podeGerenciarPermissoes: Boolean,
+    podeAtenderPedidosLgpd: Boolean,
     aoAbrirPerfil: () -> Unit,
     aoAbrirUsuarios: () -> Unit,
     aoAbrirAprovacao: () -> Unit,
     aoAbrirPermissoes: () -> Unit,
+    aoAbrirPedidosPrivacidade: () -> Unit,
 ) {
     val descricaoPerfil = stringResource(R.string.inicio_meu_perfil)
     val primeiroNome = nome.trim().substringBefore(' ')
@@ -82,7 +85,7 @@ fun InicioTela(
             Spacer(Modifier.height(esc(24)))
         }
 
-        if (podeGerenciarUsuarios || podeAprovarCadastros || podeGerenciarPermissoes) {
+        if (podeGerenciarUsuarios || podeAprovarCadastros || podeGerenciarPermissoes || podeAtenderPedidosLgpd) {
             TituloDeGrupo(stringResource(R.string.inicio_atalhos_titulo))
             Spacer(Modifier.height(esc(8)))
             Column(verticalArrangement = Arrangement.spacedBy(esc(12))) {
@@ -100,6 +103,14 @@ fun InicioTela(
                         titulo = stringResource(R.string.inicio_permissoes),
                         descricao = stringResource(R.string.inicio_permissoes_descricao),
                         aoClicar = aoAbrirPermissoes,
+                    )
+                }
+                if (podeAtenderPedidosLgpd) {
+                    AtalhoEmCartao(
+                        icone = Icons.Outlined.Info,
+                        titulo = stringResource(R.string.inicio_pedidos_privacidade),
+                        descricao = stringResource(R.string.inicio_pedidos_privacidade_descricao),
+                        aoClicar = aoAbrirPedidosPrivacidade,
                     )
                 }
                 if (podeAprovarCadastros) {

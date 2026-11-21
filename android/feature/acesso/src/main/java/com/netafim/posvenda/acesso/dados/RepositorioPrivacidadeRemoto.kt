@@ -5,15 +5,12 @@ import com.netafim.posvenda.acesso.dominio.RepositorioPrivacidade
 import com.netafim.posvenda.acesso.dominio.Resultado
 import com.netafim.posvenda.acesso.dominio.TipoPedido
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
 
 /** Direitos do titular pela API autenticada. */
 class RepositorioPrivacidadeRemoto(
     private val api: AcessoApi,
     private val json: Json,
 ) : RepositorioPrivacidade {
-
-    private val formatado = Json { prettyPrint = true }
 
     override suspend fun meusPedidos(): Resultado<List<PedidoTitular>> = executarApi(json) {
         api.meusPedidos().map { it.paraDominio() }
@@ -25,9 +22,7 @@ class RepositorioPrivacidadeRemoto(
         }
 
     override suspend fun copiaDosDados(): Resultado<String> = executarApi(json) {
-        val bruto = api.meusDados().use { it.string() }
-        // Se vier algo que não é JSON, entrega o texto como veio em vez de esconder a cópia da pessoa.
-        runCatching { formatado.encodeToString(JsonElement.serializer(), json.parseToJsonElement(bruto)) }.getOrDefault(bruto)
+        jsonLegivel(api.meusDados().use { it.string() }, json)
     }
 
     private fun PedidoTitularDto.paraDominio() = PedidoTitular(

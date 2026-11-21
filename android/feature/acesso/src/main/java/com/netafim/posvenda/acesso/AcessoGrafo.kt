@@ -10,11 +10,13 @@ import com.netafim.posvenda.acesso.dados.ProvedorTokens
 import com.netafim.posvenda.acesso.dados.Rede
 import com.netafim.posvenda.acesso.dados.RepositorioAcessoRemoto
 import com.netafim.posvenda.acesso.dados.RepositorioCadastrosRemoto
+import com.netafim.posvenda.acesso.dados.RepositorioFilaPrivacidadeRemoto
 import com.netafim.posvenda.acesso.dados.RepositorioPerfisRemoto
 import com.netafim.posvenda.acesso.dados.RepositorioPrivacidadeRemoto
 import com.netafim.posvenda.acesso.dados.RepositorioUsuariosRemoto
 import com.netafim.posvenda.acesso.dominio.RepositorioAcesso
 import com.netafim.posvenda.acesso.dominio.RepositorioCadastros
+import com.netafim.posvenda.acesso.dominio.RepositorioFilaPrivacidade
 import com.netafim.posvenda.acesso.dominio.RepositorioPerfis
 import com.netafim.posvenda.acesso.dominio.RepositorioPrivacidade
 import com.netafim.posvenda.acesso.dominio.RepositorioUsuarios
@@ -43,6 +45,7 @@ object AcessoGrafo {
     private lateinit var usuariosRemoto: RepositorioUsuariosRemoto
     private lateinit var perfisRemoto: RepositorioPerfisRemoto
     private lateinit var privacidadeRemoto: RepositorioPrivacidadeRemoto
+    private lateinit var filaPrivacidadeRemoto: RepositorioFilaPrivacidadeRemoto
 
     private lateinit var fotosDePerfil: FotosDePerfil
 
@@ -62,6 +65,9 @@ object AcessoGrafo {
 
     /** Direitos do titular (LGPD): pedidos e cópia dos próprios dados, para qualquer usuário logado. */
     val repositorioPrivacidade: RepositorioPrivacidade get() = privacidadeRemoto
+
+    /** Fila de pedidos de titulares (LGPD), para o Netafim Admin. */
+    val repositorioFilaPrivacidade: RepositorioFilaPrivacidade get() = filaPrivacidadeRemoto
     val clienteAutenticado: OkHttpClient get() = rede.autenticado
     val retrofitAutenticado: Retrofit by lazy { rede.retrofit(rede.autenticado) }
 
@@ -86,6 +92,7 @@ object AcessoGrafo {
         usuariosRemoto = RepositorioUsuariosRemoto(api = autenticada, json = rede.json)
         perfisRemoto = RepositorioPerfisRemoto(api = autenticada, json = rede.json)
         privacidadeRemoto = RepositorioPrivacidadeRemoto(api = autenticada, json = rede.json)
+        filaPrivacidadeRemoto = RepositorioFilaPrivacidadeRemoto(api = autenticada, json = rede.json)
         tokens.alvo = repositorioRemoto
     }
 
