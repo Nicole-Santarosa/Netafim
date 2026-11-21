@@ -227,3 +227,20 @@ data class PermissaoDto(val codigo: String, val descricao: String = "")
 
 @Serializable
 data class PermissoesRequisicao(val permissoes: List<String>)
+
+/** Item de `GET me/solicitacoes-lgpd` e resposta de `POST me/solicitacoes-lgpd`. */
+@Serializable
+data class PedidoTitularDto(
+    @SerialName("id_solicitacao") val idSolicitacao: Int,
+    val tipo: String,
+    val status: String,
+    val observacao: String? = null,
+    @SerialName("data_solicitacao") val dataSolicitacao: String,
+    @SerialName("data_prazo") val dataPrazo: String,
+    @SerialName("data_conclusao") val dataConclusao: String? = null,
+    @SerialName("justificativa_negativa") val justificativaNegativa: String? = null,
+)
+
+/** Corpo de `POST me/solicitacoes-lgpd`; a observação é opcional (a API não aceita nulo, por isso sai omitida). */
+@Serializable
+data class PedidoNovoRequisicao(val tipo: String, val observacao: String? = null)

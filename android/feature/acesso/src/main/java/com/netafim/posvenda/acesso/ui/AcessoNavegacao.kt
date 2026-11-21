@@ -25,6 +25,10 @@ import com.netafim.posvenda.acesso.ui.permissoes.PermissoesPerfilRota
 import com.netafim.posvenda.acesso.ui.permissoes.PermissoesPerfilViewModel
 import com.netafim.posvenda.acesso.ui.perfil.MfaViewModel
 import com.netafim.posvenda.acesso.ui.perfil.PerfilRota
+import com.netafim.posvenda.acesso.ui.privacidade.NovoPedidoRota
+import com.netafim.posvenda.acesso.ui.privacidade.NovoPedidoViewModel
+import com.netafim.posvenda.acesso.ui.privacidade.PrivacidadeRota
+import com.netafim.posvenda.acesso.ui.privacidade.PrivacidadeViewModel
 import com.netafim.posvenda.acesso.ui.perfil.PerfilViewModel
 import com.netafim.posvenda.acesso.ui.perfil.TrocarSenhaRota
 import com.netafim.posvenda.acesso.ui.perfil.TrocarSenhaViewModel
@@ -56,6 +60,8 @@ object RotasAcesso {
     const val USUARIO_EDITAR = "acesso/usuarios/{id}/editar"
     const val PERMISSOES = "acesso/permissoes"
     const val PERMISSOES_PERFIL = "acesso/permissoes/{id}"
+    const val PRIVACIDADE = "acesso/privacidade"
+    const val NOVO_PEDIDO = "acesso/privacidade/novo"
 
     fun permissoesDoPerfil(id: Int) = "acesso/permissoes/$id"
 
@@ -64,7 +70,7 @@ object RotasAcesso {
 
     /** Telas de dentro do app: sem sessão, a navegação raiz leva ao login. */
     fun exigeSessao(rota: String): Boolean =
-        !rota.startsWith("$GRAFO/") || rota in setOf(PERFIL, TROCAR_SENHA, APROVACAO, USUARIOS, NOVO_USUARIO, USUARIO_DETALHE, USUARIO_EDITAR, PERMISSOES, PERMISSOES_PERFIL)
+        !rota.startsWith("$GRAFO/") || rota in setOf(PERFIL, TROCAR_SENHA, APROVACAO, USUARIOS, NOVO_USUARIO, USUARIO_DETALHE, USUARIO_EDITAR, PERMISSOES, PERMISSOES_PERFIL, PRIVACIDADE, NOVO_PEDIDO)
 }
 
 private val fabrica = viewModelFactory {
@@ -79,6 +85,8 @@ private val fabrica = viewModelFactory {
     initializer { UsuariosViewModel(AcessoGrafo.repositorioUsuarios, AcessoGrafo.repositorio) }
     initializer { PerfisViewModel(AcessoGrafo.repositorioPerfis) }
     initializer { NovoUsuarioViewModel(AcessoGrafo.repositorioUsuarios) }
+    initializer { PrivacidadeViewModel(AcessoGrafo.repositorioPrivacidade) }
+    initializer { NovoPedidoViewModel(AcessoGrafo.repositorioPrivacidade) }
 }
 
 /**
@@ -140,6 +148,7 @@ fun NavGraphBuilder.telaPerfil(navController: NavHostController) {
             mfaViewModel = viewModel(factory = fabrica),
             aoSair = paraOLogin,
             aoTrocarSenha = { navController.navigate(RotasAcesso.TROCAR_SENHA) },
+            aoPrivacidade = { navController.navigate(RotasAcesso.PRIVACIDADE) },
         )
     }
     composable(RotasAcesso.TROCAR_SENHA) {
@@ -222,5 +231,18 @@ fun NavGraphBuilder.telasUsuarios(navController: NavHostController) {
             aoCriar = { navController.popBackStack() },
             aoVoltar = { navController.popBackStack() },
         )
+    }
+}
+
+/** Privacidade (LGPD): pedidos do titular e cópia dos próprios dados, para qualquer usuário logado (entrada em Meu perfil). */
+fun NavGraphBuilder.telasPrivacidade(navController: NavHostController) {
+    composable(RotasAcesso.PRIVACIDADE) {
+        PrivacidadeRota(
+            viewModel = viewModel(factory = fabrica),
+            aoFazerPedido = { navController.navigate(RotasAcesso.NOVO_PEDIDO) },
+        )
+    }
+    composable(RotasAcesso.NOVO_PEDIDO) {
+        NovoPedidoRota(viewModel = viewModel(factory = fabrica), aoConcluir = { navController.popBackStack() })
     }
 }

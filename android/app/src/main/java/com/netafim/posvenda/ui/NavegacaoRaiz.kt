@@ -20,6 +20,7 @@ import com.netafim.posvenda.acesso.ui.grafoAcesso
 import com.netafim.posvenda.acesso.ui.telaAprovacao
 import com.netafim.posvenda.acesso.ui.telaPerfil
 import com.netafim.posvenda.acesso.ui.telasPermissoes
+import com.netafim.posvenda.acesso.ui.telasPrivacidade
 import com.netafim.posvenda.acesso.ui.telasUsuarios
 import com.netafim.posvenda.acesso.dominio.podeGerenciarPermissoes
 import com.netafim.posvenda.acesso.ui.usuarios.podeGerenciarUsuarios
@@ -59,6 +60,7 @@ fun NavegacaoRaiz(iniciarLogado: Boolean, navController: NavHostController = rem
         telaAprovacao(navController)
         telasUsuarios(navController)
         telasPermissoes(navController)
+        telasPrivacidade(navController)
         composable(RotasApp.INICIO) {
             val usuario = sessao?.usuario
             val alteracoesDeFoto by AcessoGrafo.fotos.alteracoes.collectAsStateWithLifecycle()
