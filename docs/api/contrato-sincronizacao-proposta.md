@@ -1,11 +1,27 @@
 # Contrato de sincronização Android ⇄ API (PROPOSTA v0.1)
 
+> ## ⚠️ SUBSTITUÍDO pelo contrato implementado: `docs/api/sync.md`
+>
+> **O contrato final está em `docs/api/sync.md`** (branch `rafael-atendimentos-models`, PR #3, ainda não mesclado; implementação em `push.py` e `views_sync.py`). **Para referenciar, use esse arquivo.** Este documento é o rascunho de 02/11 e fica só como histórico das decisões. Os nomes mudaram na implementação:
+>
+> | Rascunho (este arquivo) | Implementado (`sync.md`) |
+> |---|---|
+> | `id` (da operação de push) | `id_atendimento` |
+> | `versao_base` | `versao_esperada` |
+> | `campos` | `payload` |
+> | resultado `aplicado` | `criado` (201) ou `atualizado` (200) |
+> | resultado `conflito` | `conflito_de_versao` (409) |
+> | resultado `duplicado` | `duplicado`, com `comparacao` `igual` (200, sucesso) ou `diferente` (409, conflito) |
+> | resultado `rejeitado` | `rejeitado` (400, 403, 404 ou 422) |
+>
+> O que **não** mudou: `id_operacao`, `entidade`, `tipo` (`criar` ou `atualizar`), lote de até 50 operações, `GET /sync/pull?desde=&limite=` com `itens`, `cursor` e `tem_mais`, e o tombstone `removido: true`. Também **divergem**: o lote acima de 50 operações devolve **400** no formato padrão do DRF (e não 413, como diz a seção 3), e o conflito **não é gravado em `sync_conflito` na v1** (não há tela nem rota de resolução; o `registro_servidor` já volta na resposta). Também **saíram** do contrato implementado: o campo `feito_em` (não aparece no `sync.md`) e a entidade `evidencia` (a v1 só aceita `atendimento`; outro valor vira operação rejeitada). A tabela de operações processadas (migração 009, `sync_operacao`) **não existe no banco** (conferido em 21/11/2026); só existe `sync_conflito`.
+
 Resposta à pergunta da Nicole: *o que o Android envia, o que recebe e como o servidor identifica conflitos.*
 
-**Status:** proposta para o grupo confirmar. **Nenhum destes endpoints existe hoje** (a API de atendimentos do Rafael tem só `GET/POST /atendimentos` e `GET/PATCH /atendimentos/{id}`).
+**Status (rascunho original, de 02/11):** proposta para o grupo confirmar. **Nenhum destes endpoints existia na época** (a API de atendimentos do Rafael tinha só `GET/POST /atendimentos` e `GET/PATCH /atendimentos/{id}`). Hoje `GET /sync/pull` e `POST /sync/push` estão implementados na branch do PR #3 (commit `3ffd7a7`, 20/11/2026).
 **Data:** 02/11/2026 · **Autor:** Rodrigo (Pessoa 1)
 
-> **Estado em 15/11/2026:** continua sendo **proposta**. Nenhum endpoint de sincronização foi implementado. Em aberto, para o grupo decidir: **quem implementa `GET /sync/pull` e `POST /sync/push` no back-end** (a função `pull_atendimentos(desde, limite)` do Rafael existe na branch `rafael-atendimentos-models` (PR #3, ainda não mesclado), sem a rota; é a base do pull) e o prazo para o app (Pessoa 4) consumir. Este arquivo entra no repositório para ter uma fonte versionada; o conteúdo abaixo é o da proposta original, sem alteração.
+> **Estado em 21/11/2026:** as rotas `GET /sync/pull` e `POST /sync/push` foram **implementadas pela Pessoa 2 (Rafael) no PR #3** (`rafael-atendimentos-models`, ainda não mesclado). **O contrato vigente está em `docs/api/sync.md`.** Este arquivo é a **proposta original (histórico)**; as seções abaixo, inclusive os registros de estado de 15/11 a 20/11, ficam como estavam e não devem ser usadas para implementar o cliente.
 
 > Legenda: **[BANCO]** = já existe no snapshot `infra/db/base/001_schema_inicial.sql` (conferido) · **[API]** = já existe no contrato do Rafael (`origin/rafael-atendimentos-models`) · **[NOVO]** = proposta, precisa ser construída/aprovada.
 
@@ -206,7 +222,7 @@ Fila no app: reenviar com **o mesmo `id_operacao`** em caso de falha de rede (é
 | F | Upload de arquivo (proxy × URL pré-assinada, antivírus, limites) | infra | Depende do Object Storage |
 | G | Escopo da v1: `atendimento` + `evidencia`; **relatório** e `agendamento` na v2 | [GRUPO] | Relatório tem `versao` própria e mais regras |
 | H | Limite de lote (50) e de página (200/500) | [GRUPO] | Ajustável |
-| I | Quem implementa o backend do sync | Nicole (Pessoa 4: backend e Android da sincronização) | Rodrigo (Pessoa 1) fecha o contrato com ela e aplica os scripts de banco (a migração 009 da tabela de operações entra aqui) |
+| I | Quem implementa o backend do sync | **Pessoa 2 (Rafael)**: as rotas `/sync` são dele, conforme a divisão confirmada em 19/11 e já implementadas no PR #3. A **Pessoa 4 (Nicole)** faz só a camada local do Android (Room, fila de operações, cursor, aplicação do que chega) | Rodrigo (Pessoa 1) fecha o contrato e aplica os scripts de banco (a migração 009 da tabela de operações entra aqui; **ainda não existe** no banco) |
 
 ---
 
