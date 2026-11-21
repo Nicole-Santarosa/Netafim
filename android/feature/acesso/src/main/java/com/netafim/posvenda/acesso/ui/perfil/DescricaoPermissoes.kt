@@ -25,6 +25,12 @@ object DescricaoPermissoes {
         Permissoes.DEFINIR_PERFIL to "Definir perfis de acesso",
     )
 
+    /** Texto da permissão, ou nulo quando o código não tem texto amigável. */
+    fun texto(codigo: String): String? = textos[codigo]
+
+    /** Posição na ordem de exibição; códigos sem texto vão para o fim. */
+    fun posicao(codigo: String): Int = textos.keys.indexOf(codigo).let { if (it < 0) Int.MAX_VALUE else it }
+
     fun para(codigos: Set<String>): List<String> =
         textos.filterKeys { it in codigos }.values.toList()
 }

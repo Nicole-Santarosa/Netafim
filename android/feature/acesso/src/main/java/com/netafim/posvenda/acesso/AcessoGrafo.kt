@@ -10,9 +10,11 @@ import com.netafim.posvenda.acesso.dados.ProvedorTokens
 import com.netafim.posvenda.acesso.dados.Rede
 import com.netafim.posvenda.acesso.dados.RepositorioAcessoRemoto
 import com.netafim.posvenda.acesso.dados.RepositorioCadastrosRemoto
+import com.netafim.posvenda.acesso.dados.RepositorioPerfisRemoto
 import com.netafim.posvenda.acesso.dados.RepositorioUsuariosRemoto
 import com.netafim.posvenda.acesso.dominio.RepositorioAcesso
 import com.netafim.posvenda.acesso.dominio.RepositorioCadastros
+import com.netafim.posvenda.acesso.dominio.RepositorioPerfis
 import com.netafim.posvenda.acesso.dominio.RepositorioUsuarios
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -37,6 +39,7 @@ object AcessoGrafo {
     private lateinit var repositorioRemoto: RepositorioAcessoRemoto
     private lateinit var cadastrosRemoto: RepositorioCadastrosRemoto
     private lateinit var usuariosRemoto: RepositorioUsuariosRemoto
+    private lateinit var perfisRemoto: RepositorioPerfisRemoto
 
     private lateinit var fotosDePerfil: FotosDePerfil
 
@@ -50,6 +53,9 @@ object AcessoGrafo {
 
     /** Gestão de usuários da própria organização (listar e convidar). */
     val repositorioUsuarios: RepositorioUsuarios get() = usuariosRemoto
+
+    /** Permissões por perfil (RF20), para o Netafim Admin. */
+    val repositorioPerfis: RepositorioPerfis get() = perfisRemoto
     val clienteAutenticado: OkHttpClient get() = rede.autenticado
     val retrofitAutenticado: Retrofit by lazy { rede.retrofit(rede.autenticado) }
 
@@ -72,6 +78,7 @@ object AcessoGrafo {
         )
         cadastrosRemoto = RepositorioCadastrosRemoto(api = autenticada, json = rede.json)
         usuariosRemoto = RepositorioUsuariosRemoto(api = autenticada, json = rede.json)
+        perfisRemoto = RepositorioPerfisRemoto(api = autenticada, json = rede.json)
         tokens.alvo = repositorioRemoto
     }
 

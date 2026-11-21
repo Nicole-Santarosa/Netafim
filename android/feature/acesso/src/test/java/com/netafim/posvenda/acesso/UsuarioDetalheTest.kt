@@ -376,6 +376,16 @@ class UsuarioDetalheViewModelTest {
     }
 
     @Test
+    fun `ao retomar o aviso de uma acao anterior some`() {
+        usuarios.alvo = pessoa(2, SituacoesUsuario.INATIVO)
+        val vm = vm()
+        vm.ativar()
+        assertEquals(AvisoUsuario.ATIVADO, vm.estado.value.aviso)
+        vm.aoRetomar()
+        assertNull(vm.estado.value.aviso)
+    }
+
+    @Test
     fun `reenviar convite avisa`() {
         usuarios.alvo = pessoa(2, SituacoesUsuario.PENDENTE)
         val vm = vm()
