@@ -2,6 +2,7 @@ package com.netafim.posvenda.acesso.ui.usuarios
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -48,10 +50,15 @@ import com.netafim.posvenda.acesso.ui.comum.estilo
 import com.netafim.posvenda.acesso.ui.comum.larguraConteudo
 
 @Composable
-fun GestaoUsuariosRota(viewModel: UsuariosViewModel, aoAdicionar: () -> Unit) {
+fun GestaoUsuariosRota(viewModel: UsuariosViewModel, aoAdicionar: () -> Unit, aoAbrirUsuario: (Int) -> Unit) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.aoRetomar() }
-    GestaoUsuariosTela(estado = estado, aoAdicionar = aoAdicionar, aoRecarregar = viewModel::carregar)
+    GestaoUsuariosTela(
+        estado = estado,
+        aoAdicionar = aoAdicionar,
+        aoRecarregar = viewModel::carregar,
+        aoAbrir = { aoAbrirUsuario(it.id) },
+    )
 }
 
 /**
@@ -63,6 +70,7 @@ fun GestaoUsuariosTela(
     estado: UsuariosEstado,
     aoAdicionar: () -> Unit,
     aoRecarregar: () -> Unit,
+    aoAbrir: (Usuario) -> Unit = {},
 ) {
     TelaResponsiva(Modifier.fillMaxSize()) {
         Column(
@@ -100,7 +108,7 @@ fun GestaoUsuariosTela(
                                     }
                                 }
                             }
-                            items(estado.usuarios, key = { it.id }) { CartaoUsuario(it) }
+                            items(estado.usuarios, key = { it.id }) { usuario -> CartaoUsuario(usuario) { aoAbrir(usuario) } }
                             if (estado.podeAdicionar) {
                                 item {
                                     Spacer(Modifier.height(esc(6)))
@@ -117,7 +125,7 @@ fun GestaoUsuariosTela(
 
 /** Cartão de 56 dp: nome em 13 sp e a etiqueta Admin/Usuário embaixo. */
 @Composable
-private fun CartaoUsuario(usuario: Usuario) {
+private fun CartaoUsuario(usuario: Usuario, aoClicar: () -> Unit) {
     val cores = MaterialTheme.colorScheme
     val forma = RoundedCornerShape(esc(8))
     val admin = usuario.perfil?.ehAdmin == true
@@ -129,6 +137,7 @@ private fun CartaoUsuario(usuario: Usuario) {
             .shadow(esc(3), forma, ambientColor = Color.Transparent, spotColor = SombraCartao)
             .background(cores.background, forma)
             .border(1.dp, cores.outlineVariant, forma)
+            .clickable(role = Role.Button, onClick = aoClicar)
             .padding(horizontal = esc(12)),
     ) {
         Text(usuario.nome, color = cores.onSurface, style = estilo(13, FontWeight.Medium), maxLines = 1)

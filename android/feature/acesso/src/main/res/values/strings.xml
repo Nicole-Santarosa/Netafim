@@ -144,4 +144,28 @@
     <string name="perfil_foto_remover">Remover foto</string>
     <string name="perfil_foto_erro">Não foi possível usar essa imagem. Tente outra.</string>
     <string name="perfil_foto_so_aparelho">A foto fica salva só neste aparelho.</string>
+    <!-- Detalhe do usuário -->
+    <string name="usuario_detalhe_titulo">Detalhe do usuário</string>
+    <string name="usuario_erro_carregar">Não foi possível carregar este usuário.</string>
+    <string name="usuario_sem_organizacao">Ainda sem organização</string>
+    <string name="usuario_sem_perfil">Ainda sem perfil</string>
+    <string name="usuario_sem_acoes">Você pode ver este usuário, mas não pode alterá-lo.</string>
+    <string name="usuarios_situacao_ativo">Ativo</string>
+    <string name="usuarios_situacao_desconhecida">Desconhecida</string>
+    <string name="usuario_acao_perfil">Definir perfil</string>
+    <string name="usuario_acao_convite">Reenviar convite</string>
+    <string name="usuario_acao_ativar">Ativar usuário</string>
+    <string name="usuario_acao_desativar">Desativar usuário</string>
+    <string name="usuario_acao_excluir">Excluir usuário</string>
+    <string name="usuario_desativar_titulo">Desativar %1$s?</string>
+    <string name="usuario_desativar_texto">A pessoa deixa de entrar no aplicativo e as sessões dela são encerradas. Você pode ativá-la de novo depois.</string>
+    <string name="usuario_confirmar_desativar">Desativar</string>
+    <string name="usuario_excluir_titulo">Excluir %1$s?</string>
+    <string name="usuario_excluir_texto">O usuário some das listas e o e-mail fica livre para um novo cadastro. Os atendimentos ligados a ele continuam. Essa ação não pode ser desfeita pelo aplicativo.</string>
+    <string name="usuario_confirmar_excluir">Excluir</string>
+    <string name="usuario_perfil_titulo">Definir perfil</string>
+    <string name="usuario_aviso_ativado">Usuário ativado.</string>
+    <string name="usuario_aviso_desativado">Usuário desativado.</string>
+    <string name="usuario_aviso_perfil">Perfil alterado.</string>
+    <string name="usuario_aviso_convite">Convite reenviado.</string>
 </resources>
