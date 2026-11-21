@@ -80,6 +80,7 @@ fun PerfilRota(
     viewModel: PerfilViewModel,
     mfaViewModel: MfaViewModel,
     aoSair: () -> Unit,
+    aoTrocarSenha: () -> Unit,
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val mfa by mfaViewModel.estado.collectAsStateWithLifecycle()
@@ -110,6 +111,7 @@ fun PerfilRota(
         erroFoto = erroFoto,
         aoAtualizar = viewModel::atualizar,
         aoSair = viewModel::sair,
+        aoTrocarSenha = aoTrocarSenha,
         aoEscolherDaGaleria = {
             erroFoto = false
             galeria.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -143,6 +145,7 @@ fun PerfilTela(
     erroFoto: Boolean,
     aoAtualizar: () -> Unit,
     aoSair: () -> Unit,
+    aoTrocarSenha: () -> Unit,
     aoEscolherDaGaleria: () -> Unit,
     aoTirarFoto: () -> Unit,
     aoRemoverFoto: () -> Unit,
@@ -210,6 +213,8 @@ fun PerfilTela(
             )
             Permissoes(usuario.permissoes)
             Spacer(Modifier.height(esc(28)))
+            BotaoContorno(stringResource(R.string.acesso_trocar_senha_titulo), aoTrocarSenha)
+            Spacer(Modifier.height(esc(12)))
             BotaoContorno(stringResource(R.string.acesso_sair), { confirmarSaida = true })
         }
     }
@@ -438,6 +443,7 @@ private fun PerfilTelaPreview() {
             erroFoto = false,
             aoAtualizar = {},
             aoSair = {},
+            aoTrocarSenha = {},
             aoEscolherDaGaleria = {},
             aoTirarFoto = {},
             aoRemoverFoto = {},

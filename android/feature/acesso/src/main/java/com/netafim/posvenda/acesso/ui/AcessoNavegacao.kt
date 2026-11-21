@@ -22,6 +22,8 @@ import com.netafim.posvenda.acesso.ui.login.LoginViewModel
 import com.netafim.posvenda.acesso.ui.perfil.MfaViewModel
 import com.netafim.posvenda.acesso.ui.perfil.PerfilRota
 import com.netafim.posvenda.acesso.ui.perfil.PerfilViewModel
+import com.netafim.posvenda.acesso.ui.perfil.TrocarSenhaRota
+import com.netafim.posvenda.acesso.ui.perfil.TrocarSenhaViewModel
 import com.netafim.posvenda.acesso.ui.senha.EsqueciSenhaRota
 import com.netafim.posvenda.acesso.ui.usuarios.GestaoUsuariosRota
 import com.netafim.posvenda.acesso.ui.usuarios.NovoUsuarioRota
@@ -36,6 +38,7 @@ object RotasAcesso {
     const val CADASTRO = "acesso/cadastro"
     const val ESQUECI_SENHA = "acesso/esqueci-senha"
     const val PERFIL = "acesso/perfil"
+    const val TROCAR_SENHA = "acesso/perfil/senha"
     const val LINK = "acesso/link"
     const val APROVACAO = "acesso/aprovacao"
     const val USUARIOS = "acesso/usuarios"
@@ -43,7 +46,7 @@ object RotasAcesso {
 
     /** Telas de dentro do app: sem sessão, a navegação raiz leva ao login. */
     fun exigeSessao(rota: String): Boolean =
-        !rota.startsWith("$GRAFO/") || rota in setOf(PERFIL, APROVACAO, USUARIOS, NOVO_USUARIO)
+        !rota.startsWith("$GRAFO/") || rota in setOf(PERFIL, TROCAR_SENHA, APROVACAO, USUARIOS, NOVO_USUARIO)
 }
 
 private val fabrica = viewModelFactory {
@@ -51,6 +54,7 @@ private val fabrica = viewModelFactory {
     initializer { CadastroViewModel(AcessoGrafo.repositorio) }
     initializer { PerfilViewModel(AcessoGrafo.repositorio) }
     initializer { MfaViewModel(AcessoGrafo.repositorio) }
+    initializer { TrocarSenhaViewModel(AcessoGrafo.repositorio) }
     initializer { EsqueciSenhaViewModel(AcessoGrafo.repositorio) }
     initializer { LinkViewModel(AcessoGrafo.repositorio) }
     initializer { AprovacaoViewModel(AcessoGrafo.repositorioCadastros) }
@@ -104,17 +108,23 @@ fun NavGraphBuilder.grafoAcesso(navController: NavHostController, aoEntrar: () -
 
 /** Tela "Meu perfil". Ao sair, volta para o login limpando a pilha de navegação. */
 fun NavGraphBuilder.telaPerfil(navController: NavHostController) {
+    // Sair, ou trocar a senha, encerra a sessão: volta para o login limpando a pilha.
+    val paraOLogin: () -> Unit = {
+        navController.navigate(RotasAcesso.GRAFO) {
+            popUpTo(0) { inclusive = true }
+            launchSingleTop = true
+        }
+    }
     composable(RotasAcesso.PERFIL) {
         PerfilRota(
             viewModel = viewModel(factory = fabrica),
             mfaViewModel = viewModel(factory = fabrica),
-            aoSair = {
-                navController.navigate(RotasAcesso.GRAFO) {
-                    popUpTo(0) { inclusive = true }
-                    launchSingleTop = true
-                }
-            },
+            aoSair = paraOLogin,
+            aoTrocarSenha = { navController.navigate(RotasAcesso.TROCAR_SENHA) },
         )
+    }
+    composable(RotasAcesso.TROCAR_SENHA) {
+        TrocarSenhaRota(viewModel = viewModel(factory = fabrica), aoConcluir = paraOLogin)
     }
 }
 

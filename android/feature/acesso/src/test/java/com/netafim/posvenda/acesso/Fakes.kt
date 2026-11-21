@@ -58,6 +58,8 @@ class RepositorioFalso : RepositorioAcesso {
     var resultadoDesativarMfa: Resultado<Unit> = Resultado.Sucesso(Unit)
     var ultimoLoginMfa: Pair<String, String>? = null
     var ultimaDesativacaoMfa: Pair<String, String>? = null
+    var resultadoAlterarSenha: Resultado<Unit> = Resultado.Sucesso(Unit)
+    var ultimaTrocaSenha: Pair<String, String>? = null
     var resultadoCadastro: Resultado<String> = Resultado.Sucesso("Solicitação recebida.")
     var resultadoTermo: Resultado<String> = Resultado.Sucesso("1.0")
     var resultadoPerfil: Resultado<Usuario> = Resultado.Sucesso(USUARIO_EXEMPLO)
@@ -88,6 +90,11 @@ class RepositorioFalso : RepositorioAcesso {
     override suspend fun estadoMfa() = resultadoEstadoMfa
     override suspend fun iniciarMfa() = resultadoIniciarMfa
     override suspend fun confirmarMfa(codigo: String) = resultadoConfirmarMfa
+
+    override suspend fun alterarSenha(senhaAtual: String, novaSenha: String): Resultado<Unit> {
+        ultimaTrocaSenha = senhaAtual to novaSenha
+        return resultadoAlterarSenha
+    }
 
     override suspend fun desativarMfa(senha: String, codigo: String): Resultado<Unit> {
         ultimaDesativacaoMfa = senha to codigo

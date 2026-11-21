@@ -68,6 +68,12 @@ data class MfaCodigoRequisicao(val codigo: String)
 data class MfaDesativarRequisicao(val senha: String, val codigo: String)
 
 @Serializable
+data class AlterarSenhaRequisicao(
+    @SerialName("senha_atual") val senhaAtual: String,
+    @SerialName("nova_senha") val novaSenha: String,
+)
+
+@Serializable
 data class MfaEstadoResposta(
     val ativo: Boolean,
     @SerialName("codigos_recuperacao_restantes") val codigosRecuperacaoRestantes: Int = 0,

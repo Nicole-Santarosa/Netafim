@@ -89,6 +89,10 @@ class RepositorioAcessoRemoto(
         apiAutenticada.mfaDesativar(MfaDesativarRequisicao(senha, codigo.trim()))
     }
 
+    override suspend fun alterarSenha(senhaAtual: String, novaSenha: String): Resultado<Unit> = executar {
+        apiAutenticada.alterarSenha(AlterarSenhaRequisicao(senhaAtual, novaSenha))
+    }
+
     private suspend fun requisicaoLogin(email: String, senha: String) = LoginRequisicao(
         email = email.trim(),
         senha = senha,

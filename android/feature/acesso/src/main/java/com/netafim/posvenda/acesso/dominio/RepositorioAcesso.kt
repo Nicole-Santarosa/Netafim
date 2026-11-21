@@ -22,6 +22,12 @@ interface RepositorioAcesso {
 
     suspend fun desativarMfa(senha: String, codigo: String): Resultado<Unit>
 
+    /**
+     * Troca a senha de quem está logado (`POST me/senha`). Só vale com a senha atual correta e uma nova
+     * diferente da atual. A API encerra as outras sessões; o chamador deve sair em seguida.
+     */
+    suspend fun alterarSenha(senhaAtual: String, novaSenha: String): Resultado<Unit>
+
     suspend fun sair()
 
     /** Atualiza os dados do usuário a partir de GET /me. */

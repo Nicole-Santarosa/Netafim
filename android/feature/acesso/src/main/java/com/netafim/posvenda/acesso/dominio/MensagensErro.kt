@@ -22,6 +22,8 @@ object MensagensErro {
             "Código incorreto ou expirado. Confira o aplicativo e tente de novo.",
         "desafio_mfa_invalido" to "O tempo para informar o código acabou. Entre novamente.",
         "senha_incorreta" to "A senha está incorreta.",
+        "senha_atual_incorreta" to "A senha atual está incorreta.",
+        "senha_repetida" to "A nova senha deve ser diferente da atual.",
         "mfa_indisponivel" to
             "A verificação em duas etapas não está disponível agora. Procure a Netafim.",
         "mfa_ja_ativo" to "A verificação em duas etapas já está ativa.",
