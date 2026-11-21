@@ -68,7 +68,13 @@ class LoginViewModel(private val repositorio: RepositorioAcesso) : ViewModel() {
                     }
                 }
                 is Resultado.Falha -> _estado.update {
-                    it.copy(carregando = false, erroGeral = mensagem(resultado.erro), senha = "")
+                    // Falha técnica (sem conexão, erro inesperado): a pessoa não digita a senha de novo.
+                    val tecnica = resultado.erro is ErroAcesso.SemConexao || resultado.erro is ErroAcesso.Inesperado
+                    it.copy(
+                        carregando = false,
+                        erroGeral = mensagem(resultado.erro),
+                        senha = if (tecnica) it.senha else "",
+                    )
                 }
             }
         }

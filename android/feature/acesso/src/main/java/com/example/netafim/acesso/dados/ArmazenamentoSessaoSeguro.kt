@@ -5,10 +5,13 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import java.io.IOException
 import java.security.KeyStore
 import java.util.UUID
 import javax.crypto.Cipher
@@ -17,7 +20,11 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import kotlinx.coroutines.flow.first
 
-private val Context.dataStoreSessao: DataStore<Preferences> by preferencesDataStore("sessao_acesso")
+private val Context.dataStoreSessao: DataStore<Preferences> by preferencesDataStore(
+    name = "sessao_acesso",
+    // Arquivo corrompido: recomeça vazio (a pessoa entra de novo) em vez de travar o app na abertura.
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+)
 
 /**
  * Guarda a sessão em DataStore, com os tokens cifrados (AES-256-GCM) por uma chave
@@ -29,7 +36,12 @@ class ArmazenamentoSessaoSeguro(contexto: Context) : ArmazenamentoSessao {
     private val dataStore = contexto.applicationContext.dataStoreSessao
 
     override suspend fun ler(): SessaoGuardada? {
-        val prefs = dataStore.data.first()
+        // Falha de leitura do disco: trata como sem sessão (a pessoa entra de novo), sem derrubar o app.
+        val prefs = try {
+            dataStore.data.first()
+        } catch (e: IOException) {
+            return null
+        }
         val access = prefs[ACCESS]?.let(::decifrar) ?: return null
         val refresh = prefs[REFRESH]?.let(::decifrar) ?: return null
         val usuario = prefs[USUARIO]?.let(::decifrar) ?: return null

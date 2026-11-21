@@ -50,13 +50,12 @@ fun PrivacidadeRota(viewModel: PrivacidadeViewModel, aoFazerPedido: () -> Unit) 
     // A cópia sai pela folha de compartilhar do sistema (a pessoa escolhe onde guardar) e não fica no app.
     LaunchedEffect(estado.copia) {
         val copia = estado.copia ?: return@LaunchedEffect
-        val envio = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, assunto)
-            putExtra(Intent.EXTRA_TEXT, copia)
+        // Arquivo, e não texto da Intent: uma exportação grande estouraria o limite do sistema.
+        try {
+            CopiaDosDados.compartilhar(contexto, copia, assunto, titulo)
+        } finally {
+            viewModel.copiaEntregue()
         }
-        contexto.startActivity(Intent.createChooser(envio, titulo))
-        viewModel.copiaEntregue()
     }
     PrivacidadeTela(
         estado = estado,

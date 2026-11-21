@@ -67,6 +67,27 @@ class ViewModelsTest {
     }
 
     @Test
+    fun `login sem conexao mantem a senha digitada`() {
+        repositorio.resultadoEntrar = Resultado.Falha(ErroAcesso.SemConexao)
+        val vm = LoginViewModel(repositorio)
+        vm.aoMudarEmail("ana@agroirriga.com.br")
+        vm.aoMudarSenha("Irrigacao#2026")
+        vm.entrar()
+        assertNotNull(vm.estado.value.erroGeral)
+        assertEquals("Irrigacao#2026", vm.estado.value.senha)
+    }
+
+    @Test
+    fun `login recusado pela API limpa a senha`() {
+        repositorio.resultadoEntrar = falhaApi("credenciais_invalidas", "E-mail ou senha incorretos")
+        val vm = LoginViewModel(repositorio)
+        vm.aoMudarEmail("ana@agroirriga.com.br")
+        vm.aoMudarSenha("errada-123")
+        vm.entrar()
+        assertEquals("", vm.estado.value.senha)
+    }
+
+    @Test
     fun `digitar de novo limpa o erro geral`() {
         repositorio.resultadoEntrar = Resultado.Falha(ErroAcesso.SemConexao)
         val vm = LoginViewModel(repositorio)

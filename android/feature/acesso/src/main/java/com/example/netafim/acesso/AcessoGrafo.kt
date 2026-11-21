@@ -20,6 +20,7 @@ import com.example.netafim.acesso.dominio.RepositorioFilaPrivacidade
 import com.example.netafim.acesso.dominio.RepositorioPerfis
 import com.example.netafim.acesso.dominio.RepositorioPrivacidade
 import com.example.netafim.acesso.dominio.RepositorioUsuarios
+import com.example.netafim.acesso.ui.privacidade.CopiaDosDados
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 
@@ -74,6 +75,8 @@ object AcessoGrafo {
     fun inicializar(contexto: Context, configuracao: Configuracao) {
         if (::repositorioRemoto.isInitialized) return
         fotosDePerfil = FotosDePerfil(contexto.applicationContext)
+        // Cópias de dados pessoais que sobraram da última vez: apaga fora da thread principal.
+        Thread { CopiaDosDados.limpar(CopiaDosDados.pastaDe(contexto.applicationContext)) }.start()
         val tokens = ProvedorTokensTardio()
         rede = Rede(configuracao.urlApi, tokens, configuracao.depuracao)
         val publica = rede.retrofit(rede.publico).create(AcessoApi::class.java)

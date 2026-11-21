@@ -55,7 +55,11 @@ class PerfilViewModel(private val repositorio: RepositorioAcesso) : ViewModel() 
         }
     }
 
+    private var saindo = false
+
     fun sair() {
+        if (saindo) return
+        saindo = true
         viewModelScope.launch {
             repositorio.sair()
             saiu.value = true

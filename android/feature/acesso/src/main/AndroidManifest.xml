@@ -5,6 +5,20 @@
 
     <application>
         <!--
+            Entrega a cópia dos dados do titular (LGPD) como arquivo, e não como texto da Intent, que o sistema
+            limita em poucas centenas de KB. Autoridade própria do módulo (${applicationId}.acesso.fileprovider).
+        -->
+        <provider
+            android:name="com.example.netafim.acesso.AcessoFileProvider"
+            android:authorities="${applicationId}.acesso.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/acesso_file_paths" />
+        </provider>
+
+        <!--
             Links dos e-mails de convite e de redefinição de senha: netafim://convite?acao=...&token=...
             O alias abre a MainActivity do aplicativo; o Navigation Compose leva o link até a tela do
             módulo de acesso (ver AcessoNavegacao). Fica aqui para o :app não precisar conhecer o link.

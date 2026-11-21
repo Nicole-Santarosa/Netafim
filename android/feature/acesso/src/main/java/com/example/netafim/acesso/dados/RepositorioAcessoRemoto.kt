@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import retrofit2.HttpException
 
@@ -105,33 +107,41 @@ class RepositorioAcessoRemoto(
 
     override suspend fun sair() {
         val atual = _sessao.value
-        if (atual != null) {
-            // Revoga no servidor se houver conexão; sem conexão, o refresh expira sozinho.
-            logoutNoServidor(atual.refreshToken)
-            // Se o access expirou, a renovação automática trocou o refresh no meio do
-            // logout (a repetição leva o corpo antigo): revoga também o novo.
-            val depois = _sessao.value
-            if (depois != null && depois.refreshToken != atual.refreshToken) {
-                logoutNoServidor(depois.refreshToken)
+        try {
+            if (atual != null) {
+                // Revoga no servidor se houver conexão; sem conexão, o refresh expira sozinho.
+                logoutNoServidor(atual.refreshToken)
+                // Se o access expirou, a renovação automática trocou o refresh no meio do
+                // logout (a repetição leva o corpo antigo): revoga também o novo.
+                val depois = _sessao.value
+                if (depois != null && depois.refreshToken != atual.refreshToken) {
+                    logoutNoServidor(depois.refreshToken)
+                }
             }
+        } finally {
+            // Mesmo se a tela for fechada no meio da chamada (a coroutine é cancelada), a sessão local acaba.
+            withContext(NonCancellable) { encerrarLocalmente() }
         }
-        encerrarLocalmente()
     }
 
     override suspend fun atualizarPerfil(): Resultado<Usuario> {
         if (_sessao.value == null) return Resultado.Falha(ErroAcesso.SessaoExpirada)
         return executar {
             val dto = apiAutenticada.me()
-            // A sessão pode ter mudado (renovada ou encerrada) durante a chamada.
-            val atual = _sessao.value ?: return Resultado.Falha(ErroAcesso.SessaoExpirada)
-            armazenamento.salvar(
-                SessaoGuardada(
-                    accessToken = atual.accessToken,
-                    refreshToken = atual.refreshToken,
-                    usuarioJson = json.encodeToString(UsuarioDto.serializer(), dto),
-                ),
-            )
-            dto.paraDominio().also { _sessao.value = atual.copy(usuario = it) }
+            // A sessão pode ter mudado (renovada ou encerrada) durante a chamada. Ler, gravar e publicar sob a
+            // mesma trava da renovação evita devolver tokens antigos por cima de uma rotação que acabou de
+            // acontecer (o servidor trataria o reuso do refresh como ataque e derrubaria as sessões).
+            travaRenovacao.withLock {
+                val atual = _sessao.value ?: return Resultado.Falha(ErroAcesso.SessaoExpirada)
+                armazenamento.salvar(
+                    SessaoGuardada(
+                        accessToken = atual.accessToken,
+                        refreshToken = atual.refreshToken,
+                        usuarioJson = json.encodeToString(UsuarioDto.serializer(), dto),
+                    ),
+                )
+                dto.paraDominio().also { _sessao.value = atual.copy(usuario = it) }
+            }
         }
     }
 

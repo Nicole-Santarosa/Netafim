@@ -3,6 +3,7 @@ package com.example.netafim.acesso.dados
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import okhttp3.Authenticator
+import okhttp3.Dispatcher
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -76,7 +77,11 @@ class Rede(urlBase: String, tokens: ProvedorTokens, depuracao: Boolean) {
         }
         .build()
 
+    // Despachante próprio: o autenticador bloqueia uma thread enquanto a renovação roda, e a renovação sai
+    // pelo cliente público. Se os dois dividissem o despachante (limite de 5 chamadas por host), várias
+    // requisições com o token vencido ocupariam todas as vagas e a renovação nunca começaria.
     val autenticado: OkHttpClient = publico.newBuilder()
+        .dispatcher(Dispatcher())
         .addInterceptor(AutenticacaoInterceptor(tokens))
         .authenticator(RenovacaoAutenticador(tokens))
         .build()
