@@ -60,9 +60,6 @@ fun DominiosRota(viewModel: DominiosViewModel) {
         aoRecarregar = viewModel::carregar,
         aoNovo = viewModel::abrirFormulario,
         aoAlternarAtivo = viewModel::alternarAtivo,
-        aoExcluir = viewModel::pedirExcluir,
-        aoConfirmarExcluir = viewModel::confirmarExcluir,
-        aoCancelarExcluir = viewModel::cancelarExcluir,
         aoMudarDominio = viewModel::mudarDominio,
         aoEscolherTipo = viewModel::escolherTipo,
         aoEscolherDistribuidor = viewModel::escolherDistribuidor,
@@ -81,9 +78,6 @@ fun DominiosTela(
     aoRecarregar: () -> Unit,
     aoNovo: () -> Unit,
     aoAlternarAtivo: (Dominio) -> Unit,
-    aoExcluir: (Dominio) -> Unit,
-    aoConfirmarExcluir: () -> Unit,
-    aoCancelarExcluir: () -> Unit,
     aoMudarDominio: (String) -> Unit,
     aoEscolherTipo: (String) -> Unit,
     aoEscolherDistribuidor: (Int) -> Unit,
@@ -100,10 +94,9 @@ fun DominiosTela(
                 Spacer(Modifier.height(esc(20)))
                 BotaoContorno(stringResource(R.string.acesso_tentar_novamente), aoRecarregar)
             }
-            else -> Lista(estado, aoNovo, aoAlternarAtivo, aoExcluir)
+            else -> Lista(estado, aoNovo, aoAlternarAtivo)
         }
     }
-    estado.dominioParaExcluir?.let { ConfirmarExclusao(it, estado.processandoId != null, aoConfirmarExcluir, aoCancelarExcluir) }
     if (estado.formularioAberto) {
         Formulario(estado, aoMudarDominio, aoEscolherTipo, aoEscolherDistribuidor, aoSalvar, aoFecharFormulario)
     }
@@ -114,7 +107,6 @@ private fun Lista(
     estado: DominiosEstado,
     aoNovo: () -> Unit,
     aoAlternarAtivo: (Dominio) -> Unit,
-    aoExcluir: (Dominio) -> Unit,
 ) {
     val cores = MaterialTheme.colorScheme
     TextoApoio(stringResource(R.string.dominios_explicacao))
@@ -138,7 +130,7 @@ private fun Lista(
     }
     Column(verticalArrangement = Arrangement.spacedBy(esc(10))) {
         estado.dominios.forEach { dominio ->
-            CartaoDoDominio(dominio, estado.distribuidores, estado.processandoId, aoAlternarAtivo, aoExcluir)
+            CartaoDoDominio(dominio, estado.distribuidores, estado.processandoId, aoAlternarAtivo)
         }
     }
 }
@@ -149,7 +141,6 @@ private fun CartaoDoDominio(
     distribuidores: List<Opcao>,
     processandoId: Int?,
     aoAlternarAtivo: (Dominio) -> Unit,
-    aoExcluir: (Dominio) -> Unit,
 ) {
     val cores = MaterialTheme.colorScheme
     val livre = processandoId == null
@@ -172,13 +163,6 @@ private fun CartaoDoDominio(
                 { aoAlternarAtivo(dominio) },
                 habilitado = livre,
             )
-            BotaoAcao(
-                texto = stringResource(R.string.dominios_excluir),
-                aoClicar = { if (livre) aoExcluir(dominio) },
-                cor = cores.error,
-                preenchido = false,
-                modifier = Modifier.fillMaxWidth(),
-            )
         }
     }
 }
@@ -198,25 +182,6 @@ private fun textoDoAviso(aviso: AvisoDominio): Int = when (aviso) {
     AvisoDominio.CRIADO -> R.string.dominios_aviso_criado
     AvisoDominio.ATIVADO -> R.string.dominios_aviso_ativado
     AvisoDominio.DESATIVADO -> R.string.dominios_aviso_desativado
-    AvisoDominio.EXCLUIDO -> R.string.dominios_aviso_excluido
-}
-
-@Composable
-private fun ConfirmarExclusao(dominio: Dominio, processando: Boolean, aoConfirmar: () -> Unit, aoCancelar: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = { if (!processando) aoCancelar() },
-        containerColor = MaterialTheme.colorScheme.background,
-        title = { Text(stringResource(R.string.dominios_excluir_titulo, dominio.dominio)) },
-        text = { Text(stringResource(R.string.dominios_excluir_texto)) },
-        confirmButton = {
-            TextButton(onClick = aoConfirmar, enabled = !processando) {
-                Text(stringResource(R.string.dominios_confirmar_excluir), color = MaterialTheme.colorScheme.error)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = aoCancelar, enabled = !processando) { Text(stringResource(R.string.acesso_cancelar)) }
-        },
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -306,8 +271,8 @@ private fun DominiosTelaPreview() {
                 ),
                 distribuidores = listOf(Opcao(3, "Agro Irriga Ltda")),
             ),
-            aoRecarregar = {}, aoNovo = {}, aoAlternarAtivo = {}, aoExcluir = {}, aoConfirmarExcluir = {},
-            aoCancelarExcluir = {}, aoMudarDominio = {}, aoEscolherTipo = {}, aoEscolherDistribuidor = {},
+            aoRecarregar = {}, aoNovo = {}, aoAlternarAtivo = {},
+            aoMudarDominio = {}, aoEscolherTipo = {}, aoEscolherDistribuidor = {},
             aoSalvar = {}, aoFecharFormulario = {},
         )
     }

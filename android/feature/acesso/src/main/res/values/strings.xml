@@ -197,7 +197,6 @@
     <string name="dominios_inativo">Inativo</string>
     <string name="dominios_ativar">Ativar</string>
     <string name="dominios_desativar">Desativar</string>
-    <string name="dominios_excluir">Excluir</string>
     <string name="dominios_org_netafim">Netafim</string>
     <string name="dominios_org_distribuidor">Distribuidor</string>
     <string name="dominios_org_distribuidor_nome">Distribuidor: %1$s</string>
@@ -211,10 +210,6 @@
     <string name="dominios_aviso_criado">Domínio cadastrado.</string>
     <string name="dominios_aviso_ativado">Domínio ativado.</string>
     <string name="dominios_aviso_desativado">Domínio desativado.</string>
-    <string name="dominios_aviso_excluido">Domínio excluído.</string>
-    <string name="dominios_excluir_titulo">Excluir %1$s?</string>
-    <string name="dominios_excluir_texto">Novos cadastros com e-mail deste domínio deixam de poder ser aprovados. Quem já tem acesso não é afetado.</string>
-    <string name="dominios_confirmar_excluir">Excluir</string>
     <!-- Permissões por perfil (RF20) -->
     <string name="permissoes_titulo">Permissões por perfil</string>
     <string name="permissoes_explicacao_lista">Escolha um perfil para ver e alterar o que ele pode fazer. A mudança vale para todas as pessoas com esse perfil.</string>

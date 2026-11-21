@@ -23,8 +23,4 @@ class RepositorioDominiosRemoto(
     override suspend fun alterarAtivo(idDominio: Int, ativo: Boolean): Resultado<Dominio> = executarApi(json) {
         api.alterarDominio(idDominio, DominioAtivoRequisicao(ativo)).paraDominio()
     }
-
-    override suspend fun excluir(idDominio: Int): Resultado<Unit> = executarApi(json) {
-        api.excluirDominio(idDominio)
-    }
 }

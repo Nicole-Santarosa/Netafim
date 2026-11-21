@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** Mensagem de sucesso que a tela mostra uma vez. */
-enum class AvisoDominio { CRIADO, ATIVADO, DESATIVADO, EXCLUIDO }
+enum class AvisoDominio { CRIADO, ATIVADO, DESATIVADO }
 
 data class DominiosEstado(
     val dominios: List<Dominio> = emptyList(),
@@ -36,14 +36,13 @@ data class DominiosEstado(
     val salvando: Boolean = false,
     val aviso: AvisoDominio? = null,
     val erroAcao: String? = null,
-    /** Domínio que está sendo ativado, desativado ou excluído: os botões ficam desabilitados. */
+    /** Domínio que está sendo ativado ou desativado: os botões ficam desabilitados. */
     val processandoId: Int? = null,
-    val dominioParaExcluir: Dominio? = null,
 )
 
 /**
- * Domínios de e-mail corporativos (RNF18), só para o Netafim Admin: listar, cadastrar, ativar e desativar,
- * excluir. A API continua sendo quem decide; as recusas aparecem como mensagem.
+ * Domínios de e-mail corporativos (RNF18), só para o Netafim Admin: listar, cadastrar, ativar e desativar.
+ * Não há exclusão: o `app_django` só tem select, insert e update na tabela. A API continua sendo quem decide; as recusas aparecem como mensagem.
  */
 class DominiosViewModel(
     private val repositorio: RepositorioDominios,
@@ -157,31 +156,6 @@ class DominiosViewModel(
                     )
                 }
                 is Resultado.Falha -> _estado.update { it.copy(processandoId = null, erroAcao = r.erro.mensagem) }
-            }
-        }
-    }
-
-    fun pedirExcluir(dominio: Dominio) = _estado.update { it.copy(dominioParaExcluir = dominio, erroAcao = null) }
-
-    fun cancelarExcluir() = _estado.update { if (it.processandoId != null) it else it.copy(dominioParaExcluir = null) }
-
-    fun confirmarExcluir() {
-        val dominio = _estado.value.dominioParaExcluir ?: return
-        if (_estado.value.processandoId != null) return
-        _estado.update { it.copy(processandoId = dominio.id, erroAcao = null, aviso = null) }
-        viewModelScope.launch {
-            when (val r = repositorio.excluir(dominio.id)) {
-                is Resultado.Sucesso -> _estado.update { atual ->
-                    atual.copy(
-                        processandoId = null,
-                        dominioParaExcluir = null,
-                        dominios = atual.dominios.filterNot { it.id == dominio.id },
-                        aviso = AvisoDominio.EXCLUIDO,
-                    )
-                }
-                is Resultado.Falha -> _estado.update {
-                    it.copy(processandoId = null, dominioParaExcluir = null, erroAcao = r.erro.mensagem)
-                }
             }
         }
     }

@@ -40,7 +40,7 @@ Telas com quadro no Figma (arquivo "Netafim", seção Acesso): Login (quadro "HD
 | Detalhe do usuário | `acesso/usuarios/{id}` | Admins | Gestão, cartão do usuário | `GET usuarios/{id}`, `POST .../situacao`, `POST .../perfil`, `POST .../reenviar-convite`, `DELETE usuarios/{id}`, `POST usuarios/{id}/mfa/resetar`, `GET usuarios/{id}/dispositivos`, `POST dispositivos/{id}/revogar` |
 | Editar usuário | `acesso/usuarios/{id}/editar` | Admins | Detalhe, "Editar dados" | `PATCH usuarios/{id}` |
 | Permissões por perfil | `acesso/permissoes` | Netafim Admin | Início | `GET perfis`, `GET permissoes` |
-| Domínios de e-mail | `acesso/dominios` | Netafim Admin | Início | `GET/POST dominios`, `PATCH/DELETE dominios/{id}` |
+| Domínios de e-mail | `acesso/dominios` | Netafim Admin | Início | `GET/POST dominios`, `PATCH dominios/{id}` |
 | Editar permissões de um perfil | `acesso/permissoes/{id}` | Netafim Admin | Lista de perfis | `PUT perfis/{id}/permissoes` |
 
 O Início (`InicioTela`) pertence ao módulo `app`; ele mostra os atalhos conforme a permissão da pessoa.
@@ -79,7 +79,7 @@ A tela de detalhe só mostra os botões que a API aceitaria (a API continua deci
 
 ### 2.3.2 Domínios de e-mail (Netafim Admin)
 
-Lista, cadastro, ativar e desativar, e excluir (com confirmação) dos domínios aceitos para a Netafim e para cada distribuidor (RNF18). O domínio é validado no aparelho (formato, sem `@`, em minúsculas) e de novo no servidor; domínio de distribuidor exige escolher o distribuidor. Atalho na tela inicial, só para o Netafim Admin.
+Lista, cadastro, ativar e desativar dos domínios aceitos para a Netafim e para cada distribuidor (RNF18). O domínio é validado no aparelho (formato, sem `@`, em minúsculas) e de novo no servidor; domínio de distribuidor exige escolher o distribuidor. Atalho na tela inicial, só para o Netafim Admin. **Não há exclusão**: o servidor não oferece `DELETE` (o `app_django` só tem `select`, `insert` e `update` na tabela); o domínio se desativa, o que já impede novas aprovações com ele. Uma versão anterior deste PR tinha o botão "Excluir"; ele foi retirado depois que o teste no aparelho, contra o banco real, devolveu 500 (`permission denied`).
 
 ### 2.4 Permissões por perfil (RF20)
 

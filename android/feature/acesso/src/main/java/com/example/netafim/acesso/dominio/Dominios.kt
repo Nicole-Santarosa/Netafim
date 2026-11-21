@@ -20,7 +20,7 @@ data class DadosNovoDominio(
     val idDistribuidor: Int?,
 )
 
-/** Domínios de e-mail corporativos (só o Netafim Admin; `GET/POST/PATCH/DELETE dominios`). */
+/** Domínios de e-mail corporativos (só o Netafim Admin; `GET/POST/PATCH dominios`; **sem exclusão**: o domínio se desativa). */
 interface RepositorioDominios {
     suspend fun listar(): Resultado<List<Dominio>>
 
@@ -28,7 +28,6 @@ interface RepositorioDominios {
 
     suspend fun alterarAtivo(idDominio: Int, ativo: Boolean): Resultado<Dominio>
 
-    suspend fun excluir(idDominio: Int): Resultado<Unit>
 }
 
 /** Quem pode gerenciar os domínios: o Netafim Admin (a API recusa os demais). */

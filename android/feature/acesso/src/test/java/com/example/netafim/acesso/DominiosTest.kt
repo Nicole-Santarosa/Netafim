@@ -79,7 +79,6 @@ private class DominiosFalso : RepositorioDominios {
     )
     var resultadoCriar: Resultado<Dominio>? = null
     var resultadoAtivo: Resultado<Dominio>? = null
-    var resultadoExcluir: Resultado<Unit> = Resultado.Sucesso(Unit)
     val chamadas = mutableListOf<String>()
     val criados = mutableListOf<DadosNovoDominio>()
 
@@ -94,11 +93,6 @@ private class DominiosFalso : RepositorioDominios {
     override suspend fun alterarAtivo(idDominio: Int, ativo: Boolean): Resultado<Dominio> {
         chamadas += "ativo:$idDominio:$ativo"
         return resultadoAtivo ?: Resultado.Sucesso(Dominio(idDominio, "netafim.com.br", TiposOrganizacao.NETAFIM, null, ativo))
-    }
-
-    override suspend fun excluir(idDominio: Int): Resultado<Unit> {
-        chamadas += "excluir:$idDominio"
-        return resultadoExcluir
     }
 }
 
@@ -245,41 +239,6 @@ class DominiosViewModelTest {
         assertEquals("Você não tem permissão para esta ação.", vm.estado.value.erroAcao)
         assertTrue(vm.estado.value.dominios.all { it.ativo })
     }
-
-    @Test
-    fun `excluir pede confirmacao e so chama a API depois dela`() {
-        val vm = vm()
-        val alvo = vm.estado.value.dominios.first { it.id == 2 }
-        vm.pedirExcluir(alvo)
-        assertEquals(alvo, vm.estado.value.dominioParaExcluir)
-        assertFalse(repo.chamadas.any { it.startsWith("excluir") })
-
-        vm.confirmarExcluir()
-        assertTrue(repo.chamadas.contains("excluir:2"))
-        assertEquals(listOf(1), vm.estado.value.dominios.map { it.id })
-        assertEquals(AvisoDominio.EXCLUIDO, vm.estado.value.aviso)
-        assertNull(vm.estado.value.dominioParaExcluir)
-    }
-
-    @Test
-    fun `cancelar a exclusao nao chama a API`() {
-        val vm = vm()
-        vm.pedirExcluir(vm.estado.value.dominios.first())
-        vm.cancelarExcluir()
-        assertNull(vm.estado.value.dominioParaExcluir)
-        assertFalse(repo.chamadas.any { it.startsWith("excluir") })
-    }
-
-    @Test
-    fun `recusa da API ao excluir fecha o dialogo e mostra a mensagem`() {
-        repo.resultadoExcluir = Resultado.Falha(ErroAcesso.Api("protegido", "Este domínio não pode ser excluído.", 409))
-        val vm = vm()
-        vm.pedirExcluir(vm.estado.value.dominios.first())
-        vm.confirmarExcluir()
-        assertEquals("Este domínio não pode ser excluído.", vm.estado.value.erroAcao)
-        assertNull(vm.estado.value.dominioParaExcluir)
-        assertEquals(2, vm.estado.value.dominios.size)
-    }
 }
 
 /** Contrato com a API: rotas, métodos e corpos (MockWebServer). */
@@ -363,11 +322,7 @@ class DominiosRemotoTest {
     }
 
     @Test
-    fun `excluir usa DELETE dominios id e aceita 204`() = runTest {
-        servidor.enqueue(MockResponse().setResponseCode(204))
-        assertTrue(repositorio.excluir(5) is Resultado.Sucesso)
-        val pedido = servidor.takeRequest()
-        assertEquals("DELETE", pedido.method)
-        assertEquals("/api/v1/dominios/5", pedido.path)
+    fun `o repositorio de dominios nao tem exclusao porque o app_django nao tem DELETE`() {
+        assertTrue(RepositorioDominios::class.java.methods.none { it.name.startsWith("excluir") })
     }
 }
