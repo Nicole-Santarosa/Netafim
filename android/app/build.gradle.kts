@@ -9,11 +9,11 @@ plugins {
 val urlApi = providers.gradleProperty("netafim.apiBaseUrl").get()
 
 android {
-    namespace = "com.netafim.posvenda"
+    namespace = "com.example.netafim"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.netafim.posvenda"
+        applicationId = "com.example.netafim"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

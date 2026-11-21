@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.netafim.posvenda.acesso"
+    namespace = "com.example.netafim.acesso"
     compileSdk = 35
 
     defaultConfig {

@@ -79,7 +79,7 @@ A tela de detalhe só mostra os botões que a API aceitaria (a API continua deci
 ## 3. Arquitetura
 
 ```
-android/feature/acesso/src/main/java/com/netafim/posvenda/acesso/
+android/feature/acesso/src/main/java/com/example/netafim/acesso/
 ├── AcessoGrafo.kt          ponto de entrada (injeção manual); inicializar() no Application
 ├── dominio/                modelos, regras puras e interfaces (Repositorio*): sem Android
 ├── dados/                  Retrofit (AcessoApi), DTOs, Repositorio*Remoto, armazenamento seguro da sessão
@@ -92,6 +92,10 @@ android/feature/acesso/src/main/java/com/netafim/posvenda/acesso/
 - **Rede:** `Rede` monta o OkHttp/Retrofit com `kotlinx.serialization` (`ignoreUnknownKeys`, `explicitNulls = false`); o cliente autenticado renova o token sozinho. Outros módulos usam `AcessoGrafo.clienteAutenticado`/`retrofitAutenticado` e `AcessoGrafo.repositorio.sessao.value?.usuario` (usuário logado e permissões).
 - **Sessão:** tokens e usuário em armazenamento seguro; sem internet, o app mostra os dados salvos.
 - **Repositórios no grafo:** `repositorio` (sessão, login, MFA, senha), `repositorioCadastros`, `repositorioUsuarios`, `repositorioPerfis`, `repositorioPrivacidade`.
+
+### Pacote e `applicationId`
+
+O Android usa **`com.example.netafim`** (`namespace` e `applicationId`), por decisão do grupo de 15/11/2026, para ficar igual à base de persistência (Room) e dos demais módulos. Antes dessa data o módulo de acesso usava `com.netafim.posvenda`. O renome foi feito num único PR no topo da cadeia, sem reescrever os anteriores. Os subpacotes são `com.example.netafim` (app) e `com.example.netafim.acesso` (módulo de acesso). Como o `applicationId` mudou, o aparelho trata o app como um app novo (a sessão e as fotos do app com o id antigo ficam nele).
 
 ### Como adicionar uma tela nova ao módulo
 
@@ -133,7 +137,7 @@ Com o JDK 21 em `JAVA_HOME`, dentro de `android/`:
 
 ## 5. Branches e ordem de merge
 
-Empilhadas (cada uma depende da anterior): `pr/04` → `pr/06-android-mfa` → `feat/acesso-telas-v2` → `feat/acesso-layout-figma` → `feat/acesso-trocar-senha` → `feat/acesso-detalhe-usuario` → `feat/acesso-editar-usuario` → `feat/acesso-permissoes-perfil` → `feat/acesso-privacidade-titular` → `feat/acesso-fila-privacidade`. Textos prontos dos PRs: `01_Gestao_do_Projeto/Textos_dos_PRs.md`.
+Empilhadas (cada uma depende da anterior): `pr/04` → `pr/06-android-mfa` → `feat/acesso-telas-v2` → `feat/acesso-layout-figma` → `feat/acesso-trocar-senha` → `feat/acesso-detalhe-usuario` → `feat/acesso-editar-usuario` → `feat/acesso-permissoes-perfil` → `feat/acesso-privacidade-titular` → `feat/acesso-fila-privacidade` → `refactor/pacote-com-example-netafim`. Textos prontos dos PRs: `01_Gestao_do_Projeto/Textos_dos_PRs.md`.
 
 ---
 

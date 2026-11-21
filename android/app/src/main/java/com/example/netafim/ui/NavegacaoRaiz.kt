@@ -1,0 +1,91 @@
+package com.example.netafim.ui
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.example.netafim.acesso.AcessoGrafo
+import com.example.netafim.acesso.ui.RotasAcesso
+import com.example.netafim.acesso.ui.grafoAcesso
+import com.example.netafim.acesso.ui.telaAprovacao
+import com.example.netafim.acesso.ui.telaPerfil
+import com.example.netafim.acesso.ui.telasFilaPrivacidade
+import com.example.netafim.acesso.ui.telasPermissoes
+import com.example.netafim.acesso.ui.telasPrivacidade
+import com.example.netafim.acesso.ui.telasUsuarios
+import com.example.netafim.acesso.dominio.podeAtenderPedidosLgpd
+import com.example.netafim.acesso.dominio.podeGerenciarPermissoes
+import com.example.netafim.acesso.ui.usuarios.podeGerenciarUsuarios
+import com.example.netafim.acesso.dominio.Permissoes
+
+/** Rotas do app. PROVISÓRIO: "inicio" deve ser substituída pela tela do módulo responsável. */
+object RotasApp {
+    const val INICIO = "inicio"
+}
+
+@Composable
+fun NavegacaoRaiz(iniciarLogado: Boolean, navController: NavHostController = rememberNavController()) {
+    val sessao by AcessoGrafo.repositorio.sessao.collectAsStateWithLifecycle()
+    val entrada by navController.currentBackStackEntryAsState()
+
+    // Sessão expirou ou foi revogada com o app aberto: volta para o login.
+    LaunchedEffect(sessao, entrada) {
+        val rota = entrada?.destination?.route ?: return@LaunchedEffect
+        if (sessao == null && RotasAcesso.exigeSessao(rota)) {
+            navController.navigate(RotasAcesso.GRAFO) {
+                popUpTo(0) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+    }
+
+    NavHost(
+        navController = navController,
+        startDestination = if (iniciarLogado) RotasApp.INICIO else RotasAcesso.GRAFO,
+    ) {
+        grafoAcesso(navController) {
+            navController.navigate(RotasApp.INICIO) {
+                popUpTo(RotasAcesso.GRAFO) { inclusive = true }
+            }
+        }
+        telaPerfil(navController)
+        telaAprovacao(navController)
+        telasUsuarios(navController)
+        telasPermissoes(navController)
+        telasPrivacidade(navController)
+        telasFilaPrivacidade(navController)
+        composable(RotasApp.INICIO) {
+            val usuario = sessao?.usuario
+            val alteracoesDeFoto by AcessoGrafo.fotos.alteracoes.collectAsStateWithLifecycle()
+            var foto by remember { mutableStateOf<ImageBitmap?>(null) }
+            LaunchedEffect(usuario?.id, alteracoesDeFoto) {
+                foto = usuario?.id?.let { AcessoGrafo.fotos.carregar(it) }?.asImageBitmap()
+            }
+            InicioTela(
+                nome = usuario?.nome.orEmpty(),
+                perfil = usuario?.perfil?.nome,
+                organizacao = usuario?.organizacao?.nome,
+                foto = foto,
+                podeGerenciarUsuarios = usuario?.podeGerenciarUsuarios() == true,
+                podeAprovarCadastros = usuario?.temPermissao(Permissoes.APROVAR_CADASTRO) == true,
+                podeGerenciarPermissoes = usuario?.podeGerenciarPermissoes() == true,
+                podeAtenderPedidosLgpd = usuario?.podeAtenderPedidosLgpd() == true,
+                aoAbrirPerfil = { navController.navigate(RotasAcesso.PERFIL) },
+                aoAbrirUsuarios = { navController.navigate(RotasAcesso.USUARIOS) },
+                aoAbrirAprovacao = { navController.navigate(RotasAcesso.APROVACAO) },
+                aoAbrirPermissoes = { navController.navigate(RotasAcesso.PERMISSOES) },
+                aoAbrirPedidosPrivacidade = { navController.navigate(RotasAcesso.FILA_PRIVACIDADE) },
+            )
+        }
+    }
+}
