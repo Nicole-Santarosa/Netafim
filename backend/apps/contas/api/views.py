@@ -311,7 +311,10 @@ class DominioViewSet(viewsets.ModelViewSet):
     lookup_field = "id_dominio"
     lookup_value_regex = r"\d+"
     permission_classes = [SomenteNetafimAdmin]
-    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+    # Sem "delete" de propósito: o esquema do grupo dá ao app_django só select, insert e update em
+    # dominio_email_corporativo (001_schema_inicial.sql). Domínio se desativa (PATCH ativo=false);
+    # um DELETE terminaria em "permission denied" (500).
+    http_method_names = ["get", "post", "patch", "head", "options"]
 
     def perform_create(self, serializer):
         dominio = serializer.save()
