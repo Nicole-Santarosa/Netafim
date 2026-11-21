@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -73,18 +74,21 @@ private const val LarguraPrototipo = 360
 val LocalEscala = compositionLocalOf { 1f }
 
 /**
- * Escala contínua: até 600 dp (celular) vale 1; acima disso o conteúdo ocupa cerca de 70% da
+ * Escala contínua: até 600 dp de largura (celular) ou 480 dp de altura (celular deitado) vale 1; acima disso o conteúdo ocupa cerca de 70% da
  * largura da tela (tablet 823 dp -> 1,6; paisagem 1316 dp -> 2,0, que é o teto). Campos, botões,
  * textos e espaços crescem na mesma proporção, então a tela se ajusta a qualquer tamanho.
  */
-private fun escalaPara(largura: Dp): Float =
-    if (largura < 600.dp) 1f else (largura.value * 0.7f / LarguraPrototipo).coerceIn(1f, 2f)
+private fun escalaPara(largura: Dp, altura: Dp): Float =
+    // Celular em retrato (largura < 600) ou em paisagem (altura < 480): escala 1, como no protótipo. A
+    // ampliação é só para tablet, onde a altura também é grande; num celular deitado ela deixaria o
+    // formulário maior que a tela.
+    if (largura < 600.dp || altura < 480.dp) 1f else (largura.value * 0.7f / LarguraPrototipo).coerceIn(1f, 2f)
 
 /** Mede a largura disponível e entrega a escala para tudo o que estiver dentro. */
 @Composable
 fun TelaResponsiva(modifier: Modifier = Modifier, conteudo: @Composable () -> Unit) {
     BoxWithConstraints(modifier = modifier) {
-        CompositionLocalProvider(LocalEscala provides escalaPara(maxWidth)) { conteudo() }
+        CompositionLocalProvider(LocalEscala provides escalaPara(maxWidth, maxHeight)) { conteudo() }
     }
 }
 
@@ -113,6 +117,16 @@ fun estilo(tamanho: Int, peso: FontWeight = FontWeight.Normal): TextStyle =
         letterSpacing = 0.sp,
     )
 
+/** Como [estilo], para os tamanhos fracionados do Figma (ex.: 12,5 sp no subtítulo do login). */
+@Composable
+fun estilo(tamanho: Float, peso: FontWeight = FontWeight.Normal): TextStyle =
+    MaterialTheme.typography.bodyMedium.copy(
+        fontSize = (tamanho * LocalEscala.current).sp,
+        fontWeight = peso,
+        lineHeight = TextUnit.Unspecified,
+        letterSpacing = 0.sp,
+    )
+
 private val SombraBotao = Color(0x593B98FF)
 
 @Composable
@@ -120,7 +134,7 @@ private fun raio() = RoundedCornerShape(esc(8))
 
 /** Barra azul do topo, atrás da barra de status (edge-to-edge) e com o título à esquerda. */
 @Composable
-fun CabecalhoTela(titulo: String, modifier: Modifier = Modifier) {
+fun CabecalhoTela(titulo: String, modifier: Modifier = Modifier, acao: (@Composable () -> Unit)? = null) {
     // O azul passa por baixo da barra de status: ícones claros (e os da navegação, escuros).
     BarraDeStatusSobreImagem()
     Box(
@@ -138,7 +152,16 @@ fun CabecalhoTela(titulo: String, modifier: Modifier = Modifier) {
                 .padding(horizontal = esc(20)),
             contentAlignment = Alignment.CenterStart,
         ) {
-            Text(titulo, color = MaterialTheme.colorScheme.onPrimary, style = estilo(18, FontWeight.SemiBold))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    titulo,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    style = estilo(18, FontWeight.SemiBold),
+                    modifier = Modifier.weight(1f).semantics { heading() },
+                )
+                // Fora do protótipo: ação opcional à direita (ex.: atualizar, abrir o perfil).
+                acao?.invoke()
+            }
         }
     }
 }

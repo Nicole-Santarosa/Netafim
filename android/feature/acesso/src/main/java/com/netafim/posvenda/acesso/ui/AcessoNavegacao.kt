@@ -108,7 +108,6 @@ fun NavGraphBuilder.telaPerfil(navController: NavHostController) {
         PerfilRota(
             viewModel = viewModel(factory = fabrica),
             mfaViewModel = viewModel(factory = fabrica),
-            aoVoltar = { navController.popBackStack() },
             aoSair = {
                 navController.navigate(RotasAcesso.GRAFO) {
                     popUpTo(0) { inclusive = true }
@@ -122,7 +121,7 @@ fun NavGraphBuilder.telaPerfil(navController: NavHostController) {
 /** Tela "Aprovação de cadastro", para quem tem a permissão aprovar_cadastro (a tela inicial só mostra a entrada para elas). */
 fun NavGraphBuilder.telaAprovacao(navController: NavHostController) {
     composable(RotasAcesso.APROVACAO) {
-        AprovacaoRota(viewModel = viewModel(factory = fabrica), aoVoltar = { navController.popBackStack() })
+        AprovacaoRota(viewModel = viewModel(factory = fabrica))
     }
 }
 

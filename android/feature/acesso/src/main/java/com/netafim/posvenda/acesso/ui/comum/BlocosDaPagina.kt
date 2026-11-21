@@ -36,29 +36,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.netafim.posvenda.acesso.ui.usuarios.iniciaisDe
 
-// Blocos que as telas com wallpaper repetem, para elas ficarem iguais entre si.
-
-/** Margens da folha de vidro: 24 dp dos lados, 28 em cima e 24 embaixo (valores do protótipo, escalados). */
-@Composable
-fun Modifier.margensDaFolha(): Modifier =
-    this.padding(start = esc(24), end = esc(24), top = esc(28), bottom = esc(24))
-
-/** Título da folha (22 sp, cabeçalho para o leitor de tela) e, opcional, o subtítulo abaixo dele. */
-@Composable
-fun TituloDaFolha(titulo: String, subtitulo: String? = null) {
-    Column {
-        Text(
-            titulo,
-            color = MaterialTheme.colorScheme.onSurface,
-            style = estilo(22, FontWeight.SemiBold),
-            modifier = Modifier.semantics { heading() },
-        )
-        subtitulo?.let {
-            Spacer(Modifier.height(esc(4)))
-            Text(it, color = textoSuaveNoVidro(), style = estilo(13))
-        }
-    }
-}
+// Blocos que as telas fora do protótipo (perfil, início) repetem, para ficarem iguais entre si e
+// iguais ao desenho: borda C9C9C2, fundo branco, raio 10.
 
 /** Título de um grupo de campos dentro da folha (proximidade: o que é do mesmo assunto fica junto). */
 @Composable
@@ -109,7 +88,7 @@ fun AtalhoEmCartao(
         modifier = modifier
             .fillMaxWidth()
             .clip(forma)
-            .background(fundoDeCartaoNoVidro())
+            .background(cores.background)
             .border(1.dp, cores.outlineVariant, forma)
             .clickable(role = Role.Button, onClick = aoClicar)
             .padding(esc(14)),
@@ -122,27 +101,26 @@ fun AtalhoEmCartao(
         }
         Column(Modifier.weight(1f)) {
             Text(titulo, color = cores.onSurface, style = estilo(15, FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(descricao, color = textoSuaveNoVidro(), style = estilo(12), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(descricao, color = cores.onSurfaceVariant, style = estilo(12), maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         Icon(
             Icons.AutoMirrored.Outlined.KeyboardArrowRight,
             contentDescription = null,
-            tint = textoSuaveNoVidro(),
+            tint = cores.onSurfaceVariant,
             modifier = Modifier.size(esc(22)),
         )
     }
 }
 
-/** Cartão branco quase opaco para agrupar um item dentro da folha (ex.: um cadastro pendente). */
+/** Cartão do protótipo (Figma, "04 Aprovação de cadastro"): fundo branco, borda C9C9C2 de 1 dp, raio 10. */
 @Composable
-fun CartaoNoVidro(modifier: Modifier = Modifier, conteudo: @Composable () -> Unit) {
-    val forma = RoundedCornerShape(esc(16))
+fun CartaoDoPrototipo(modifier: Modifier = Modifier, conteudo: @Composable () -> Unit) {
+    val forma = RoundedCornerShape(esc(10))
     Box(
         modifier
             .fillMaxWidth()
-            .clip(forma)
-            .background(fundoDeCartaoNoVidro())
+            .background(MaterialTheme.colorScheme.background, forma)
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, forma)
-            .padding(esc(14)),
+            .padding(esc(16)),
     ) { conteudo() }
 }

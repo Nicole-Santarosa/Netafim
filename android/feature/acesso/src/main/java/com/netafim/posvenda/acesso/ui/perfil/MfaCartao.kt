@@ -34,11 +34,10 @@ import com.netafim.posvenda.acesso.ui.comum.BotaoCheio
 import com.netafim.posvenda.acesso.ui.comum.BotaoContorno
 import com.netafim.posvenda.acesso.ui.comum.CampoDoPrototipo
 import com.netafim.posvenda.acesso.ui.comum.CampoSenhaDoPrototipo
-import com.netafim.posvenda.acesso.ui.comum.CartaoNoVidro
+import com.netafim.posvenda.acesso.ui.comum.CartaoDoPrototipo
 import com.netafim.posvenda.acesso.ui.comum.MensagemErro
 import com.netafim.posvenda.acesso.ui.comum.esc
 import com.netafim.posvenda.acesso.ui.comum.estilo
-import com.netafim.posvenda.acesso.ui.comum.textoSuaveNoVidro
 
 /** Cartão "Verificação em duas etapas" do perfil. Não aparece enquanto o estado não chegou. */
 @Composable
@@ -54,7 +53,7 @@ fun MfaCartao(
     aoFechar: () -> Unit,
 ) {
     val situacao = estado.estado ?: return
-    CartaoNoVidro {
+    CartaoDoPrototipo {
         Column(verticalArrangement = Arrangement.spacedBy(esc(8))) {
             Text(
                 stringResource(R.string.acesso_mfa_titulo),
@@ -68,7 +67,7 @@ fun MfaCartao(
                 } else {
                     stringResource(R.string.acesso_mfa_inativa)
                 },
-                color = textoSuaveNoVidro(),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = estilo(13),
             )
             if (estado.etapa == EtapaMfa.Nenhuma) estado.erro?.let { MensagemErro(it) }
