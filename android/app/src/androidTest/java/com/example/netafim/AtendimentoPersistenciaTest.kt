@@ -1,30 +1,15 @@
 package com.example.netafim
 
-// Permite acessar o contexto do aplicativo Android.
 import android.content.Context
-
-// Permite criar bancos Room diretamente nos testes.
 import androidx.room.Room
-
-// Fornece o contexto do aplicativo durante os testes instrumentados.
 import androidx.test.core.app.ApplicationProvider
-
-// Permite executar testes no ambiente Android.
 import androidx.test.ext.junit.runners.AndroidJUnit4
-
-// Importa a entidade que representa um atendimento local.
 import com.example.netafim.data.local.AtendimentoEntity
-
-// Importa a configuração do banco de dados Room.
 import com.example.netafim.data.local.NetafimDatabase
-
-// Gera identificadores UUID únicos.
+import com.example.netafim.data.local.OrigemRegistro
+import com.example.netafim.data.local.SyncStatus
 import java.util.UUID
-
-// Permite executar funções suspend dentro do teste.
 import kotlinx.coroutines.runBlocking
-
-// Anotações e ferramentas do JUnit.
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -32,38 +17,38 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
-// Informa que o teste será executado no ambiente Android.
 @RunWith(AndroidJUnit4::class)
-class AtendimentoPersistenciaTestOffline {
+class AtendimentoPersistenciaTest {
 
-    // Contexto utilizado para acessar os arquivos do aplicativo.
+    // Contexto do aplicativo utilizado para acessar os arquivos do dispositivo.
     private lateinit var context: Context
 
-    // Nome do arquivo SQLite utilizado exclusivamente neste teste.
+    // Nome exclusivo do banco de dados utilizado neste teste.
+    // Assim, os testes não alteram o banco de dados real do aplicativo.
     private val nomeBanco = "netafim_persistencia_teste.db"
 
-    // Instância do banco de dados Room.
+    // Instância do banco de dados que será aberta e fechada durante o teste.
     private lateinit var database: NetafimDatabase
 
-    // Executa antes de cada teste.
+    // Identificador fictício do usuário proprietário dos dados de teste.
+    private val usuarioDonoId = 1
+
     @Before
     fun configurar() {
-
-        // Obtém o contexto de teste do aplicativo.
+        // Obtém o contexto de teste do Android.
         context = ApplicationProvider.getApplicationContext()
 
-        // Remove um banco de teste anterior, caso exista.
-        // Isso evita que dados antigos interfiram no resultado.
+        // Apaga um eventual banco de teste de uma execução anterior,
+        // garantindo que o teste comece com o banco vazio.
         context.deleteDatabase(nomeBanco)
 
-        // Abre uma nova instância do banco SQLite em disco.
+        // Cria uma nova instância do banco de dados de teste.
         database = abrirBanco()
     }
 
-    // Método responsável por abrir o banco de teste.
+    // Cria uma instância do banco apontando para o mesmo arquivo SQLite.
+    // Isso permite fechar e reabrir o banco sem perder os dados gravados.
     private fun abrirBanco(): NetafimDatabase {
-
-        // Cria ou abre o arquivo SQLite com o Room.
         return Room.databaseBuilder(
             context,
             NetafimDatabase::class.java,
@@ -71,76 +56,65 @@ class AtendimentoPersistenciaTestOffline {
         ).build()
     }
 
-    // Verifica se os dados continuam salvos após fechar e reabrir o banco.
     @Test
     fun atendimentoContinuaSalvoAposReabrirBanco() = runBlocking {
-
-        // Gera um UUID exclusivo para identificar o atendimento.
+        // Gera um identificador único para o atendimento de teste.
         val id = UUID.randomUUID().toString()
 
-        // Cria um atendimento fictício para o teste.
-        // Não utilizamos dados reais de clientes.
+        // Cria um atendimento fictício, sem utilizar dados reais de clientes.
         val atendimento = AtendimentoEntity(
+            usuarioDonoId = usuarioDonoId,
             idAtendimento = id,
             numeroProtocolo = null,
             dadosJson = """{"descricao":"Teste de persistencia"}""",
-            origemRegistro = "DISPOSITIVO",
-            statusLocal = "PENDENTE",
+            origemRegistro = OrigemRegistro.LOCAL,
+            statusLocal = SyncStatus.PENDENTE_ENVIO,
             versaoBase = 0,
             syncSeqServidor = null,
             dataCriacaoLocal = System.currentTimeMillis()
         )
 
-        // Salva o atendimento no banco SQLite.
-        // O método salvar pertence ao AtendimentoDao.
-        database.atendimentoDao().salvar(atendimento)
+        // Salva o atendimento localmente no banco SQLite.
+        // O método também impede a substituição acidental de um registro existente.
+        database.atendimentoDao().salvarLocalmente(atendimento)
 
-        // Fecha a conexão com o banco.
-        // Isso simula o encerramento do acesso ao banco de dados.
+        // Fecha a conexão com o banco para simular o encerramento do aplicativo.
         database.close()
 
-        // Abre novamente o mesmo arquivo SQLite.
-        // Os dados gravados anteriormente devem continuar existindo.
+        // Reabre o mesmo arquivo SQLite, verificando se os dados persistiram.
         database = abrirBanco()
 
-        // Busca o atendimento pelo UUID após reabrir o banco.
-        val recuperado =
-            database.atendimentoDao().buscarPorId(id)
+        // Busca o atendimento utilizando o ID do usuário proprietário
+        // e o identificador do atendimento.
+        val recuperado = database.atendimentoDao()
+            .buscarPorId(usuarioDonoId, id)
 
-        // Verifica se o atendimento foi encontrado.
+        // Confirma que o atendimento continua armazenado após a reabertura.
         assertNotNull(
             "O atendimento deveria continuar salvo após reabrir o banco",
             recuperado
         )
 
-        // Confirma se o identificador recuperado é o mesmo.
-        assertEquals(
-            id,
-            recuperado?.idAtendimento
-        )
+        // Confirma que o identificador do atendimento foi preservado.
+        assertEquals(id, recuperado?.idAtendimento)
 
-        // Confirma se o conteúdo JSON foi preservado.
-        assertEquals(
-            atendimento.dadosJson,
-            recuperado?.dadosJson
-        )
+        // Confirma que o proprietário do atendimento foi preservado.
+        assertEquals(atendimento.usuarioDonoId, recuperado?.usuarioDonoId)
 
-        // Confirma se o status local foi preservado.
-        assertEquals(
-            atendimento.statusLocal,
-            recuperado?.statusLocal
-        )
+        // Confirma que os dados JSON foram preservados.
+        assertEquals(atendimento.dadosJson, recuperado?.dadosJson)
+
+        // Confirma que o estado de sincronização continua pendente de envio.
+        assertEquals(atendimento.statusLocal, recuperado?.statusLocal)
     }
 
-    // Executa depois de cada teste.
     @After
     fun finalizar() {
-
-        // Fecha a conexão com o banco.
+        // Fecha o banco de dados ao terminar o teste.
         database.close()
 
-        // Apaga somente o banco temporário utilizado pelo teste.
-        // O banco real do aplicativo não é afetado.
+        // Apaga somente o arquivo utilizado neste teste,
+        // sem afetar o banco de dados do aplicativo.
         context.deleteDatabase(nomeBanco)
     }
 }
