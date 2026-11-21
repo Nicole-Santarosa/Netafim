@@ -3,7 +3,8 @@
 --
 -- Autor: Rodrigo Almeida (Pessoa 1)
 --
--- Número da migração: 016 (reservado pela Pessoa 1; o grupo confirma antes de aplicar).
+-- Número da migração: 016 (reservado pela Pessoa 1). A confirmação do número e o "de acordo" do grupo
+-- não estavam registrados quando foi aplicada (decisão direta da Pessoa 1).
 --
 -- Motivo: quem cadastra ou altera um domínio de e-mail corporativo decide quem pode ser
 -- aprovado como Netafim ou como distribuidor (RNF18). A API emite o evento
@@ -34,14 +35,18 @@
 --
 -- Não existia função com esse nome (conferido), então não há corpo a comparar antes de aplicar.
 --
--- Aplicado em: pendente
+-- Aplicado em: 21/11/2026, no Supabase real (projeto "Projeto Netafim"), como postgres, por apply_migration
+-- (registro 20261121053359, nome 016_auditoria_dominio_email_corporativo). O corpo aplicado é o SQL
+-- abaixo, sem o begin/commit (o aplicador já envolve tudo numa transação). Conferido depois: função com
+-- dono postgres e SECURITY DEFINER, gatilho habilitado, e 8 casos de teste (em transação desfeita) sem falhas.
 --
 -- Como desfazer (não apaga eventos já gravados, a trilha é imutável):
 --   drop trigger if exists trg_dominio_depois on dominio_email_corporativo;
 --   drop function if exists fn_dominio_depois();
 --
 -- Pode ser executado mais de uma vez (create or replace + drop trigger if exists).
--- Quem aplica: a Pessoa 1, como postgres (dono das tabelas e de fn_audit), no SQL Editor.
+-- Quem aplica: a Pessoa 1, como postgres (dono das tabelas e de fn_audit). Só os comentários deste cabeçalho
+-- mudaram depois da aplicação; o SQL não.
 -- =====================================================================
 begin;
 
