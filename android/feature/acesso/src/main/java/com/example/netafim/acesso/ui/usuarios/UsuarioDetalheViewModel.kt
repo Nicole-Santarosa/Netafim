@@ -3,6 +3,7 @@ package com.example.netafim.acesso.ui.usuarios
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.netafim.acesso.dominio.AcoesDoUsuario
+import com.example.netafim.acesso.dominio.Aparelho
 import com.example.netafim.acesso.dominio.ErroAcesso
 import com.example.netafim.acesso.dominio.Perfil
 import com.example.netafim.acesso.dominio.RepositorioAcesso
@@ -18,10 +19,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** Ação que pede confirmação antes de ir para a API. */
-enum class ConfirmacaoUsuario { DESATIVAR, EXCLUIR }
+enum class ConfirmacaoUsuario { DESATIVAR, EXCLUIR, REDEFINIR_MFA }
 
 /** Mensagem de sucesso que a tela mostra uma vez. */
-enum class AvisoUsuario { ATIVADO, DESATIVADO, PERFIL_ALTERADO, CONVITE_REENVIADO }
+enum class AvisoUsuario { ATIVADO, DESATIVADO, PERFIL_ALTERADO, CONVITE_REENVIADO, MFA_REDEFINIDO, APARELHO_REVOGADO }
 
 data class UsuarioDetalheEstado(
     val usuario: Usuario? = null,
@@ -42,6 +43,14 @@ data class UsuarioDetalheEstado(
     val erroPerfis: String? = null,
     /** O usuário foi excluído: a tela volta para a lista. */
     val excluido: Boolean = false,
+    /** Folha com os aparelhos da pessoa aberta. */
+    val aparelhosAbertos: Boolean = false,
+    val aparelhos: List<Aparelho> = emptyList(),
+    val carregandoAparelhos: Boolean = false,
+    val erroAparelhos: String? = null,
+    /** Aparelho cuja revogação está esperando a confirmação. */
+    val aparelhoParaRevogar: Aparelho? = null,
+    val revogando: Boolean = false,
 )
 
 /**
@@ -105,12 +114,15 @@ class UsuarioDetalheViewModel(
 
     fun pedirExcluir() = _estado.update { it.copy(confirmando = ConfirmacaoUsuario.EXCLUIR, erroAcao = null) }
 
+    fun pedirRedefinirMfa() = _estado.update { it.copy(confirmando = ConfirmacaoUsuario.REDEFINIR_MFA, erroAcao = null) }
+
     fun cancelarConfirmacao() = _estado.update { if (it.processando) it else it.copy(confirmando = null) }
 
     fun confirmar() {
         when (_estado.value.confirmando) {
             ConfirmacaoUsuario.DESATIVAR -> alterarSituacao(SituacoesUsuario.INATIVO, AvisoUsuario.DESATIVADO)
             ConfirmacaoUsuario.EXCLUIR -> excluir()
+            ConfirmacaoUsuario.REDEFINIR_MFA -> redefinirMfa()
             null -> Unit
         }
     }
@@ -135,6 +147,19 @@ class UsuarioDetalheViewModel(
         viewModelScope.launch {
             when (val r = repositorio.excluir(idUsuario)) {
                 is Resultado.Sucesso -> _estado.update { it.copy(processando = false, confirmando = null, excluido = true) }
+                is Resultado.Falha -> falhaDeAcao(r.erro)
+            }
+        }
+    }
+
+    private fun redefinirMfa() {
+        if (_estado.value.processando) return
+        _estado.update { it.copy(processando = true, erroAcao = null, aviso = null) }
+        viewModelScope.launch {
+            when (val r = repositorio.redefinirMfa(idUsuario)) {
+                is Resultado.Sucesso -> _estado.update {
+                    it.copy(processando = false, confirmando = null, aviso = AvisoUsuario.MFA_REDEFINIDO)
+                }
                 is Resultado.Falha -> falhaDeAcao(r.erro)
             }
         }
@@ -183,6 +208,49 @@ class UsuarioDetalheViewModel(
                 }
                 // A recusa (por exemplo, rebaixar o último Netafim Admin) aparece dentro da folha aberta.
                 is Resultado.Falha -> _estado.update { it.copy(processando = false, erroPerfis = r.erro.mensagem) }
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ aparelhos
+
+    fun abrirAparelhos() {
+        _estado.update { it.copy(aparelhosAbertos = true, carregandoAparelhos = true, erroAparelhos = null, erroAcao = null) }
+        viewModelScope.launch {
+            when (val r = repositorio.aparelhos(idUsuario)) {
+                is Resultado.Sucesso -> _estado.update { it.copy(carregandoAparelhos = false, aparelhos = r.valor) }
+                is Resultado.Falha -> _estado.update { it.copy(carregandoAparelhos = false, erroAparelhos = r.erro.mensagem) }
+            }
+        }
+    }
+
+    fun fecharAparelhos() = _estado.update {
+        if (it.revogando) it else it.copy(aparelhosAbertos = false, aparelhoParaRevogar = null)
+    }
+
+    fun pedirRevogarAparelho(aparelho: Aparelho) {
+        if (aparelho.revogado) return
+        _estado.update { it.copy(aparelhoParaRevogar = aparelho, erroAparelhos = null) }
+    }
+
+    fun cancelarRevogarAparelho() = _estado.update { if (it.revogando) it else it.copy(aparelhoParaRevogar = null) }
+
+    fun confirmarRevogarAparelho() {
+        val aparelho = _estado.value.aparelhoParaRevogar ?: return
+        if (_estado.value.revogando) return
+        _estado.update { it.copy(revogando = true, erroAparelhos = null) }
+        viewModelScope.launch {
+            when (val r = repositorio.revogarAparelho(aparelho.id)) {
+                is Resultado.Sucesso -> _estado.update { atual ->
+                    atual.copy(
+                        revogando = false,
+                        aparelhoParaRevogar = null,
+                        aparelhos = atual.aparelhos.map { if (it.id == aparelho.id) r.valor else it },
+                        aviso = AvisoUsuario.APARELHO_REVOGADO,
+                    )
+                }
+                // A recusa da API aparece dentro da folha aberta.
+                is Resultado.Falha -> _estado.update { it.copy(revogando = false, aparelhoParaRevogar = null, erroAparelhos = r.erro.mensagem) }
             }
         }
     }

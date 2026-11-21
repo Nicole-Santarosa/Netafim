@@ -8,6 +8,8 @@
     <string name="inicio_permissoes">Permissões por perfil</string>
     <string name="inicio_permissoes_descricao">Veja e altere o que cada perfil pode fazer.</string>
     <string name="inicio_aprovar_cadastros">Aprovar cadastros</string>
+    <string name="inicio_dominios">Domínios de e-mail</string>
+    <string name="inicio_dominios_descricao">Cadastre os domínios aceitos para a Netafim e os distribuidores.</string>
     <string name="inicio_pedidos_privacidade">Pedidos de privacidade</string>
     <string name="inicio_pedidos_privacidade_descricao">Responda os pedidos de privacidade (LGPD).</string>
     <string name="inicio_gestao_usuarios">Gestão de usuários</string>

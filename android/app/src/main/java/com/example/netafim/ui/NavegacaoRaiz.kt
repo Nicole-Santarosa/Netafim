@@ -20,10 +20,12 @@ import com.example.netafim.acesso.ui.grafoAcesso
 import com.example.netafim.acesso.ui.telaAprovacao
 import com.example.netafim.acesso.ui.telaPerfil
 import com.example.netafim.acesso.ui.telasFilaPrivacidade
+import com.example.netafim.acesso.ui.telaDominios
 import com.example.netafim.acesso.ui.telasPermissoes
 import com.example.netafim.acesso.ui.telasPrivacidade
 import com.example.netafim.acesso.ui.telasUsuarios
 import com.example.netafim.acesso.dominio.podeAtenderPedidosLgpd
+import com.example.netafim.acesso.dominio.podeGerenciarDominios
 import com.example.netafim.acesso.dominio.podeGerenciarPermissoes
 import com.example.netafim.acesso.ui.usuarios.podeGerenciarUsuarios
 import com.example.netafim.acesso.dominio.Permissoes
@@ -62,6 +64,7 @@ fun NavegacaoRaiz(iniciarLogado: Boolean, navController: NavHostController = rem
         telaAprovacao(navController)
         telasUsuarios(navController)
         telasPermissoes(navController)
+        telaDominios(navController)
         telasPrivacidade(navController)
         telasFilaPrivacidade(navController)
         composable(RotasApp.INICIO) {
@@ -80,11 +83,13 @@ fun NavegacaoRaiz(iniciarLogado: Boolean, navController: NavHostController = rem
                 podeAprovarCadastros = usuario?.temPermissao(Permissoes.APROVAR_CADASTRO) == true,
                 podeGerenciarPermissoes = usuario?.podeGerenciarPermissoes() == true,
                 podeAtenderPedidosLgpd = usuario?.podeAtenderPedidosLgpd() == true,
+                podeGerenciarDominios = usuario?.podeGerenciarDominios() == true,
                 aoAbrirPerfil = { navController.navigate(RotasAcesso.PERFIL) },
                 aoAbrirUsuarios = { navController.navigate(RotasAcesso.USUARIOS) },
                 aoAbrirAprovacao = { navController.navigate(RotasAcesso.APROVACAO) },
                 aoAbrirPermissoes = { navController.navigate(RotasAcesso.PERMISSOES) },
                 aoAbrirPedidosPrivacidade = { navController.navigate(RotasAcesso.FILA_PRIVACIDADE) },
+                aoAbrirDominios = { navController.navigate(RotasAcesso.DOMINIOS) },
             )
         }
     }

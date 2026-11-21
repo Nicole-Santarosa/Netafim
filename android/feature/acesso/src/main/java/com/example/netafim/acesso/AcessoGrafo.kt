@@ -10,12 +10,14 @@ import com.example.netafim.acesso.dados.ProvedorTokens
 import com.example.netafim.acesso.dados.Rede
 import com.example.netafim.acesso.dados.RepositorioAcessoRemoto
 import com.example.netafim.acesso.dados.RepositorioCadastrosRemoto
+import com.example.netafim.acesso.dados.RepositorioDominiosRemoto
 import com.example.netafim.acesso.dados.RepositorioFilaPrivacidadeRemoto
 import com.example.netafim.acesso.dados.RepositorioPerfisRemoto
 import com.example.netafim.acesso.dados.RepositorioPrivacidadeRemoto
 import com.example.netafim.acesso.dados.RepositorioUsuariosRemoto
 import com.example.netafim.acesso.dominio.RepositorioAcesso
 import com.example.netafim.acesso.dominio.RepositorioCadastros
+import com.example.netafim.acesso.dominio.RepositorioDominios
 import com.example.netafim.acesso.dominio.RepositorioFilaPrivacidade
 import com.example.netafim.acesso.dominio.RepositorioPerfis
 import com.example.netafim.acesso.dominio.RepositorioPrivacidade
@@ -50,6 +52,7 @@ object AcessoGrafo {
     private lateinit var cadastrosRemoto: RepositorioCadastrosRemoto
     private lateinit var usuariosRemoto: RepositorioUsuariosRemoto
     private lateinit var perfisRemoto: RepositorioPerfisRemoto
+    private lateinit var dominiosRemoto: RepositorioDominiosRemoto
     private lateinit var privacidadeRemoto: RepositorioPrivacidadeRemoto
     private lateinit var filaPrivacidadeRemoto: RepositorioFilaPrivacidadeRemoto
 
@@ -68,6 +71,9 @@ object AcessoGrafo {
 
     /** Permissões por perfil (RF20), para o Netafim Admin. */
     val repositorioPerfis: RepositorioPerfis get() = perfisRemoto
+
+    /** Domínios de e-mail corporativos, para o Netafim Admin. */
+    val repositorioDominios: RepositorioDominios get() = dominiosRemoto
 
     /** Direitos do titular (LGPD): pedidos e cópia dos próprios dados, para qualquer usuário logado. */
     val repositorioPrivacidade: RepositorioPrivacidade get() = privacidadeRemoto
@@ -104,6 +110,7 @@ object AcessoGrafo {
         cadastrosRemoto = RepositorioCadastrosRemoto(api = autenticada, json = rede.json)
         usuariosRemoto = RepositorioUsuariosRemoto(api = autenticada, json = rede.json)
         perfisRemoto = RepositorioPerfisRemoto(api = autenticada, json = rede.json)
+        dominiosRemoto = RepositorioDominiosRemoto(api = autenticada, json = rede.json)
         privacidadeRemoto = RepositorioPrivacidadeRemoto(api = autenticada, json = rede.json)
         filaPrivacidadeRemoto = RepositorioFilaPrivacidadeRemoto(api = autenticada, json = rede.json)
         tokens.alvo = repositorioRemoto

@@ -1,5 +1,6 @@
 package com.example.netafim.acesso.dados
 
+import com.example.netafim.acesso.dominio.Aparelho
 import com.example.netafim.acesso.dominio.DadosNovoUsuario
 import com.example.netafim.acesso.dominio.Perfil
 import com.example.netafim.acesso.dominio.RepositorioUsuarios
@@ -39,6 +40,18 @@ class RepositorioUsuariosRemoto(
 
     override suspend fun excluir(idUsuario: Int): Resultado<Unit> = executarApi(json) {
         api.excluirUsuario(idUsuario)
+    }
+
+    override suspend fun redefinirMfa(idUsuario: Int): Resultado<Unit> = executarApi(json) {
+        api.resetarMfa(idUsuario)
+    }
+
+    override suspend fun aparelhos(idUsuario: Int): Resultado<List<Aparelho>> = executarApi(json) {
+        api.aparelhosDoUsuario(idUsuario).map { it.paraDominio() }
+    }
+
+    override suspend fun revogarAparelho(idAparelho: String): Resultado<Aparelho> = executarApi(json) {
+        api.revogarAparelho(idAparelho).paraDominio()
     }
 
     override suspend fun perfis(): Resultado<List<Perfil>> = executarApi(json) {

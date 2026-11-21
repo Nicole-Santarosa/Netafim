@@ -7,6 +7,15 @@ data class DadosNovoUsuario(
     val telefone: String?,
 )
 
+/** Aparelho em que a pessoa entrou. [revogado]: o acesso dele foi cortado. */
+data class Aparelho(
+    val id: String,
+    val modelo: String?,
+    val versaoApp: String?,
+    val ultimaSincronizacao: String?,
+    val revogado: Boolean,
+)
+
 /** Gestão de usuários da própria organização (Gestão de usuários do protótipo). */
 interface RepositorioUsuarios {
     /** Usuários que o administrador logado pode ver (todas as páginas). */
@@ -36,6 +45,15 @@ interface RepositorioUsuarios {
     /** Exclusão lógica: some das listas e libera o e-mail; os registros ligados ficam. */
     suspend fun excluir(idUsuario: Int): Resultado<Unit>
 
+    /** Netafim Admin remove o MFA de quem perdeu o aparelho e os códigos; as sessões da pessoa terminam. */
+    suspend fun redefinirMfa(idUsuario: Int): Resultado<Unit>
+
+    /** Aparelhos da pessoa (`GET usuarios/{id}/dispositivos`). */
+    suspend fun aparelhos(idUsuario: Int): Resultado<List<Aparelho>>
+
+    /** Corta o acesso de um aparelho (perdido ou roubado); só o Netafim Admin. Devolve o aparelho já revogado. */
+    suspend fun revogarAparelho(idAparelho: String): Resultado<Aparelho>
+
     /** Perfis de acesso existentes (todos os tipos de organização). */
     suspend fun perfis(): Resultado<List<Perfil>>
 }
@@ -57,8 +75,15 @@ data class AcoesDoUsuario(
     val reenviarConvite: Boolean = false,
     val definirPerfil: Boolean = false,
     val excluir: Boolean = false,
+    /** Só o Netafim Admin (a API recusa os outros). */
+    val redefinirMfa: Boolean = false,
+    /** Quem gerencia a pessoa vê os aparelhos dela. */
+    val verAparelhos: Boolean = false,
+    /** Revogar um aparelho é só do Netafim Admin. */
+    val revogarAparelhos: Boolean = false,
 ) {
-    val alguma: Boolean get() = editar || ativar || desativar || reenviarConvite || definirPerfil || excluir
+    val alguma: Boolean
+        get() = editar || ativar || desativar || reenviarConvite || definirPerfil || excluir || redefinirMfa || verAparelhos
 }
 
 /**
@@ -76,6 +101,10 @@ fun acoesPermitidas(ator: Usuario, alvo: Usuario): AcoesDoUsuario {
     val editar = ator.temPermissao(Permissoes.EDITAR_USUARIO) && gerencia
     val criar = ator.temPermissao(Permissoes.CRIAR_USUARIO) && gerencia
     val excluir = ator.temPermissao(Permissoes.EXCLUIR_USUARIO) && gerencia
+    // As rotas de MFA e de aparelhos ficam em UsuarioViewSet, que exige uma destas permissões (basta uma).
+    val gerenciaUsuarios = ator.temPermissao(Permissoes.EDITAR_USUARIO) ||
+        ator.temPermissao(Permissoes.CRIAR_USUARIO) ||
+        ator.temPermissao(Permissoes.APROVAR_CADASTRO)
     return AcoesDoUsuario(
         editar = editar,
         desativar = editar && alvo.situacao == SituacoesUsuario.ATIVO,
@@ -86,5 +115,8 @@ fun acoesPermitidas(ator: Usuario, alvo: Usuario): AcoesDoUsuario {
         reenviarConvite = criar && alvo.situacao == SituacoesUsuario.PENDENTE,
         definirPerfil = ator.temPermissao(Permissoes.DEFINIR_PERFIL) && alvo.organizacao != null,
         excluir = excluir,
+        redefinirMfa = atorNetafimAdmin && gerenciaUsuarios,
+        verAparelhos = gerencia && gerenciaUsuarios,
+        revogarAparelhos = atorNetafimAdmin && gerenciaUsuarios,
     )
 }

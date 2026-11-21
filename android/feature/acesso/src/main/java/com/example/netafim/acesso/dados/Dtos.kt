@@ -1,5 +1,7 @@
 package com.example.netafim.acesso.dados
 
+import com.example.netafim.acesso.dominio.Aparelho
+import com.example.netafim.acesso.dominio.Dominio
 import com.example.netafim.acesso.dominio.Organizacao
 import com.example.netafim.acesso.dominio.Perfil
 import com.example.netafim.acesso.dominio.Usuario
@@ -266,3 +268,42 @@ data class PedidoAdminDto(
 @Serializable
 data class NegarPedidoRequisicao(val justificativa: String)
 
+/** Aparelho de um usuário (`GET usuarios/{id}/dispositivos` e `POST dispositivos/{id}/revogar`). */
+@Serializable
+data class AparelhoDto(
+    @SerialName("id_dispositivo") val idDispositivo: String,
+    val modelo: String? = null,
+    @SerialName("versao_app") val versaoApp: String? = null,
+    @SerialName("ultima_sincronizacao") val ultimaSincronizacao: String? = null,
+    @SerialName("revogado_em") val revogadoEm: String? = null,
+) {
+    fun paraDominio() = Aparelho(
+        id = idDispositivo,
+        modelo = modelo,
+        versaoApp = versaoApp,
+        ultimaSincronizacao = ultimaSincronizacao,
+        revogado = revogadoEm != null,
+    )
+}
+
+/** Domínio de e-mail corporativo (`GET dominios`). */
+@Serializable
+data class DominioDto(
+    @SerialName("id_dominio") val idDominio: Int,
+    val dominio: String,
+    @SerialName("tipo_organizacao") val tipoOrganizacao: String,
+    @SerialName("id_distribuidor") val idDistribuidor: Int? = null,
+    val ativo: Boolean = true,
+) {
+    fun paraDominio() = Dominio(idDominio, dominio, tipoOrganizacao, idDistribuidor, ativo)
+}
+
+@Serializable
+data class DominioRequisicao(
+    val dominio: String,
+    @SerialName("tipo_organizacao") val tipoOrganizacao: String,
+    @SerialName("id_distribuidor") val idDistribuidor: Int? = null,
+)
+
+@Serializable
+data class DominioAtivoRequisicao(val ativo: Boolean)

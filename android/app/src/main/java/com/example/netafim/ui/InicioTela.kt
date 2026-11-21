@@ -49,11 +49,13 @@ fun InicioTela(
     podeAprovarCadastros: Boolean,
     podeGerenciarPermissoes: Boolean,
     podeAtenderPedidosLgpd: Boolean,
+    podeGerenciarDominios: Boolean,
     aoAbrirPerfil: () -> Unit,
     aoAbrirUsuarios: () -> Unit,
     aoAbrirAprovacao: () -> Unit,
     aoAbrirPermissoes: () -> Unit,
     aoAbrirPedidosPrivacidade: () -> Unit,
+    aoAbrirDominios: () -> Unit,
 ) {
     val descricaoPerfil = stringResource(R.string.inicio_meu_perfil)
     val primeiroNome = nome.trim().substringBefore(' ')
@@ -85,7 +87,7 @@ fun InicioTela(
             Spacer(Modifier.height(esc(24)))
         }
 
-        if (podeGerenciarUsuarios || podeAprovarCadastros || podeGerenciarPermissoes || podeAtenderPedidosLgpd) {
+        if (podeGerenciarUsuarios || podeAprovarCadastros || podeGerenciarPermissoes || podeAtenderPedidosLgpd || podeGerenciarDominios) {
             TituloDeGrupo(stringResource(R.string.inicio_atalhos_titulo))
             Spacer(Modifier.height(esc(8)))
             Column(verticalArrangement = Arrangement.spacedBy(esc(12))) {
@@ -103,6 +105,14 @@ fun InicioTela(
                         titulo = stringResource(R.string.inicio_permissoes),
                         descricao = stringResource(R.string.inicio_permissoes_descricao),
                         aoClicar = aoAbrirPermissoes,
+                    )
+                }
+                if (podeGerenciarDominios) {
+                    AtalhoEmCartao(
+                        icone = Icons.Outlined.Info,
+                        titulo = stringResource(R.string.inicio_dominios),
+                        descricao = stringResource(R.string.inicio_dominios_descricao),
+                        aoClicar = aoAbrirDominios,
                     )
                 }
                 if (podeAtenderPedidosLgpd) {

@@ -5,6 +5,7 @@ import com.example.netafim.acesso.dados.ProvedorTokens
 import com.example.netafim.acesso.dados.Rede
 import com.example.netafim.acesso.dados.RepositorioUsuariosRemoto
 import com.example.netafim.acesso.dominio.AcoesDoUsuario
+import com.example.netafim.acesso.dominio.Aparelho
 import com.example.netafim.acesso.dominio.DadosNovoUsuario
 import com.example.netafim.acesso.dominio.ErroAcesso
 import com.example.netafim.acesso.dominio.Organizacao
@@ -243,6 +244,31 @@ private class UsuariosDetalheFalso : RepositorioUsuarios {
 
     override suspend fun listar(): Resultado<List<Usuario>> = Resultado.Sucesso(emptyList())
     override suspend fun criar(dados: DadosNovoUsuario): Resultado<Usuario> = Resultado.Sucesso(alvo)
+
+    var resultadoMfa: Resultado<Unit> = Resultado.Sucesso(Unit)
+    var listaAparelhos: Resultado<List<Aparelho>> = Resultado.Sucesso(
+        listOf(
+            Aparelho("a1", "Galaxy Tab S9 FE", "0.1.0", "2026-11-15T21:00:00Z", false),
+            Aparelho("a2", null, null, null, true),
+        ),
+    )
+    var resultadoRevogar: Resultado<Aparelho>? = null
+
+    override suspend fun redefinirMfa(idUsuario: Int): Resultado<Unit> {
+        chamadas += "mfa:$idUsuario"
+        return resultadoMfa
+    }
+
+    override suspend fun aparelhos(idUsuario: Int): Resultado<List<Aparelho>> {
+        chamadas += "aparelhos:$idUsuario"
+        return listaAparelhos
+    }
+
+    override suspend fun revogarAparelho(idAparelho: String): Resultado<Aparelho> {
+        chamadas += "revogar:$idAparelho"
+        return resultadoRevogar ?: Resultado.Sucesso(Aparelho(idAparelho, "Galaxy Tab S9 FE", "0.1.0", null, true))
+    }
+
     override suspend fun obter(idUsuario: Int): Resultado<Usuario> {
         chamadas += "obter"
         return resultadoObter ?: Resultado.Sucesso(alvo)
@@ -439,5 +465,227 @@ class UsuarioDetalheViewModelTest {
         assertTrue(vm.estado.value.escolhendoPerfil)
         assertEquals("Não é possível rebaixar o último Administrador Netafim ativo.", vm.estado.value.erroPerfis)
         assertFalse(vm.estado.value.processando)
+    }
+}
+
+
+/** Redefinir o MFA e gerir os aparelhos de um usuário (Netafim Admin). */
+class MfaEAparelhosTest {
+    private val usuarios = UsuariosDetalheFalso()
+    private val acesso = RepositorioFalso().also { it.sessao.value = Sessao("a", "r", NETAFIM_ADMIN) }
+
+    @Before
+    fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
+
+    @After
+    fun tearDown() = Dispatchers.resetMain()
+
+    private fun vm() = UsuarioDetalheViewModel(usuarios, acesso, 2)
+
+    @Test
+    fun `so o Netafim Admin redefine o MFA e revoga aparelhos, e quem gerencia ve os aparelhos`() {
+        val netafim = acoesPermitidas(NETAFIM_ADMIN, pessoa(2))
+        assertTrue(netafim.redefinirMfa && netafim.verAparelhos && netafim.revogarAparelhos)
+
+        val distribuidor = acoesPermitidas(DISTRIBUIDOR_ADMIN, pessoa(2, organizacaoId = 1))
+        assertTrue(distribuidor.verAparelhos)
+        assertFalse(distribuidor.redefinirMfa)
+        assertFalse(distribuidor.revogarAparelhos)
+
+        // admin de outra empresa nao gerencia, entao nao ve os aparelhos
+        assertFalse(acoesPermitidas(DISTRIBUIDOR_ADMIN, pessoa(3, organizacaoId = 99)).verAparelhos)
+        // ninguem mexe em si mesmo
+        assertFalse(acoesPermitidas(NETAFIM_ADMIN, NETAFIM_ADMIN).redefinirMfa)
+    }
+
+    @Test
+    fun `sem nenhuma permissao de gestao de usuarios nao ha MFA nem aparelhos (a API exige uma delas)`() {
+        val semPermissao = pessoa(1, tipo = "netafim", nivel = "admin", permissoes = emptySet())
+        val acoes = acoesPermitidas(semPermissao, pessoa(2))
+        assertFalse(acoes.redefinirMfa || acoes.verAparelhos || acoes.revogarAparelhos)
+
+        // basta uma das tres (editar, criar ou aprovar cadastro)
+        val soAprova = pessoa(1, tipo = "netafim", nivel = "admin", permissoes = setOf(Permissoes.APROVAR_CADASTRO))
+        assertTrue(acoesPermitidas(soAprova, pessoa(2)).verAparelhos)
+    }
+
+    @Test
+    fun `redefinir o MFA pede confirmacao e so chama a API depois dela`() {
+        val vm = vm()
+        vm.pedirRedefinirMfa()
+        assertEquals(ConfirmacaoUsuario.REDEFINIR_MFA, vm.estado.value.confirmando)
+        assertFalse(usuarios.chamadas.any { it.startsWith("mfa") })
+
+        vm.confirmar()
+        assertTrue(usuarios.chamadas.contains("mfa:2"))
+        assertEquals(AvisoUsuario.MFA_REDEFINIDO, vm.estado.value.aviso)
+        assertNull(vm.estado.value.confirmando)
+        assertFalse(vm.estado.value.processando)
+    }
+
+    @Test
+    fun `cancelar a redefinicao nao chama a API`() {
+        val vm = vm()
+        vm.pedirRedefinirMfa()
+        vm.cancelarConfirmacao()
+        assertNull(vm.estado.value.confirmando)
+        assertFalse(usuarios.chamadas.any { it.startsWith("mfa") })
+    }
+
+    @Test
+    fun `a recusa da API ao redefinir o MFA aparece como mensagem`() {
+        usuarios.resultadoMfa = Resultado.Falha(ErroAcesso.Api("mfa_inativo", "A verificação em duas etapas não está ativa.", 409))
+        val vm = vm()
+        vm.pedirRedefinirMfa()
+        vm.confirmar()
+        assertEquals("A verificação em duas etapas não está ativa.", vm.estado.value.erroAcao)
+        assertNull(vm.estado.value.aviso)
+        assertNull(vm.estado.value.confirmando)
+    }
+
+    @Test
+    fun `abrir os aparelhos carrega a lista da pessoa`() {
+        val vm = vm()
+        vm.abrirAparelhos()
+        val e = vm.estado.value
+        assertTrue(e.aparelhosAbertos)
+        assertFalse(e.carregandoAparelhos)
+        assertEquals(listOf("a1", "a2"), e.aparelhos.map { it.id })
+        assertTrue(usuarios.chamadas.contains("aparelhos:2"))
+    }
+
+    @Test
+    fun `falha ao carregar os aparelhos mostra o erro e permite tentar de novo`() {
+        usuarios.listaAparelhos = Resultado.Falha(ErroAcesso.SemConexao)
+        val vm = vm()
+        vm.abrirAparelhos()
+        assertEquals(ErroAcesso.SemConexao.mensagem, vm.estado.value.erroAparelhos)
+        assertTrue(vm.estado.value.aparelhos.isEmpty())
+
+        usuarios.listaAparelhos = Resultado.Sucesso(emptyList())
+        vm.abrirAparelhos()
+        assertNull(vm.estado.value.erroAparelhos)
+    }
+
+    @Test
+    fun `revogar um aparelho pede confirmacao, chama a API e marca o aparelho como revogado`() {
+        val vm = vm()
+        vm.abrirAparelhos()
+        val ativo = vm.estado.value.aparelhos.first { !it.revogado }
+
+        vm.pedirRevogarAparelho(ativo)
+        assertEquals(ativo, vm.estado.value.aparelhoParaRevogar)
+        assertFalse(usuarios.chamadas.any { it.startsWith("revogar") })
+
+        vm.confirmarRevogarAparelho()
+        assertTrue(usuarios.chamadas.contains("revogar:a1"))
+        assertTrue(vm.estado.value.aparelhos.first { it.id == "a1" }.revogado)
+        assertNull(vm.estado.value.aparelhoParaRevogar)
+        assertEquals(AvisoUsuario.APARELHO_REVOGADO, vm.estado.value.aviso)
+        assertFalse(vm.estado.value.revogando)
+    }
+
+    @Test
+    fun `aparelho ja revogado nao pede confirmacao e cancelar nao chama a API`() {
+        val vm = vm()
+        vm.abrirAparelhos()
+        val revogado = vm.estado.value.aparelhos.first { it.revogado }
+        vm.pedirRevogarAparelho(revogado)
+        assertNull(vm.estado.value.aparelhoParaRevogar)
+
+        val ativo = vm.estado.value.aparelhos.first { !it.revogado }
+        vm.pedirRevogarAparelho(ativo)
+        vm.cancelarRevogarAparelho()
+        assertNull(vm.estado.value.aparelhoParaRevogar)
+        assertFalse(usuarios.chamadas.any { it.startsWith("revogar") })
+    }
+
+    @Test
+    fun `a recusa da API ao revogar aparece dentro da folha de aparelhos`() {
+        usuarios.resultadoRevogar = Resultado.Falha(ErroAcesso.Api("sem_permissao", "Você não tem permissão para esta ação.", 403))
+        val vm = vm()
+        vm.abrirAparelhos()
+        vm.pedirRevogarAparelho(vm.estado.value.aparelhos.first { !it.revogado })
+        vm.confirmarRevogarAparelho()
+        assertEquals("Você não tem permissão para esta ação.", vm.estado.value.erroAparelhos)
+        assertFalse(vm.estado.value.aparelhos.first { it.id == "a1" }.revogado)
+        assertTrue(vm.estado.value.aparelhosAbertos)
+    }
+}
+
+/** Contrato com a API: rotas, métodos e formato do aparelho (MockWebServer). */
+class MfaEAparelhosRemotoTest {
+
+    private lateinit var servidor: MockWebServer
+    private lateinit var repositorio: RepositorioUsuariosRemoto
+
+    @Before
+    fun setUp() {
+        servidor = MockWebServer().apply { start() }
+        val tokens = object : ProvedorTokens {
+            override fun accessTokenAtual() = "acc-1"
+            override suspend fun renovar(accessUsado: String?): String? = null
+        }
+        val rede = Rede(servidor.url("/api/v1/").toString(), tokens, depuracao = false)
+        repositorio = RepositorioUsuariosRemoto(
+            api = rede.retrofit(rede.autenticado).create(AcessoApi::class.java),
+            json = rede.json,
+        )
+    }
+
+    @After
+    fun tearDown() = servidor.shutdown()
+
+    private fun json(corpo: String, status: Int = 200) =
+        MockResponse().setResponseCode(status).setHeader("Content-Type", "application/json").setBody(corpo)
+
+    @Test
+    fun `redefinir o MFA usa POST usuarios id mfa resetar e aceita 204`() = runTest {
+        servidor.enqueue(MockResponse().setResponseCode(204))
+        val r = repositorio.redefinirMfa(2)
+        assertTrue(r is Resultado.Sucesso)
+        val pedido = servidor.takeRequest()
+        assertEquals("POST", pedido.method)
+        assertEquals("/api/v1/usuarios/2/mfa/resetar", pedido.path)
+    }
+
+    @Test
+    fun `MFA inativo (409) volta como erro da API com o codigo`() = runTest {
+        servidor.enqueue(json("""{"detail":"A autenticação em dois fatores não está ativa.","codigo":"mfa_inativo"}""", 409))
+        val r = repositorio.redefinirMfa(2)
+        val erro = (r as Resultado.Falha).erro as ErroAcesso.Api
+        assertEquals("mfa_inativo", erro.codigo)
+        assertEquals(409, erro.status)
+    }
+
+    @Test
+    fun `listar aparelhos usa GET usuarios id dispositivos e le os campos da API`() = runTest {
+        servidor.enqueue(
+            json(
+                """[{"id_dispositivo":"7f0c","modelo":"samsung SM-X510","versao_app":"0.1.0",
+                    "ultima_sincronizacao":"2026-11-15T21:00:00Z","revogado_em":null,"data_criacao":"2026-11-10T10:00:00Z"},
+                   {"id_dispositivo":"9a1d","modelo":null,"versao_app":null,"ultima_sincronizacao":null,
+                    "revogado_em":"2026-11-16T09:00:00Z","data_criacao":"2026-11-11T10:00:00Z"}]""",
+            ),
+        )
+        val r = repositorio.aparelhos(2)
+        val lista = (r as Resultado.Sucesso).valor
+        assertEquals(2, lista.size)
+        assertEquals("samsung SM-X510", lista[0].modelo)
+        assertFalse(lista[0].revogado)
+        assertTrue(lista[1].revogado)
+        val pedido = servidor.takeRequest()
+        assertEquals("GET", pedido.method)
+        assertEquals("/api/v1/usuarios/2/dispositivos", pedido.path)
+    }
+
+    @Test
+    fun `revogar aparelho usa POST dispositivos id revogar e devolve o aparelho revogado`() = runTest {
+        servidor.enqueue(json("""{"id_dispositivo":"7f0c","modelo":"samsung SM-X510","versao_app":"0.1.0","ultima_sincronizacao":null,"revogado_em":"2026-11-18T10:00:00Z"}"""))
+        val r = repositorio.revogarAparelho("7f0c")
+        assertTrue((r as Resultado.Sucesso).valor.revogado)
+        val pedido = servidor.takeRequest()
+        assertEquals("POST", pedido.method)
+        assertEquals("/api/v1/dispositivos/7f0c/revogar", pedido.path)
     }
 }
