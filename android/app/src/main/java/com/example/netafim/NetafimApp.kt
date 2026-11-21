@@ -12,6 +12,8 @@ class NetafimApp : Application() {
                 urlApi = BuildConfig.URL_API,
                 versaoApp = BuildConfig.VERSION_NAME,
                 depuracao = BuildConfig.DEBUG,
+                hostLink = BuildConfig.LINK_HOST,
+                esquemaProprio = BuildConfig.DEBUG,
             ),
         )
     }

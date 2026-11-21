@@ -20,6 +20,7 @@ import com.example.netafim.acesso.dominio.RepositorioFilaPrivacidade
 import com.example.netafim.acesso.dominio.RepositorioPerfis
 import com.example.netafim.acesso.dominio.RepositorioPrivacidade
 import com.example.netafim.acesso.dominio.RepositorioUsuarios
+import com.example.netafim.acesso.dominio.padroesDeLink
 import com.example.netafim.acesso.ui.privacidade.CopiaDosDados
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -38,6 +39,10 @@ object AcessoGrafo {
         val urlApi: String,
         val versaoApp: String,
         val depuracao: Boolean,
+        /** Domínio do App Link dos e-mails (ex.: `app.netafim.com.br`); vazio = sem link https. */
+        val hostLink: String = "",
+        /** Aceita também `netafim://convite`; só para debug (qualquer app pode registrar o esquema). */
+        val esquemaProprio: Boolean = false,
     )
 
     private lateinit var rede: Rede
@@ -69,11 +74,16 @@ object AcessoGrafo {
 
     /** Fila de pedidos de titulares (LGPD), para o Netafim Admin. */
     val repositorioFilaPrivacidade: RepositorioFilaPrivacidade get() = filaPrivacidadeRemoto
+
+    /** Padrões de link aceitos pela tela do convite e da redefinição de senha (ver [padroesDeLink]). */
+    var padroesDeLink: List<String> = emptyList()
+        private set
     val clienteAutenticado: OkHttpClient get() = rede.autenticado
     val retrofitAutenticado: Retrofit by lazy { rede.retrofit(rede.autenticado) }
 
     fun inicializar(contexto: Context, configuracao: Configuracao) {
         if (::repositorioRemoto.isInitialized) return
+        padroesDeLink = padroesDeLink(configuracao.hostLink, configuracao.esquemaProprio)
         fotosDePerfil = FotosDePerfil(contexto.applicationContext)
         // Cópias de dados pessoais que sobraram da última vez: apaga fora da thread principal.
         Thread { CopiaDosDados.limpar(CopiaDosDados.pastaDe(contexto.applicationContext)) }.start()

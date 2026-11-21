@@ -125,7 +125,7 @@ fun NavGraphBuilder.grafoAcesso(navController: NavHostController, aoEntrar: () -
                 navArgument("acao") { type = NavType.StringType; nullable = true; defaultValue = null },
                 navArgument("token") { type = NavType.StringType; nullable = true; defaultValue = null },
             ),
-            deepLinks = listOf(navDeepLink { uriPattern = "netafim://convite?acao={acao}&token={token}" }),
+            deepLinks = AcessoGrafo.padroesDeLink.map { padrao -> navDeepLink { uriPattern = padrao } },
         ) { entrada ->
             LinkRota(
                 viewModel = viewModel(factory = fabrica),

@@ -39,6 +39,20 @@ Abrem o app numa tela do módulo de acesso. Para testar sem e-mail:
 adb shell am start -a android.intent.action.VIEW -c android.intent.category.BROWSABLE   -d 'netafim://convite?acao=redefinir-senha&token=<token do e-mail>'
 ```
 
+O esquema `netafim://` só existe no **debug**: qualquer app instalado pode registrá-lo e receber o token do link. No **release** o link é um App Link `https://<domínio>/convite?acao=...&token=...`, verificado pelo sistema.
+
+Para o release (e para o App Link funcionar em produção) são necessários, **fora do app**:
+
+1. Um domínio HTTPS (ex.: `app.seu-dominio.com.br`) publicando `https://<domínio>/.well-known/assetlinks.json` com o `package_name` `com.example.netafim` e o SHA-256 do certificado de assinatura do release.
+2. No servidor da API, a variável `URL_APP_CONVITE=https://<domínio>/convite` (o padrão do back-end é `netafim://convite`, só para desenvolvimento).
+3. Gerar o app com o domínio, e a API em HTTPS:
+
+```bash
+./gradlew assembleRelease -Pnetafim.apiBaseUrl=https://SEU_SERVIDOR/api/v1/ -Pnetafim.linkHost=app.seu-dominio.com.br
+```
+
+O `assembleRelease` **falha** se a API não for `https://` ou se `netafim.linkHost` estiver vazio (tarefa `verificarConfiguracaoRelease`), para não gerar um APK que aponta para o emulador ou cujos links dos e-mails não abrem.
+
 > No Windows, se o caminho do projeto tiver acento (como `Repositório`), o Gradle recusa a compilação. Use `-Pandroid.overridePathCheck=true` ou mova o projeto para uma pasta sem acento.
 
 ## Testes
