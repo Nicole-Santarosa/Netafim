@@ -3,6 +3,7 @@
     <!-- O visual é definido em Compose (ui/tema). Este tema só cobre a janela. -->
     <style name="Theme.Netafim" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">@color/netafim_splash_background</item>
     </style>
 </resources>

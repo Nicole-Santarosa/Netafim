@@ -1,35 +1,27 @@
 package com.netafim.posvenda.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.netafim.posvenda.R
 import com.netafim.posvenda.acesso.AcessoGrafo
 import com.netafim.posvenda.acesso.ui.RotasAcesso
 import com.netafim.posvenda.acesso.ui.grafoAcesso
+import com.netafim.posvenda.acesso.ui.telaAprovacao
 import com.netafim.posvenda.acesso.ui.telaPerfil
+import com.netafim.posvenda.acesso.ui.telasUsuarios
+import com.netafim.posvenda.acesso.ui.usuarios.podeGerenciarUsuarios
+import com.netafim.posvenda.acesso.dominio.Permissoes
 
 /** Rotas do app. PROVISÓRIO: "inicio" deve ser substituída pela tela do módulo responsável. */
 object RotasApp {
@@ -44,8 +36,7 @@ fun NavegacaoRaiz(iniciarLogado: Boolean, navController: NavHostController = rem
     // Sessão expirou ou foi revogada com o app aberto: volta para o login.
     LaunchedEffect(sessao, entrada) {
         val rota = entrada?.destination?.route ?: return@LaunchedEffect
-        val emTelaDeAcesso = rota.startsWith(RotasAcesso.GRAFO + "/") && rota != RotasAcesso.PERFIL
-        if (sessao == null && !emTelaDeAcesso) {
+        if (sessao == null && RotasAcesso.exigeSessao(rota)) {
             navController.navigate(RotasAcesso.GRAFO) {
                 popUpTo(0) { inclusive = true }
                 launchSingleTop = true
@@ -63,39 +54,26 @@ fun NavegacaoRaiz(iniciarLogado: Boolean, navController: NavHostController = rem
             }
         }
         telaPerfil(navController)
+        telaAprovacao(navController)
+        telasUsuarios(navController)
         composable(RotasApp.INICIO) {
-            InicioProvisorio(
-                nome = sessao?.usuario?.nome.orEmpty(),
+            val usuario = sessao?.usuario
+            val alteracoesDeFoto by AcessoGrafo.fotos.alteracoes.collectAsStateWithLifecycle()
+            var foto by remember { mutableStateOf<ImageBitmap?>(null) }
+            LaunchedEffect(usuario?.id, alteracoesDeFoto) {
+                foto = usuario?.id?.let { AcessoGrafo.fotos.carregar(it) }?.asImageBitmap()
+            }
+            InicioTela(
+                nome = usuario?.nome.orEmpty(),
+                perfil = usuario?.perfil?.nome,
+                organizacao = usuario?.organizacao?.nome,
+                foto = foto,
+                podeGerenciarUsuarios = usuario?.podeGerenciarUsuarios() == true,
+                podeAprovarCadastros = usuario?.temPermissao(Permissoes.APROVAR_CADASTRO) == true,
                 aoAbrirPerfil = { navController.navigate(RotasAcesso.PERFIL) },
+                aoAbrirUsuarios = { navController.navigate(RotasAcesso.USUARIOS) },
+                aoAbrirAprovacao = { navController.navigate(RotasAcesso.APROVACAO) },
             )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun InicioProvisorio(nome: String, aoAbrirPerfil: () -> Unit) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.inicio_titulo)) },
-                actions = {
-                    IconButton(onClick = aoAbrirPerfil) {
-                        Icon(Icons.Outlined.AccountCircle, stringResource(R.string.inicio_meu_perfil))
-                    }
-                },
-            )
-        },
-    ) { margens ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(margens)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(stringResource(R.string.inicio_ola, nome), style = MaterialTheme.typography.headlineSmall)
-            Text(stringResource(R.string.inicio_provisorio), style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

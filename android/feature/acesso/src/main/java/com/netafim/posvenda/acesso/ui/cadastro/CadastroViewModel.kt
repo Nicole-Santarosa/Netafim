@@ -13,10 +13,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class CampoCadastro { NOME, EMAIL, TELEFONE, SENHA, CONFIRMACAO, TERMO }
+enum class CampoCadastro { NOME, PROPRIEDADE, EMAIL, TELEFONE, DISTRIBUIDOR, SENHA, CONFIRMACAO, TERMO }
 
 data class CadastroEstado(
     val nome: String = "",
+    // Campos do protótipo que a API de cadastro ainda NÃO recebe: ficam só na tela, não são enviados.
+    val propriedade: String = "",
+    val distribuidor: String = "",
     val email: String = "",
     val telefone: String = "",
     val senha: String = "",
@@ -52,6 +55,8 @@ class CadastroViewModel(private val repositorio: RepositorioAcesso) : ViewModel(
     fun aoMudar(campo: CampoCadastro, valor: String) = _estado.update {
         val novo = when (campo) {
             CampoCadastro.NOME -> it.copy(nome = valor)
+            CampoCadastro.PROPRIEDADE -> it.copy(propriedade = valor)
+            CampoCadastro.DISTRIBUIDOR -> it.copy(distribuidor = valor)
             CampoCadastro.EMAIL -> it.copy(email = valor)
             CampoCadastro.TELEFONE -> it.copy(telefone = valor)
             CampoCadastro.SENHA -> it.copy(senha = valor)

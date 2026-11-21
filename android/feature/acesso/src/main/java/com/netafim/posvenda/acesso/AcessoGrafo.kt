@@ -4,11 +4,16 @@ import android.content.Context
 import android.os.Build
 import com.netafim.posvenda.acesso.dados.AcessoApi
 import com.netafim.posvenda.acesso.dados.ArmazenamentoSessaoSeguro
+import com.netafim.posvenda.acesso.dados.FotosDePerfil
 import com.netafim.posvenda.acesso.dados.InfoAparelho
 import com.netafim.posvenda.acesso.dados.ProvedorTokens
 import com.netafim.posvenda.acesso.dados.Rede
 import com.netafim.posvenda.acesso.dados.RepositorioAcessoRemoto
+import com.netafim.posvenda.acesso.dados.RepositorioCadastrosRemoto
+import com.netafim.posvenda.acesso.dados.RepositorioUsuariosRemoto
 import com.netafim.posvenda.acesso.dominio.RepositorioAcesso
+import com.netafim.posvenda.acesso.dominio.RepositorioCadastros
+import com.netafim.posvenda.acesso.dominio.RepositorioUsuarios
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 
@@ -30,13 +35,27 @@ object AcessoGrafo {
 
     private lateinit var rede: Rede
     private lateinit var repositorioRemoto: RepositorioAcessoRemoto
+    private lateinit var cadastrosRemoto: RepositorioCadastrosRemoto
+    private lateinit var usuariosRemoto: RepositorioUsuariosRemoto
+
+    private lateinit var fotosDePerfil: FotosDePerfil
 
     val repositorio: RepositorioAcesso get() = repositorioRemoto
+
+    /** Foto de perfil de cada usuário, guardada no aparelho. */
+    val fotos: FotosDePerfil get() = fotosDePerfil
+
+    /** Fila de cadastros pendentes (aprovar e recusar), para quem tem a permissão aprovar_cadastro. */
+    val repositorioCadastros: RepositorioCadastros get() = cadastrosRemoto
+
+    /** Gestão de usuários da própria organização (listar e convidar). */
+    val repositorioUsuarios: RepositorioUsuarios get() = usuariosRemoto
     val clienteAutenticado: OkHttpClient get() = rede.autenticado
     val retrofitAutenticado: Retrofit by lazy { rede.retrofit(rede.autenticado) }
 
     fun inicializar(contexto: Context, configuracao: Configuracao) {
         if (::repositorioRemoto.isInitialized) return
+        fotosDePerfil = FotosDePerfil(contexto.applicationContext)
         val tokens = ProvedorTokensTardio()
         rede = Rede(configuracao.urlApi, tokens, configuracao.depuracao)
         val publica = rede.retrofit(rede.publico).create(AcessoApi::class.java)
@@ -51,6 +70,8 @@ object AcessoGrafo {
                 versaoApp = configuracao.versaoApp.take(20),
             ),
         )
+        cadastrosRemoto = RepositorioCadastrosRemoto(api = autenticada, json = rede.json)
+        usuariosRemoto = RepositorioUsuariosRemoto(api = autenticada, json = rede.json)
         tokens.alvo = repositorioRemoto
     }
 
