@@ -58,8 +58,19 @@ class UsuarioDetalheViewModel(
     private val _estado = MutableStateFlow(UsuarioDetalheEstado())
     val estado: StateFlow<UsuarioDetalheEstado> = _estado.asStateFlow()
 
+    private var jaCarregou = false
+
     init {
         carregar()
+    }
+
+    /** Ao voltar de outra tela (por exemplo, a edição) atualiza os dados sem piscar o carregamento. */
+    fun aoRetomar() {
+        if (!jaCarregou || _estado.value.processando) return
+        viewModelScope.launch {
+            val r = repositorio.obter(idUsuario)
+            if (r is Resultado.Sucesso) mostrar(r.valor)
+        }
     }
 
     fun carregar() {
@@ -73,6 +84,7 @@ class UsuarioDetalheViewModel(
     }
 
     private fun mostrar(usuario: Usuario) {
+        jaCarregou = true
         val ator = acesso.sessao.value?.usuario
         _estado.update {
             it.copy(

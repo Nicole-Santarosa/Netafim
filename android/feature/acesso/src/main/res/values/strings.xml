@@ -152,6 +152,9 @@
     <string name="usuario_sem_acoes">Você pode ver este usuário, mas não pode alterá-lo.</string>
     <string name="usuarios_situacao_ativo">Ativo</string>
     <string name="usuarios_situacao_desconhecida">Desconhecida</string>
+    <string name="usuario_acao_editar">Editar dados</string>
+    <string name="usuario_editar_titulo">Editar usuário</string>
+    <string name="usuario_editar_salvar">Salvar alterações</string>
     <string name="usuario_acao_perfil">Definir perfil</string>
     <string name="usuario_acao_convite">Reenviar convite</string>
     <string name="usuario_acao_ativar">Ativar usuário</string>
