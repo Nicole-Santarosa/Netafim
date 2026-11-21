@@ -22,5 +22,11 @@ dependencyResolutionManagement {
     }
 }
 
+// Nome do projeto
 rootProject.name = "Netafim"
+
+// Aplicativo principal.
 include(":app")
+
+// Módulo de autenticação, cadastro, sessão e acesso.
+include(":feature:acesso")
