@@ -33,6 +33,8 @@ import java.util.Locale
 fun AssinaturaEtapa(viewModel: RelatorioViewModel) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val assinaturaCliente by viewModel.caminhoAssinaturaCliente.collectAsState()
+    val assinaturaEspecialista by viewModel.caminhoAssinaturaEspecialista.collectAsState()
 
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(scrollState).padding(16.dp),
@@ -42,25 +44,29 @@ fun AssinaturaEtapa(viewModel: RelatorioViewModel) {
 
         BlocoAssinatura(
             titulo = "Assinatura do Cliente *",
-            onSalvar = { linhas, size -> salvarPngProporcional(context, linhas, size, "CLIENTE") }
-        ) { caminho ->
-            viewModel.definirAssinaturaCliente(caminho)
-        }
+            caminhoSalvo = assinaturaCliente,
+            onSalvar = { linhas, size -> salvarPngProporcional(context, linhas, size, "CLIENTE") },
+            onSalvo = { caminho -> viewModel.definirAssinaturaCliente(caminho) },
+            onLimpar = { viewModel.definirAssinaturaCliente(null) }
+        )
 
         BlocoAssinatura(
             titulo = "Assinatura do Especialista *",
-            onSalvar = { linhas, size -> salvarPngProporcional(context, linhas, size, "ESPECIALISTA") }
-        ) { caminho ->
-            viewModel.definirAssinaturaEspecialista(caminho)
-        }
+            caminhoSalvo = assinaturaEspecialista,
+            onSalvar = { linhas, size -> salvarPngProporcional(context, linhas, size, "ESPECIALISTA") },
+            onSalvo = { caminho -> viewModel.definirAssinaturaEspecialista(caminho) },
+            onLimpar = { viewModel.definirAssinaturaEspecialista(null) }
+        )
     }
 }
 
 @Composable
 fun BlocoAssinatura(
     titulo: String,
+    caminhoSalvo: String?,
     onSalvar: (List<List<Offset>>, IntSize) -> File?,
-    onSalvo: (String) -> Unit
+    onSalvo: (String) -> Unit,
+    onLimpar: () -> Unit
 ) {
     val linhas = remember { mutableStateListOf<List<Offset>>() }
     var linhaAtual = remember { mutableStateListOf<Offset>() }
@@ -81,6 +87,7 @@ fun BlocoAssinatura(
                         onDragStart = { offset ->
                             linhaAtual = mutableStateListOf(offset)
                             linhas.add(linhaAtual)
+                            onLimpar()
                         },
                         onDrag = { change, _ ->
                             linhaAtual.add(change.position)
@@ -109,6 +116,7 @@ fun BlocoAssinatura(
                     linhas.clear()
                     linhaAtual.clear()
                     assinado = false
+                    onLimpar()
                 },
                 modifier = Modifier.weight(1f)
             ) {
@@ -126,7 +134,7 @@ fun BlocoAssinatura(
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF181F4E)),
                 enabled = assinado
             ) {
-                Text("Confirmar Assinatura", color = Color(0xFFFFFBEB))
+                Text(if (caminhoSalvo != null) "Confirmada" else "Confirmar Assinatura", color = Color(0xFFFFFBEB))
             }
         }
     }
@@ -168,10 +176,10 @@ private fun salvarPngProporcional(context: Context, linhas: List<List<Offset>>, 
         val dir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
         val file = File.createTempFile("ASSINATURA_${tipo}_${time}_", ".png", dir)
 
-        val fos = FileOutputStream(file)
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
-        fos.flush()
-        fos.close()
+        FileOutputStream(file).use { fos ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
+            fos.flush()
+        }
 
         file
     } catch (e: Exception) {

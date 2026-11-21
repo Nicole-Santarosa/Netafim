@@ -43,36 +43,66 @@ class RelatorioViewModel(
     private val _caminhoAssinaturaEspecialista = MutableStateFlow<String?>(null)
     val caminhoAssinaturaEspecialista: StateFlow<String?> = _caminhoAssinaturaEspecialista.asStateFlow()
 
+    private val _salvando = MutableStateFlow(false)
+    val salvando: StateFlow<Boolean> = _salvando.asStateFlow()
+
+    private val _erroPersistencia = MutableStateFlow<String?>(null)
+    val erroPersistencia: StateFlow<String?> = _erroPersistencia.asStateFlow()
+
     fun setMotivo(motivo: String) {
         _motivoAtendimento.value = motivo
     }
 
-    fun atualizarConstatacoes(v: String) { _constatacoes.value = v }
-    fun atualizarAtividades(v: String) { _atividades.value = v }
-    fun atualizarPlanoAcao(v: String) { _planoAcao.value = v }
-    fun atualizarConclusaoVisita(v: String) { _conclusaoVisita.value = v }
+    fun atualizarConstatacoes(v: String) {
+        _constatacoes.value = v
+        limparErroPersistencia()
+    }
+
+    fun atualizarAtividades(v: String) {
+        _atividades.value = v
+        limparErroPersistencia()
+    }
+
+    fun atualizarPlanoAcao(v: String) {
+        _planoAcao.value = v
+        limparErroPersistencia()
+    }
+
+    fun atualizarConclusaoVisita(v: String) {
+        _conclusaoVisita.value = v
+        limparErroPersistencia()
+    }
 
     fun adicionarFotoConstatacao(path: String) {
         _fotosConstatacao.value = _fotosConstatacao.value + path
+        limparErroPersistencia()
     }
 
     fun adicionarVideoAtividade(path: String) {
         _videosAtividade.value = _videosAtividade.value + path
+        limparErroPersistencia()
     }
 
     fun adicionarAnexoExtra(path: String) {
         _anexosExtras.value = _anexosExtras.value + path
+        limparErroPersistencia()
     }
 
-    fun definirAssinaturaCliente(path: String) {
+    fun definirAssinaturaCliente(path: String?) {
         _caminhoAssinaturaCliente.value = path
+        limparErroPersistencia()
     }
 
-    fun definirAssinaturaEspecialista(path: String) {
+    fun definirAssinaturaEspecialista(path: String?) {
         _caminhoAssinaturaEspecialista.value = path
+        limparErroPersistencia()
     }
 
-    // Validação estrita por etapa e regras de negócio baseadas no motivo
+    fun limparErroPersistencia() {
+        _erroPersistencia.value = null
+    }
+
+    // Validação por etapa e por motivo de atendimento
     fun validarEtapa(etapa: Int): Pair<Boolean, String> {
         val motivo = _motivoAtendimento.value
         val reqConstatacao = _constatacoes.value.isNotBlank()
@@ -108,21 +138,40 @@ class RelatorioViewModel(
         }
     }
 
-    fun salvarRelatorio(onResult: (Boolean) -> Unit) {
+    fun salvarRelatorio(onResult: (Boolean, String?) -> Unit) {
+        if (_salvando.value) return
+
         viewModelScope.launch {
-            val sucesso = repositorio.salvarRascunho(
-                motivo = _motivoAtendimento.value,
-                constatacoes = _constatacoes.value,
-                atividades = _atividades.value,
-                planoAcao = _planoAcao.value,
-                conclusao = _conclusaoVisita.value,
-                fotos = _fotosConstatacao.value,
-                videos = _videosAtividade.value,
-                anexos = _anexosExtras.value,
-                assinaturaCliente = _caminhoAssinaturaCliente.value,
-                assinaturaEspecialista = _caminhoAssinaturaEspecialista.value
-            )
-            onResult(sucesso)
+            _salvando.value = true
+            _erroPersistencia.value = null
+            try {
+                val sucesso = repositorio.salvarRelatorio(
+                    motivo = _motivoAtendimento.value,
+                    constatacoes = _constatacoes.value,
+                    atividades = _atividades.value,
+                    planoAcao = _planoAcao.value,
+                    conclusao = _conclusaoVisita.value,
+                    fotos = _fotosConstatacao.value,
+                    videos = _videosAtividade.value,
+                    anexos = _anexosExtras.value,
+                    assinaturaCliente = _caminhoAssinaturaCliente.value,
+                    assinaturaEspecialista = _caminhoAssinaturaEspecialista.value
+                )
+                if (sucesso) {
+                    onResult(true, null)
+                } else {
+                    val mensagem = "Não foi possível salvar o relatório localmente."
+                    _erroPersistencia.value = mensagem
+                    onResult(false, mensagem)
+                }
+            } catch (e: Exception) {
+                val mensagem = e.message?.takeIf { it.isNotBlank() }
+                    ?: "Erro inesperado ao persistir o relatório."
+                _erroPersistencia.value = mensagem
+                onResult(false, mensagem)
+            } finally {
+                _salvando.value = false
+            }
         }
     }
 }

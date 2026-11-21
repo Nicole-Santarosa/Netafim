@@ -31,6 +31,8 @@ fun RelatorioRota(
     }
 
     var etapaAtual by remember { mutableStateOf(1) }
+    val salvando by viewModel.salvando.collectAsState()
+    val erroPersistencia by viewModel.erroPersistencia.collectAsState()
 
     LaunchedEffect(motivoInicial) {
         viewModel.setMotivo(motivoInicial)
@@ -54,7 +56,11 @@ fun RelatorioRota(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     if (etapaAtual > 1) {
-                        OutlinedButton(onClick = { etapaAtual -= 1 }, modifier = Modifier.weight(1f)) {
+                        OutlinedButton(
+                            onClick = { etapaAtual -= 1 },
+                            enabled = !salvando,
+                            modifier = Modifier.weight(1f)
+                        ) {
                             Text("Voltar")
                         }
                     }
@@ -68,32 +74,66 @@ fun RelatorioRota(
                                 if (etapaAtual < 4) {
                                     etapaAtual += 1
                                 } else {
-                                    viewModel.salvarRelatorio { sucesso ->
+                                    viewModel.salvarRelatorio { sucesso, erro ->
                                         if (sucesso) {
                                             Toast.makeText(context, "Relatório salvo com sucesso!", Toast.LENGTH_LONG).show()
                                             onVoltar()
                                         } else {
-                                            Toast.makeText(context, "Erro ao salvar relatório no banco.", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(
+                                                context,
+                                                erro ?: "Falha ao salvar relatório.",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
                                         }
                                     }
                                 }
                             }
                         },
+                        enabled = !salvando,
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF181F4E))
                     ) {
-                        Text(if (etapaAtual == 4) "Salvar e Concluir" else "Avançar", color = Color(0xFFFFFBEB))
+                        Text(
+                            text = when {
+                                salvando -> "Salvando..."
+                                etapaAtual == 4 -> "Salvar e Concluir"
+                                else -> "Avançar"
+                            },
+                            color = Color(0xFFFFFBEB)
+                        )
                     }
                 }
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when (etapaAtual) {
-                1 -> ConstatacoesEtapa(viewModel = viewModel)
-                2 -> AtividadesEtapa(viewModel = viewModel)
-                3 -> PlanoAcaoEtapa(viewModel = viewModel)
-                4 -> AssinaturaEtapa(viewModel = viewModel)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            if (erroPersistencia != null) {
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = erroPersistencia ?: "",
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            }
+
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                when (etapaAtual) {
+                    1 -> ConstatacoesEtapa(viewModel = viewModel)
+                    2 -> AtividadesEtapa(viewModel = viewModel)
+                    3 -> PlanoAcaoEtapa(viewModel = viewModel)
+                    4 -> AssinaturaEtapa(viewModel = viewModel)
+                }
             }
         }
     }

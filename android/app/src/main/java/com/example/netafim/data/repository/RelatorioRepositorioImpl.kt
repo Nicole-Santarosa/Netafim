@@ -1,7 +1,7 @@
 package com.example.netafim.data.repository
 
 class RelatorioRepositorioImpl : RelatorioRepositorio {
-    override suspend fun salvarRascunho(
+    override suspend fun salvarRelatorio(
         motivo: String,
         constatacoes: String,
         atividades: String,
@@ -13,7 +13,8 @@ class RelatorioRepositorioImpl : RelatorioRepositorio {
         assinaturaCliente: String?,
         assinaturaEspecialista: String?
     ): Boolean {
-        // Ponto de integração com a persistência Room (Pessoa 4 -)
+        // Implementação temporária local até a integração concreta com Room (Pessoa 4).
+        // Relatórios ficam fora da sincronização v1 de atendimentos.
         return true
     }
 }

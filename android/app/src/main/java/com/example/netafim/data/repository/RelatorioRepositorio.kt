@@ -1,7 +1,7 @@
 package com.example.netafim.data.repository
 
 interface RelatorioRepositorio {
-    suspend fun salvarRascunho(
+    suspend fun salvarRelatorio(
         motivo: String,
         constatacoes: String,
         atividades: String,
