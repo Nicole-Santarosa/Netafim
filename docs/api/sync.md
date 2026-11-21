@@ -4,6 +4,8 @@ Status: as duas rotas estão implementadas e testadas contra o PostgreSQL local.
 
 Responsável pelas rotas: Pessoa 2 (Rafael), conforme a divisão confirmada em 19/11/2026. A Pessoa 4 (Nicole) faz só a camada local do Android e consome estes resultados. Os nomes de tipo Kotlin não fazem parte deste contrato, são acordados à parte.
 
+Revisão de 21/11/2026: datas com fuso (seção 1), duplicado sem registro tratado como erro (seções 3.4 e 4), nomes de campo separados de valores de `resultado` (seção 3.4) e propostas do grupo registradas na seção 6. Nada disso muda o código.
+
 Estado em 20/11/2026: as duas rotas estão na branch `rafael-atendimentos-models`, sem merge na main, com 316 testes da suíte versionada passando. Não há teste com JWT real, porque o módulo de acesso do Rodrigo ainda não entrou; os testes usam `force_authenticate`.
 
 A seção "Pontos em aberto" separa o que foi decidido (19/11/2026) do que segue pendente. O restante descreve o que o código faz. Onde o texto diz "proposta", é algo pendente que não foi implementado.
@@ -21,6 +23,7 @@ O mesmo conteúdo está no OpenAPI (`atendimentos-openapi.yaml`, tag `sync`). Em
 
 - Base: `/api/v1`, rotas sem barra final, só JSON, `Authorization: Bearer <access>`.
 - O usuário que o banco enxerga é o da sessão. O RLS e os gatilhos decidem permissão e máquina de estados, como no `POST` e no `PATCH` de hoje. A sincronização não reimplementa regra.
+- Datas e fuso: o servidor usa `America/Sao_Paulo` com fuso ligado, e o DRF devolve datas ISO 8601 com o deslocamento do servidor, por exemplo `2026-11-02T11:03:11-03:00`, e não com `Z`. Confirmado em teste do DRF com essa configuração. O Android deve ler a data com o deslocamento (por exemplo `OffsetDateTime.parse`) e comparar por instante. Na entrada (`data_abertura`), o servidor aceita `Z` ou qualquer deslocamento.
 - Erros de lote (a requisição inteira falhou):
   - 401 com `codigo: token_invalido` (módulo de acesso) ou 401 padrão do DRF, que não traz `codigo`. O Android trata `codigo` como opcional.
   - Nesta branch, sem o módulo de acesso, a rota fechada responde 403 no formato padrão do DRF (já descrito em `NaoAutenticado` no OpenAPI). O 401 só aparece depois do merge do Rodrigo.
@@ -61,7 +64,7 @@ Resposta 200:
             "origem_evento": "usuario",
             "valor_anterior": null,
             "valor_novo": "aberto",
-            "data_evento": "2026-11-02T14:03:11Z"
+            "data_evento": "2026-11-02T11:03:11-03:00"
           }
         ]
       }
@@ -143,7 +146,7 @@ Campos da operação:
 
 | Campo | Obrigatório | Descrição |
 |---|---|---|
-| id_operacao | sim | UUID gerado no app, único por operação. Na versão atual do contrato ele só serve para correlacionar a resposta (o servidor o devolve como veio). Reenviar uma operação na fila com o mesmo `id_operacao`. |
+| id_operacao | sim | UUID gerado no app, único por operação. Na versão atual do contrato ele só serve para correlacionar a resposta (o servidor o devolve como veio). Reenviar uma operação da fila sempre com o mesmo `id_operacao`: a fila do app nunca gera um novo ao reenviar. |
 | entidade | sim | Só `atendimento` na v1. Outro valor vira operação rejeitada (400). |
 | tipo | sim | `criar` ou `atualizar`. |
 | id_atendimento | sim | UUID do atendimento, gerado no app. |
@@ -183,6 +186,8 @@ Lote lido: `200 OK`, sempre, mesmo com falhas dentro. Um resultado por operaçã
 }
 ```
 
+Atenção a um ponto que gerou confusão: `criado`, `atualizado`, `duplicado`, `conflito_de_versao` e `rejeitado` são valores do campo `resultado`, não campos do JSON. `conflito_de_versao` também aparece como `codigo` dentro de `erro`. Os campos da operação enviada são `id_operacao`, `entidade`, `tipo`, `id_atendimento`, `versao_esperada` (só em atualizar) e `payload`. Nos resultados, o campo extra `comparacao` (`igual` ou `diferente`) existe só no `duplicado`.
+
 Cada resultado tem `id_operacao`, `id_atendimento`, `resultado` e `status` (o código HTTP equivalente que a mesma operação teria no endpoint isolado). Os demais campos dependem do resultado:
 
 | resultado | status | Quando | Corpo além dos campos fixos |
@@ -192,7 +197,7 @@ Cada resultado tem `id_operacao`, `id_atendimento`, `resultado` e `status` (o c�
 | duplicado, comparacao igual | 200 | O UUID já existe, é visível ao usuário e o conteúdo é igual ao enviado | comparacao: "igual"; registro: o registro atual do servidor. É sucesso idempotente |
 | duplicado, comparacao diferente | 409 | O UUID já existe, é visível ao usuário e o conteúdo é diferente | comparacao: "diferente"; erro com codigo "duplicado"; registro_servidor: o registro atual. É conflito |
 | conflito_de_versao | 409 | `versao_esperada` diferente da versão atual do servidor | erro com codigo "conflito_de_versao", detail e versao_atual; registro_servidor (só no push, o PATCH isolado devolve só a versao_atual) |
-| rejeitado | 400, 403, 404 ou 422 | Validação, permissão, regra do banco ou atendimento invisível | erro com detail e, quando houver, codigo, campos e versao_atual |
+| rejeitado | 400, 403, 404, 409 ou 422 | Validação, permissão, regra do banco ou atendimento invisível, ou criação com id_atendimento que já existe mas o usuário não enxerga (409 duplicado, sem registro) | erro com detail e, quando houver, codigo, campos e versao_atual |
 
 Detalhe de cada rejeição (`rejeitado`):
 
@@ -202,9 +207,10 @@ Detalhe de cada rejeição (`rejeitado`):
 | 400 | Valor que o banco recusa por formato ou tamanho (22xxx) | codigo `valor_invalido` |
 | 403 | RLS ou permissão: `sem_permissao` | codigo `sem_permissao` |
 | 404 | Atualizar um atendimento inexistente, excluído ou invisível ao usuário | codigo `nao_encontrado` e detail "Não encontrado." O código existe só no push; o PATCH isolado segue sem codigo |
+| 409 | Criar com um id_atendimento que já existe mas que o usuário não enxerga | codigo `duplicado` e detail "Já existe um registro com esses dados.", sem registro e sem registro_servidor, para não revelar que o atendimento existe |
 | 422 | Gatilho ou CHECK do banco: `regra_de_negocio`, `referencia_invalida`, `campo_obrigatorio` | codigo e detail; no gatilho, a própria mensagem dele; no CHECK de tabela, mensagem fixa |
 
-A tradução do erro do PostgreSQL é a mesma de `apps/core/erros.py` (a função `_traduzir` é reaproveitada). Erro de banco que a API não sabe traduzir não vira resultado: propaga como 500 e a transação da requisição é desfeita (o reenvio é seguro, porque criar é idempotente). O 409 `duplicado` de uma criação cujo id existe mas o usuário não enxerga também é um `rejeitado` (status 409, codigo `duplicado`, sem registro, para não revelar que o atendimento existe). Nesse caso o app gera um novo `id_atendimento` e reenvia o mesmo conteúdo como operação nova (mesma orientação do contrato de `POST /atendimentos`).
+A tradução do erro do PostgreSQL é a mesma de `apps/core/erros.py` (a função `_traduzir` é reaproveitada). Erro de banco que a API não sabe traduzir não vira resultado: propaga como 500 e a transação da requisição é desfeita (o reenvio é seguro, porque criar é idempotente). O 409 `duplicado` de uma criação cujo id existe mas o usuário não enxerga também é um `rejeitado` (status 409, codigo `duplicado`, sem registro, para não revelar que o atendimento existe). Nesse caso, no push, o app marca a operação como erro local, sem GET e sem reenvio automático (a rejeição local sem GET está alinhada com a Pessoa 4; o não reenvio automático foi proposto a ela em 21/11/2026 e aguarda confirmação). Um UUID gerado no aparelho que colide com o de outra pessoa é praticamente impossível, então o caso indica defeito, e trocar a chave primária local e a fila automaticamente seria mais arriscado do que mostrar o erro. No `POST /atendimentos` isolado, a orientação do OpenAPI (gerar novo id e reenviar) continua valendo.
 
 ### 3.5 Como o servidor decide o duplicado
 
@@ -242,12 +248,12 @@ PUSH (um resultado por operação):
 | Situação para o app | Origem no contrato | O que a camada local faz |
 |---|---|---|
 | Sucesso | criado, atualizado, ou duplicado com comparacao igual | Troca o registro local pelo `registro` devolvido; guarda `versao`, `sync_seq` e `numero_protocolo`; marca `sincronizado` |
-| Duplicidade | duplicado com comparacao diferente (409), ou rejeitado 409 duplicado sem registro | Diferente: tratar como conflito e guardar `registro_servidor`. Sem registro: gerar novo `id_atendimento` e reenviar como operação nova |
+| Duplicidade | duplicado com comparacao diferente (409), ou rejeitado 409 duplicado sem registro | Diferente: tratar como conflito e guardar `registro_servidor`. Sem registro: marcar `erro` com a mensagem, sem GET e sem reenvio automático |
 | Conflito de versão | conflito_de_versao (409, `versao_atual`) | Guardar `registro_servidor`; marcar `conflito`; manter o que o usuário digitou para refazer |
 | Validação | rejeitado 400 com `campos`, ou 422 | Não reenviar igual. Mostrar `detail` e `campos`; marcar `erro`; o usuário corrige ou descarta |
 | Autorização | rejeitado 403 ou 404 | Não reenviar. Marcar `erro` com a mensagem |
 | Comunicação | sem resposta, timeout, 5xx do lote | Manter a fila; reenviar com os mesmos `id_operacao`, com espera crescente |
-| Sessão | 401 do lote (`token_invalido` ou 401 sem codigo) | Renovar o token e reenviar o lote; sem renovação, pedir login |
+| Sessão | 401 do lote (`token_invalido` ou 401 sem codigo) | O interceptor renova o token e reenvia o lote. Só se a renovação falhar, interromper o ciclo, manter fila e cursor e pedir login. 403 por operação é `rejeitado` e não derruba a sessão |
 
 PULL:
 
@@ -283,6 +289,13 @@ Decidido em 19/11/2026 e já refletido no código e neste contrato:
 - Notificações (migração 015): não implementadas, só o ponto de extensão comentado depois do savepoint da criação.
 - Evidências e outras entidades fora do push: `entidade` obrigatória e só `atendimento`.
 - Criação de id que existe mas o usuário não enxerga: rejeitado 409 `duplicado` sem registro. O `payload` de criar é o corpo inteiro do `POST /atendimentos`.
+
+Propostas enviadas ao grupo em 21/11/2026, aguardando resposta (nada aqui está decidido nem implementado):
+
+- Coordenador: Pessoa 2 implementa, só com interfaces, sem Retrofit. Ordem PUSH antes de PULL. Push com falha de rede não dispara pull; 401 interrompe; rejeição individual não impede o pull.
+- `sync_seq` do histórico: opção A, subir o `sync_seq` do atendimento nos três eventos sem somar `versao`. Cuidado na migração: `fn_atendimento_antes` soma `versao` e recusa estado final, e `editado_pos_finalizacao` ocorre em atendimento finalizado. O script parte da definição atual (`pg_get_functiondef`) e mantém a guarda de MD5.
+- `sync_operacao` na v1, versão mínima, só para atualizar. Chave: `id_operacao`, estável em todo reenvio. Registro: `id_operacao`, `id_usuario`, `id_dispositivo`, `id_atendimento`, hash do conteúdo (tipo, `id_atendimento`, `versao_esperada`, `payload`), `resultado`, `resposta` jsonb e data. Na v1 só o resultado `atualizado` é guardado. Mesmo `id_operacao`, mesmo usuário e mesmo hash devolve o resultado original sem reaplicar. Mesmo `id_operacao` com hash diferente: 409 com `codigo: operacao_reutilizada`. O `app_django` recebe só SELECT e INSERT e a limpeza (proposta de 30 dias) fica em pg_cron. Número da migração (009 ou 017), retenção e inclusão do usuário na chave dependem do Rodrigo.
+- Integração: Pessoa 2 integra HTTP, coordenador e Room e escreve os testes integrados; Pessoa 4 testa a persistência Room; Pessoa 1 valida em aparelho contra o Supabase real depois do merge do acesso.
 
 Em aberto:
 

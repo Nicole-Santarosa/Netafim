@@ -410,9 +410,11 @@ paths:
         O lote lido responde sempre 200, com um resultado por operação, na mesma
         ordem. Resultados: criado (201), atualizado (200), duplicado (comparacao
         igual: 200, sucesso; comparacao diferente: 409, conflito),
-        conflito_de_versao (409) e rejeitado (400, 403, 404 ou 422). O campo
+        conflito_de_versao (409) e rejeitado (400, 403, 404, 409 ou 422). O campo
         status de cada resultado é o código HTTP equivalente da mesma operação
-        no endpoint isolado.
+        no endpoint isolado. criado, atualizado, duplicado, conflito_de_versao e
+        rejeitado são valores do campo resultado, não campos. As datas saem com o
+        deslocamento de America/Sao_Paulo (por exemplo -03:00), não com Z.
 
         Idempotência: criar nunca duplica (a chave é o UUID do app). Atualizar
         nunca soma a versao duas vezes (UPDATE com WHERE versao), mas o reenvio
@@ -422,7 +424,8 @@ paths:
         do conflito deixa o app perceber que a atualização já foi aplicada.
 
         Duplicado: se o UUID da criação já existe, o servidor relê o atendimento.
-        Invisível ao usuário: rejeitado 409 duplicado, sem registro. Visível: compara
+        Invisível ao usuário: rejeitado 409 duplicado, sem registro (o app marca erro
+        local, sem GET e sem reenvio automático). Visível: compara
         só os campos que o POST de criação aceita (chave ausente vale nulo ou
         vazio; culturas como conjunto sem ordem; data_abertura só se foi enviada,
         pelo instante em UTC) e responde duplicado igual (200) ou diferente (409).
