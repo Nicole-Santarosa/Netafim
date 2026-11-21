@@ -1,25 +1,40 @@
 package com.example.netafim.data.local
 
 import androidx.room.Entity
-import androidx.room.PrimaryKey
 
-//informa ao Room que essa classe representa a tabela local.
-@Entity(tableName = "ATENDIMENTO_LOCAL")
+// Representa um atendimento armazenado no banco de dados local.
+@Entity(
+    tableName = "ATENDIMENTO_LOCAL",
+    primaryKeys = ["usuarioDonoId", "idAtendimento"]
+)
 data class AtendimentoEntity(
-    @PrimaryKey
+
+    // ID do usuário autenticado que é proprietário desta cópia local.
+    val usuarioDonoId: Int,
+
+    // UUID v4 que identifica o atendimento.
     val idAtendimento: String,
 
-    val numeroProtocolo: String? = null, //É opcional porque um atendimento criado offline pode ainda não ter protocolo atribuído pelo servidor.
+    // Número do protocolo atribuído pelo servidor.
+    // Será nulo enquanto o atendimento não for sincronizado.
+    val numeroProtocolo: String? = null,
 
-    val dadosJson: String, //Guarda os dados do atendimento em formato JSON, conforme o modelo do projeto.
+    // Dados do atendimento armazenados em formato JSON.
+    val dadosJson: String,
 
-    val origemRegistro: String, //Identifica a origem do registro.
+    // Indica se o atendimento foi criado localmente ou recebido do servidor.
+    val origemRegistro: String,
 
-    val statusLocal: String, //Registra o estado local do atendimento.
+    // Situação da sincronização do atendimento.
+    val statusLocal: String,
 
-    val versaoBase: Int = 0, //Ajuda a identificar a versão a partir da qual o atendimento foi editado.
+    // Última versão do registro conhecida pelo aplicativo.
+    // Um atendimento novo, criado offline, começa com versão zero.
+    val versaoBase: Int = 0,
 
-    val syncSeqServidor: Long? = null, //Pode ser nulo quando ainda não há sequência conhecida no servidor.
+    // Sequência de sincronização atribuída pelo servidor.
+    val syncSeqServidor: Long? = null,
 
-    val dataCriacaoLocal: Long //Armazena a data e hora de criação como timestamp em milissegundos.
+    // Data e hora de criação no dispositivo, em timestamp (milissegundos).
+    val dataCriacaoLocal: Long
 )

@@ -20,5 +20,8 @@ class NetafimApp : Application() {
                 depuracao = BuildConfig.DEBUG,
             ),
         )
+
+        // Inicializa Room e os repositórios de persistência local.
+        PersistenciaGrafo.inicializar(this)
     }
 }
