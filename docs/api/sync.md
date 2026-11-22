@@ -8,7 +8,7 @@ Revisão de 21/11/2026: datas com fuso (seção 1), duplicado sem registro trata
 
 Estado em 20/11/2026: as duas rotas estão na branch `rafael-atendimentos-models`, sem merge na main, com 316 testes da suíte versionada passando. Não há teste com JWT real, porque o módulo de acesso do Rodrigo ainda não entrou; os testes usam `force_authenticate`.
 
-A seção "Pontos em aberto" separa o que foi decidido (19/11/2026) do que segue pendente. O restante descreve o que o código faz. Onde o texto diz "proposta", é algo pendente que não foi implementado.
+A seção "Pontos em aberto" separa o que foi decidido (19/11/2026) do que segue pendente. O restante descreve o que o código faz hoje. Tudo que ainda não está no código aparece marcado com um destes três estados: "Decidido, não implementado", "Depende de validação do Rodrigo" ou "Proposta, aguardando confirmação". Onde o texto diz "proposta", é algo pendente que não foi implementado. O `pull_atendimentos` atual olha só o `sync_seq` do atendimento.
 
 O mesmo conteúdo está no OpenAPI (`atendimentos-openapi.yaml`, tag `sync`). Em caso de divergência entre os dois, corrija os dois.
 
@@ -99,10 +99,13 @@ Regras:
 2. Quem decide o que cada perfil recebe é o RLS, pela conexão da API com o usuário da sessão. A rota não filtra por usuário. Um atendimento que o perfil não enxerga não aparece, nem o histórico dele.
 3. O RLS não esconde excluídos logicamente. Por isso o excluído que o perfil enxerga desce como tombstone.
 4. O app pode receber o mesmo registro mais de uma vez. O cursor é tirado na escrita e não no commit: duas transações concorrentes podem confirmar fora de ordem, e um registro pode ficar para trás do cursor. A mitigação combinada é do cliente: pedir com sobreposição (`desde = max(0, cursor - 1000)`) e aplicar de forma idempotente (só substituir quando `versao` ou `sync_seq` forem maiores que os locais; nunca sobrescrever registro com `statusLocal = pendente_envio`).
+   - O cursor deve ser lido como uma posição de sincronização com sobreposição e recuperação por resincronização completa, e não como uma garantia absoluta de entrega.
+   - Motivo: o `sync_seq` é tirado por `nextval` na escrita e não no commit. Uma transação que confirma depois de a sua posição já ter ficado fora da janela de 1.000 não é recuperada pela sobreposição. Só a resincronização completa recupera esse registro (seção 4, subseção "Resincronização completa").
+   - Melhoria futura, Depende de validação do Rodrigo: trava consultiva (advisory lock em `fn_sync_meta`) e pull com lock exclusivo curto lendo o `last_value` da sequência, para o cursor nunca passar de uma escrita ainda não confirmada. Impacto a avaliar: `fn_sync_meta`, concorrência e bloqueio de escrita. Não implementado; o `pull_atendimentos` atual continua olhando só o `sync_seq` do atendimento.
 5. Paginação: repetir a chamada com `desde` igual ao `cursor` devolvido enquanto `tem_mais` for true.
 6. Custo: no máximo 3 consultas por página (atendimentos, culturas, histórico), qualquer que seja o tamanho da página.
 
-Limitação conhecida, sem correção: três eventos de histórico (`reagendado`, `reclassificado` e `editado_pos_finalizacao`) são gravados pelo banco sem nenhum UPDATE no atendimento. O `sync_seq` do atendimento não sobe, então esses eventos só chegam no pull quando o atendimento mudar por outro motivo. O `GET /atendimentos/{id}` (online) lê o histórico direto da tabela e sempre traz tudo. Proposta pendente, não implementada: subir só o `sync_seq` do atendimento quando um dos três eventos for gravado, sem somar na `versao` (seção 6, ponto em aberto 2). Isso exige migração do Rodrigo.
+Limitação conhecida, válida hoje: três eventos de histórico (`reagendado`, `reclassificado` e `editado_pos_finalizacao`) são gravados pelo banco sem nenhum UPDATE no atendimento. O `sync_seq` do atendimento não sobe, então esses eventos só chegam no pull quando o atendimento mudar por outro motivo. O `GET /atendimentos/{id}` (online) lê o histórico direto da tabela e sempre traz tudo. A correção decidida é a coluna `sync_seq` em `historico_atendimento` (seção 6), ainda não implementada. Estado: Decidido com a Pessoa 4 (22/11/2026), não implementado, depende de migração do Rodrigo.
 
 ## 3. POST /api/v1/sync/push
 
@@ -166,6 +169,8 @@ O mesmo corpo do `POST /atendimentos` (schema `AberturaAtendimento`), validado p
 - `nome_produtor` e `nome_fazenda_informado` vazios ou só com espaços contam como ausentes. O cliente deve omitir a chave quando o texto estiver vazio;
 - chaves desconhecidas e as que o servidor decide (`status`, `numero_protocolo`, `versao`, `sync_seq`, `prioridade`, destinação, técnico, snapshots, `id_solicitante`) são ignoradas. O solicitante é sempre o usuário da sessão;
 - `id_atendimento` dentro do `payload` precisa ser igual ao `id_atendimento` da operação. Se diferir, a operação é rejeitada com 400 no campo `id_atendimento`.
+
+Nota sobre `id_distribuidor_origem`: quando o usuário é distribuidor, o app deve enviar o campo com o valor vindo da sessão autenticada dele, e não de um campo de formulário. Hoje o servidor não valida que o valor enviado é o do distribuidor do usuário; só o banco recusa id inexistente (422 `referencia_invalida`). Endurecimento possível: o servidor preencher ou conferir o valor pela sessão. Estado do endurecimento: Proposta, aguardando confirmação.
 
 ### 3.3 payload de atualizar
 
@@ -239,9 +244,17 @@ Regra combinada: conteúdo igual é sucesso, diferente é conflito. Quem confirm
 
 A chamada das funções de notificação (migração 015) não foi implementada. Em `push.py` há um ponto de extensão comentado e marcado, logo depois do savepoint da criação. Quando a 015 existir, a chamada entra ali, com falha só em log, sem derrubar a operação nem mudar o resultado devolvido. Não faz parte do contrato HTTP.
 
+Decidido, não implementado: a chamada das funções da migração 015 será feita na mesma requisição da mudança, porque os eventos `avaliacao_pendente` e `agendado` exigem que o ator seja o mesmo da transição. Regras: só quando o resultado for `criado` ou `atualizado`, nunca em `duplicado`; dentro de savepoint; sem notificar quando o ator é o próprio destinatário; uma nova tentativa em caso de erro 40001.
+
 ## 4. Como o Android consome
 
 A tabela traz o mínimo que a Pessoa 4 precisa tratar. Os nomes de tipo Kotlin são acordados à parte.
+
+O app deve separar três níveis de resultado e não misturá-los:
+
+- Resultado por operação (campo `resultado` do push): `criado`, `atualizado`, `duplicado` com `comparacao: igual` (sucesso idempotente), `duplicado` com `comparacao: diferente` (duplicidade: mesmo id com dados diferentes), `conflito_de_versao` e `rejeitado`. Cada um tem tratamento próprio, na tabela abaixo.
+- Falha do lote inteiro: a resposta não traz `resultados` (sem resposta, timeout, 5xx, 401 ou 400 de formato). Nenhuma operação do lote vale como concluída e a fila fica como está.
+- Falha de persistência local (Room): o erro acontece ao gravar no aparelho um resultado do push ou uma página do pull que o servidor já entregou. Não é resposta da API. A operação não é marcada como concluída e o cursor do PULL não avança. No ciclo seguinte, uma criação reenviada volta como `duplicado` igual; numa atualização vale a limitação da seção 3.6.
 
 PUSH (um resultado por operação):
 
@@ -261,16 +274,40 @@ PULL:
 |---|---|---|
 | Página recebida | itens com removido false | Aplicar de forma idempotente: só substituir se `versao` ou `sync_seq` forem maiores; nunca sobrescrever `pendente_envio`; guardar o `historico` do registro |
 | Cursor e paginação | cursor e tem_mais | Guardar o cursor só depois de aplicar a página inteira; repetir com `desde` igual ao cursor enquanto `tem_mais`; pedir com sobreposição de 1.000, limitada a zero |
-| Remoções | itens com removido true | Apagar a cópia local pelo `id_atendimento` (o tombstone só tem id, versão e sync_seq) |
+| Remoções | itens com removido true | Se a cópia local estiver em `sincronizado`, apagar pelo `id_atendimento` (o tombstone só tem id, versão e sync_seq). Proposta, aguardando confirmação da Pessoa 4: se estiver em `pendente_envio` ou `conflito`, o tombstone não apaga o registro (seção 4.1, passo 7) |
 | Falha | 400, 401, erro de rede | Manter o cursor anterior e tentar de novo depois; 401 renova token |
 
-Ordem de sincronização: o rascunho do Rodrigo recomenda push antes de pull. A orquestração do ciclo completo é do app (um componente coordenador chama push e depois pull), decisão ainda pendente do grupo (seção 6, ponto em aberto 1). As duas rotas são independentes.
+### 4.1 Resincronização completa
+
+Estado: Proposta, aguardando confirmação da Pessoa 4 (enviada em 22/11/2026). Implementado: não. Não há rota nem parâmetro novo: é o `GET /sync/pull` de hoje usado com `desde = 0` e repetido até `tem_mais` ser false.
+
+Para que serve: o cursor não é garantia absoluta (seção 2, regra 4). A resincronização completa é o caminho de recuperação de um registro que ficou para trás da janela de sobreposição de 1.000.
+
+Gatilhos:
+
+- ação manual do usuário;
+- automática, após 7 dias sem sincronizar, quando houver conexão;
+- após mudança de versão do contrato.
+
+Procedimento:
+
+1. Executar o PUSH primeiro.
+2. Voltar o cursor a 0.
+3. Executar o PULL de todas as páginas.
+4. Nunca sobrescrever registro com `statusLocal` igual a `pendente_envio` ou `conflito`.
+5. Aplicar de forma idempotente.
+6. Persistir o cursor só depois de cada página inteira ter sido aplicada com sucesso no Room.
+7. Os tombstones (`removido: true`) apagam a cópia local só quando ela está em `sincronizado`. Proposta, aguardando confirmação da Pessoa 4: se a cópia local estiver com `statusLocal` igual a `pendente_envio` ou `conflito`, o tombstone não apaga o registro. O app mantém a cópia e o que o usuário digitou; o PUSH seguinte devolve 404 ou 403 por operação (`rejeitado`), que marca o registro como `erro` com a mensagem. Só registros em `sincronizado` são apagados pelo tombstone.
+
+### 4.2 Ordem do ciclo
+
+Ordem de sincronização: o rascunho do Rodrigo recomenda push antes de pull. A orquestração do ciclo completo é do app (um componente coordenador chama push e depois pull; ver seção 6, ponto em aberto 1). Alinhado com a Pessoa 4 em 22/11/2026, pendente de consolidação por escrito do grupo; implementação não iniciada. As duas rotas são independentes.
 
 ## 5. Limitações conhecidas
 
-1. Eventos de histórico `reagendado`, `reclassificado` e `editado_pos_finalizacao` não avançam o `sync_seq` do atendimento (seção 2).
-2. O cursor é tirado na escrita e não no commit (seção 2, regra 4).
-3. Reenvio de atualização cuja resposta se perdeu volta como conflito de versão (seção 3.6). Não há tabela de operações processadas (migração 009 não criada). O app percebe olhando o `registro_servidor`.
+1. Eventos de histórico `reagendado`, `reclassificado` e `editado_pos_finalizacao` não avançam o `sync_seq` do atendimento (seção 2). Válida hoje. A correção decidida é a coluna `sync_seq` em `historico_atendimento` (seção 6), ainda não implementada.
+2. O cursor é tirado na escrita e não no commit (seção 2, regra 4). Ele é uma posição de sincronização com sobreposição e recuperação por resincronização completa, e não uma garantia absoluta: uma transação que confirma depois de a sua posição sair da janela de 1.000 só é recuperada pela resincronização completa (seção 4, subseção "Resincronização completa"). A trava consultiva como melhoria futura Depende de validação do Rodrigo (seção 2, regra 4).
+3. Reenvio de atualização cuja resposta se perdeu volta como conflito de versão (seção 3.6). Não há tabela de operações processadas (migração sem arquivo, número a confirmar pelo Rodrigo (proposto 020; a 017 é o gatilho de aprovação e a 018 é a revogação de INSERT em notificacao)). O app percebe olhando o `registro_servidor`.
 4. O pull só olha o `sync_seq` do atendimento. Os vínculos de cultura têm `sync_seq` próprio, mas nenhuma rota da API altera cultura depois da abertura, e na abertura o vínculo é gravado na mesma transação do atendimento. Se isso mudar, o pull deixa de cobrir (seção 6, ponto em aberto 3).
 
 ## 6. Decisões e pontos em aberto
@@ -278,7 +315,7 @@ Ordem de sincronização: o rascunho do Rodrigo recomenda push antes de pull. A 
 Decidido em 19/11/2026 e já refletido no código e neste contrato:
 
 - Comparação do duplicado no servidor, com a regra da seção 3.5.
-- Sem tabela de operações no PostgreSQL (migração 009 reservada, sem arquivo): o push funciona sem ela. Criar é idempotente pelo UUID. Atualizar tem a limitação da seção 3.6.
+- Sem tabela de operações no PostgreSQL (migração sem arquivo, número a confirmar pelo Rodrigo (proposto 020; a 017 é o gatilho de aprovação e a 018 é a revogação de INSERT em notificacao)): o push funciona sem ela. Criar é idempotente pelo UUID. Atualizar tem a limitação da seção 3.6.
 - Nomes deste contrato: `id_atendimento`, `versao_esperada`, `payload` e os resultados `criado`, `atualizado`, `duplicado`, `conflito_de_versao`, `rejeitado`. Eles divergem do rascunho v0.1 do Rodrigo (`id`, `versao_base`, `campos`, `aplicado`, `conflito`).
 - `id_atendimento` do payload diferente do da operação, e entidade desconhecida: 400 no campo, só daquela operação.
 - Conflito não é gravado em `sync_conflito` na v1: não há tela nem rota de resolução, e o `registro_servidor` já volta na resposta.
@@ -290,16 +327,36 @@ Decidido em 19/11/2026 e já refletido no código e neste contrato:
 - Evidências e outras entidades fora do push: `entidade` obrigatória e só `atendimento`.
 - Criação de id que existe mas o usuário não enxerga: rejeitado 409 `duplicado` sem registro. O `payload` de criar é o corpo inteiro do `POST /atendimentos`.
 
-Propostas enviadas ao grupo em 21/11/2026, aguardando resposta (nada aqui está decidido nem implementado):
+Decidido com a Pessoa 4 (22/11/2026), não implementado:
 
-- Coordenador: Pessoa 2 implementa, só com interfaces, sem Retrofit. Ordem PUSH antes de PULL. Push com falha de rede não dispara pull; 401 interrompe; rejeição individual não impede o pull.
-- `sync_seq` do histórico: opção A, subir o `sync_seq` do atendimento nos três eventos sem somar `versao`. Cuidado na migração: `fn_atendimento_antes` soma `versao` e recusa estado final, e `editado_pos_finalizacao` ocorre em atendimento finalizado. O script parte da definição atual (`pg_get_functiondef`) e mantém a guarda de MD5.
-- `sync_operacao` na v1, versão mínima, só para atualizar. Chave: `id_operacao`, estável em todo reenvio. Registro: `id_operacao`, `id_usuario`, `id_dispositivo`, `id_atendimento`, hash do conteúdo (tipo, `id_atendimento`, `versao_esperada`, `payload`), `resultado`, `resposta` jsonb e data. Na v1 só o resultado `atualizado` é guardado. Mesmo `id_operacao`, mesmo usuário e mesmo hash devolve o resultado original sem reaplicar. Mesmo `id_operacao` com hash diferente: 409 com `codigo: operacao_reutilizada`. O `app_django` recebe só SELECT e INSERT e a limpeza (proposta de 30 dias) fica em pg_cron. Número da migração (009 ou 017), retenção e inclusão do usuário na chave dependem do Rodrigo.
-- Integração: Pessoa 2 integra HTTP, coordenador e Room e escreve os testes integrados; Pessoa 4 testa a persistência Room; Pessoa 1 valida em aparelho contra o Supabase real depois do merge do acesso.
+- Coordenador do ciclo, um componente no app que chama push e depois pull, com cada rota independente (seção 4.2 e ponto em aberto 1): Pessoa 2 implementa, só com interfaces, sem Retrofit. Ordem PUSH antes de PULL. Push com falha de rede não dispara pull; 401 interrompe; rejeição individual não impede o pull.
+- `sync_seq` do histórico. Decidido com a Pessoa 4 (22/11/2026), não implementado, depende de migração do Rodrigo. Coluna `sync_seq` em `historico_atendimento`, usando a mesma `seq_sync` do atendimento, com um único cursor global. A migração (número a confirmar pelo Rodrigo, proposto 019) faz `ADD COLUMN sync_seq bigint NOT NULL DEFAULT 0` (só metadado no PostgreSQL 11 ou superior), cria um gatilho `BEFORE INSERT` próprio com `nextval('seq_sync')` (a `fn_sync_meta` não serve, porque grava `data_atualizacao`, que o histórico não tem) e um índice em `sync_seq`. A coluna nova não mexe em `fn_atendimento_antes`.
+- Formato futuro do pull, com a coluna acima. Decidido, não implementado (o pull atual segue a seção 2):
+  - um item por atendimento, com o histórico completo; o `limite` passa a contar atendimentos;
+  - o `sync_seq` efetivo do atendimento na ordenação é o maior entre o dele e o dos seus eventos;
+  - o `cursor` da página é o maior `sync_seq` efetivo da página, e o registro mantém o próprio `sync_seq`;
+  - eventos antigos ficam com `sync_seq = 0` (o histórico é imutável, sem UPDATE) e só chegam ao aparelho pela resincronização completa (seção 4, subseção "Resincronização completa"), não pelo pull incremental;
+  - regra do app depois da mudança: aplicar os eventos novos mesmo quando a `versao` do atendimento não mudou, deduplicando por `id_historico`. Hoje continua valendo a regra da seção 4 (só substituir se `versao` ou `sync_seq` forem maiores).
+- `sync_operacao` na v1, versão mínima, só para atualizar. Decidido com a Pessoa 4 (22/11/2026), não implementado. Chave: `id_operacao`, estável em todo reenvio. Registro: `id_operacao`, `id_usuario`, `id_dispositivo`, `id_atendimento`, hash do conteúdo, `resultado`, `resposta` jsonb e data. Na v1 só o resultado `atualizado` é guardado. Mesmo `id_operacao`, mesmo usuário e mesmo hash devolve o resultado original sem reaplicar. As regras abaixo são Proposta, aguardando confirmação, e Depende de validação do Rodrigo:
+  - guardar o `id_usuario` e comparar com o usuário da requisição;
+  - mesmo `id_operacao` com outro usuário ou com hash diferente devolve 409 com `codigo: operacao_reutilizada`, sem revelar o resultado guardado;
+  - a consulta, o PATCH e a gravação do resultado acontecem na mesma transação;
+  - o hash é determinístico: JSON canônico com chaves ordenadas e SHA-256 de `tipo`, `id_atendimento`, `versao_esperada` e `payload`;
+  - o `app_django` recebe só SELECT e INSERT, e a limpeza fica em pg_cron, com proposta de 90 dias, alinhada ao refresh token, decisão do Rodrigo. Com a retenção expirada, o reenvio vira, no pior caso, um `conflito_de_versao` falso, nunca aplicação dupla, porque a `versao_esperada` já impede.
+Depende de validação do Rodrigo:
+
+- Número e retenção da `sync_operacao`: número a confirmar pelo Rodrigo (proposto 020; a 017 é o gatilho de aprovação e a 018 é a revogação de INSERT em notificacao), retenção de 90 dias e inclusão do usuário na chave.
+- Lock da migração do histórico (número proposto 019): o `ADD COLUMN` é rápido, mas a migração toma lock na tabela, o `CREATE INDEX` comum bloqueia escrita enquanto cria e o `CREATE INDEX CONCURRENTLY` não roda dentro de transação. O Rodrigo valida a forma de aplicar.
+- Avaliação do watermark do cursor: trava consultiva em `fn_sync_meta` e pull com lock exclusivo curto lendo o `last_value` (seção 2, regra 4). Impacto em `fn_sync_meta`, concorrência e bloqueio de escrita.
+
+Proposta, aguardando confirmação:
+
+- Resincronização completa (enviada à Pessoa 4 em 22/11/2026): gatilhos e procedimento na seção 4, subseção "Resincronização completa".
+- Integração (enviada ao grupo em 21/11/2026): Pessoa 2 integra HTTP, coordenador e Room e escreve os testes integrados; Pessoa 4 testa a persistência Room; Pessoa 1 valida em aparelho contra o Supabase real depois do merge do acesso.
 
 Em aberto:
 
-1. Quem orquestra o ciclo completo (ordem de push e pull). Pendente do grupo. A orquestração é do app (componente coordenador que chama push e depois pull) e cada rota fica independente. Fica registrado aqui até o grupo fechar.
-2. `sync_seq` próprio para eventos de histórico. Pendente, não implementado. Recomendação: subir só o `sync_seq` do atendimento quando um dos três eventos (`reagendado`, `reclassificado`, `editado_pos_finalizacao`) for gravado, sem somar na `versao`, porque não muda o formato do pull. Depende de migração do Rodrigo. A seção 42 da documentação técnica lista a alternativa de `sync_seq` próprio no histórico, que muda o formato do pull e exigiria cursor separado.
-3. Vínculos de cultura fora do `sync_seq` do atendimento. Conferido em leitura do SQL (`infra/db/02_funcoes_gatilhos.sql`): o único gatilho de `atendimento_cultura` é `trg_sync` (`fn_sync_meta`), que só preenche o `data_atualizacao` e o `sync_seq` da própria linha de vínculo. Nada toca o atendimento. Hoje não há rota que mude cultura depois da abertura, e na abertura o vínculo nasce na mesma transação do atendimento, então não há perda. Se uma rota assim for criada, uma mudança de cultura não sobe o `sync_seq` do atendimento e não chegaria no pull. Nesse caso a mudança precisa subir o `sync_seq` do atendimento (o mesmo tratamento do ponto 2, sem somar na `versao`).
-4. Migração 009 e tabela `sync_operacao` (`id_operacao` como chave, `id_dispositivo`, `resultado`, `resposta` em jsonb, data). Fica descrita como saída para o conflito falso do reenvio de atualização, sem criar nada. Se for criada, o push devolve a `resposta` guardada quando a operação repetir.
+1. Quem orquestra o ciclo completo (ordem de push e pull). Alinhado com a Pessoa 4 em 22/11/2026, pendente de consolidação por escrito do grupo; implementação não iniciada. A orquestração é do app (componente coordenador que chama push e depois pull) e cada rota fica independente. Fica registrado aqui até o grupo consolidar por escrito.
+2. `sync_seq` dos eventos de histórico (`reagendado`, `reclassificado`, `editado_pos_finalizacao`). Decidido com a Pessoa 4 (22/11/2026), não implementado, depende de migração do Rodrigo. A decisão é a coluna `sync_seq` em `historico_atendimento`, com a mesma `seq_sync` e um único cursor global; o detalhe, o formato futuro do pull e a regra do app estão no bloco "Decidido com a Pessoa 4" acima. Até a migração entrar, vale a limitação da seção 2.
+3. Vínculos de cultura fora do `sync_seq` do atendimento. Conferido em leitura do SQL (`infra/db/02_funcoes_gatilhos.sql`): o único gatilho de `atendimento_cultura` é `trg_sync` (`fn_sync_meta`), que só preenche o `data_atualizacao` e o `sync_seq` da própria linha de vínculo. Nada toca o atendimento. Hoje não há rota que mude cultura depois da abertura, e na abertura o vínculo nasce na mesma transação do atendimento, então não há perda. Se uma rota assim for criada, uma mudança de cultura não sobe o `sync_seq` do atendimento e não chegaria no pull. Nesse caso a mudança precisa subir o `sync_seq` do atendimento (uma regra própria, a decidir: subir o `sync_seq` do atendimento sem somar na `versao`).
+4. Tabela `sync_operacao` e a migração dela, com número a confirmar pelo Rodrigo (proposto 020; a 017 é o gatilho de aprovação e a 018 é a revogação de INSERT em notificacao). A versão mínima, só para atualizar, está Decidida com a Pessoa 4 (22/11/2026), não implementada; número e retenção Dependem de validação do Rodrigo (`id_operacao` como chave, `id_dispositivo`, `resultado`, `resposta` em jsonb, data). Fica descrita como saída para o conflito falso do reenvio de atualização, sem criar nada. Se for criada, o push devolve a `resposta` guardada quando a operação repetir.
