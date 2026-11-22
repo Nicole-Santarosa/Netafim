@@ -1,0 +1,2004 @@
+openapi: 3.0.3
+info:
+  title: API Netafim Pós-venda
+  version: 0.1.0
+  description: Contrato da API do aplicativo de atendimento técnico Netafim.
+paths:
+  /api/v1/auth/cadastro:
+    post:
+      operationId: v1_auth_cadastro_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CadastroRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CadastroRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CadastroRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mensagem'
+          description: ''
+  /api/v1/auth/convite/aceitar:
+    post:
+      operationId: v1_auth_convite_aceitar_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AceitarConviteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AceitarConviteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AceitarConviteRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mensagem'
+          description: ''
+  /api/v1/auth/login:
+    post:
+      operationId: v1_auth_login_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tokens'
+          description: ''
+  /api/v1/auth/logout:
+    post:
+      operationId: v1_auth_logout_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/auth/refresh:
+    post:
+      operationId: v1_auth_refresh_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tokens'
+          description: ''
+  /api/v1/auth/senha/esqueci:
+    post:
+      operationId: v1_auth_senha_esqueci_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EsqueciSenhaRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EsqueciSenhaRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EsqueciSenhaRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mensagem'
+          description: ''
+  /api/v1/auth/senha/redefinir:
+    post:
+      operationId: v1_auth_senha_redefinir_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RedefinirSenhaRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RedefinirSenhaRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RedefinirSenhaRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mensagem'
+          description: ''
+  /api/v1/auth/termo:
+    get:
+      operationId: v1_auth_termo_retrieve
+      tags:
+      - auth
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Termo'
+          description: ''
+  /api/v1/clientes:
+    get:
+      operationId: v1_clientes_list
+      description: Netafim gerencia; distribuidores consultam a carteira; clientes,
+        a própria empresa.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      tags:
+      - organizacoes
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedClienteList'
+          description: ''
+    post:
+      operationId: v1_clientes_create
+      description: Netafim gerencia; distribuidores consultam a carteira; clientes,
+        a própria empresa.
+      tags:
+      - organizacoes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClienteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClienteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClienteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cliente'
+          description: ''
+  /api/v1/clientes/{id_cliente}:
+    get:
+      operationId: v1_clientes_retrieve
+      description: Netafim gerencia; distribuidores consultam a carteira; clientes,
+        a própria empresa.
+      parameters:
+      - in: path
+        name: id_cliente
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - organizacoes
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cliente'
+          description: ''
+    patch:
+      operationId: v1_clientes_partial_update
+      description: Netafim gerencia; distribuidores consultam a carteira; clientes,
+        a própria empresa.
+      parameters:
+      - in: path
+        name: id_cliente
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - organizacoes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedClienteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedClienteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedClienteRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cliente'
+          description: ''
+    delete:
+      operationId: v1_clientes_destroy
+      description: Netafim gerencia; distribuidores consultam a carteira; clientes,
+        a própria empresa.
+      parameters:
+      - in: path
+        name: id_cliente
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - organizacoes
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/dispositivos/{id_dispositivo}/revogar:
+    post:
+      operationId: v1_dispositivos_revogar_create
+      description: 'Aparelho perdido ou roubado: revoga o acesso e os tokens dele.'
+      parameters:
+      - in: path
+        name: id_dispositivo
+        schema:
+          type: string
+          format: uuid
+        description: Um string UUID que identifica este dispositivo.
+        required: true
+      tags:
+      - configuracao
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dispositivo'
+          description: ''
+  /api/v1/distribuidores:
+    get:
+      operationId: v1_distribuidores_list
+      description: Netafim gerencia; usuários de distribuidor consultam o próprio.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      tags:
+      - organizacoes
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDistribuidorList'
+          description: ''
+    post:
+      operationId: v1_distribuidores_create
+      description: Netafim gerencia; usuários de distribuidor consultam o próprio.
+      tags:
+      - organizacoes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DistribuidorRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DistribuidorRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DistribuidorRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Distribuidor'
+          description: ''
+  /api/v1/distribuidores/{id_distribuidor}:
+    get:
+      operationId: v1_distribuidores_retrieve
+      description: Netafim gerencia; usuários de distribuidor consultam o próprio.
+      parameters:
+      - in: path
+        name: id_distribuidor
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - organizacoes
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Distribuidor'
+          description: ''
+    patch:
+      operationId: v1_distribuidores_partial_update
+      description: Netafim gerencia; usuários de distribuidor consultam o próprio.
+      parameters:
+      - in: path
+        name: id_distribuidor
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - organizacoes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDistribuidorRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDistribuidorRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDistribuidorRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Distribuidor'
+          description: ''
+    delete:
+      operationId: v1_distribuidores_destroy
+      description: Netafim gerencia; usuários de distribuidor consultam o próprio.
+      parameters:
+      - in: path
+        name: id_distribuidor
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - organizacoes
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/dominios:
+    get:
+      operationId: v1_dominios_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      tags:
+      - configuracao
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDominioList'
+          description: ''
+    post:
+      operationId: v1_dominios_create
+      tags:
+      - configuracao
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DominioRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DominioRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DominioRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dominio'
+          description: ''
+  /api/v1/dominios/{id_dominio}:
+    get:
+      operationId: v1_dominios_retrieve
+      parameters:
+      - in: path
+        name: id_dominio
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - configuracao
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dominio'
+          description: ''
+    patch:
+      operationId: v1_dominios_partial_update
+      parameters:
+      - in: path
+        name: id_dominio
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - configuracao
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDominioRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDominioRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDominioRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dominio'
+          description: ''
+    delete:
+      operationId: v1_dominios_destroy
+      parameters:
+      - in: path
+        name: id_dominio
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - configuracao
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/me:
+    get:
+      operationId: v1_me_retrieve
+      tags:
+      - me
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+          description: ''
+    patch:
+      operationId: v1_me_partial_update
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAtualizarDadosRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAtualizarDadosRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAtualizarDadosRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+          description: ''
+  /api/v1/me/senha:
+    post:
+      operationId: v1_me_senha_create
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlterarSenhaRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AlterarSenhaRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AlterarSenhaRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/perfis:
+    get:
+      operationId: v1_perfis_list
+      tags:
+      - perfis
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Perfil'
+          description: ''
+  /api/v1/perfis/{id_perfil}:
+    get:
+      operationId: v1_perfis_retrieve
+      parameters:
+      - in: path
+        name: id_perfil
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - perfis
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Perfil'
+          description: ''
+  /api/v1/perfis/{id_perfil}/permissoes:
+    put:
+      operationId: v1_perfis_permissoes_update
+      description: Substitui as permissões do perfil (RF20 – gerenciar permissões).
+      parameters:
+      - in: path
+        name: id_perfil
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - perfis
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PermissoesDoPerfilRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PermissoesDoPerfilRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PermissoesDoPerfilRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Perfil'
+          description: ''
+  /api/v1/permissoes:
+    get:
+      operationId: v1_permissoes_list
+      tags:
+      - perfis
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Permissao'
+          description: ''
+  /api/v1/permissoes/{codigo}:
+    get:
+      operationId: v1_permissoes_retrieve
+      parameters:
+      - in: path
+        name: codigo
+        schema:
+          type: string
+        required: true
+      tags:
+      - perfis
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Permissao'
+          description: ''
+  /api/v1/usuarios:
+    get:
+      operationId: v1_usuarios_list
+      description: |-
+        Lista e gerencia usuários no escopo do ator: o Netafim Admin vê todos; admins de
+        distribuidor e de cliente veem só a própria organização.
+      parameters:
+      - in: query
+        name: busca
+        schema:
+          type: string
+        description: Parte do nome ou do e-mail
+      - in: query
+        name: id_cliente
+        schema:
+          type: integer
+      - in: query
+        name: id_distribuidor
+        schema:
+          type: integer
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - in: query
+        name: situacao
+        schema:
+          type: string
+        description: pendente, ativo, ...
+      - in: query
+        name: tipo_organizacao
+        schema:
+          type: string
+      tags:
+      - usuarios
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUsuarioList'
+          description: ''
+    post:
+      operationId: v1_usuarios_create
+      description: |-
+        Lista e gerencia usuários no escopo do ator: o Netafim Admin vê todos; admins de
+        distribuidor e de cliente veem só a própria organização.
+      tags:
+      - usuarios
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CriarUsuarioRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CriarUsuarioRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CriarUsuarioRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+          description: ''
+  /api/v1/usuarios/{id_usuario}:
+    get:
+      operationId: v1_usuarios_retrieve
+      description: |-
+        Lista e gerencia usuários no escopo do ator: o Netafim Admin vê todos; admins de
+        distribuidor e de cliente veem só a própria organização.
+      parameters:
+      - in: path
+        name: id_usuario
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - usuarios
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+          description: ''
+    patch:
+      operationId: v1_usuarios_partial_update
+      description: |-
+        Lista e gerencia usuários no escopo do ator: o Netafim Admin vê todos; admins de
+        distribuidor e de cliente veem só a própria organização.
+      parameters:
+      - in: path
+        name: id_usuario
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - usuarios
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAtualizarDadosRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAtualizarDadosRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAtualizarDadosRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+          description: ''
+    delete:
+      operationId: v1_usuarios_destroy
+      description: |-
+        Lista e gerencia usuários no escopo do ator: o Netafim Admin vê todos; admins de
+        distribuidor e de cliente veem só a própria organização.
+      parameters:
+      - in: path
+        name: id_usuario
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - usuarios
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/usuarios/{id_usuario}/aprovar:
+    post:
+      operationId: v1_usuarios_aprovar_create
+      description: |-
+        Lista e gerencia usuários no escopo do ator: o Netafim Admin vê todos; admins de
+        distribuidor e de cliente veem só a própria organização.
+      parameters:
+      - in: path
+        name: id_usuario
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - usuarios
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AprovarRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AprovarRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AprovarRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+          description: ''
+  /api/v1/usuarios/{id_usuario}/dispositivos:
+    get:
+      operationId: v1_usuarios_dispositivos_list
+      description: |-
+        Lista e gerencia usuários no escopo do ator: o Netafim Admin vê todos; admins de
+        distribuidor e de cliente veem só a própria organização.
+      parameters:
+      - in: path
+        name: id_usuario
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      tags:
+      - usuarios
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDispositivoList'
+          description: ''
+  /api/v1/usuarios/{id_usuario}/perfil:
+    post:
+      operationId: v1_usuarios_perfil_create
+      description: |-
+        Lista e gerencia usuários no escopo do ator: o Netafim Admin vê todos; admins de
+        distribuidor e de cliente veem só a própria organização.
+      parameters:
+      - in: path
+        name: id_usuario
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - usuarios
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DefinirPerfilRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DefinirPerfilRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DefinirPerfilRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+          description: ''
+  /api/v1/usuarios/{id_usuario}/recusar:
+    post:
+      operationId: v1_usuarios_recusar_create
+      description: |-
+        Lista e gerencia usuários no escopo do ator: o Netafim Admin vê todos; admins de
+        distribuidor e de cliente veem só a própria organização.
+      parameters:
+      - in: path
+        name: id_usuario
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - usuarios
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+          description: ''
+  /api/v1/usuarios/{id_usuario}/reenviar-convite:
+    post:
+      operationId: v1_usuarios_reenviar_convite_create
+      description: |-
+        Lista e gerencia usuários no escopo do ator: o Netafim Admin vê todos; admins de
+        distribuidor e de cliente veem só a própria organização.
+      parameters:
+      - in: path
+        name: id_usuario
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - usuarios
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/usuarios/{id_usuario}/situacao:
+    post:
+      operationId: v1_usuarios_situacao_create
+      description: |-
+        Lista e gerencia usuários no escopo do ator: o Netafim Admin vê todos; admins de
+        distribuidor e de cliente veem só a própria organização.
+      parameters:
+      - in: path
+        name: id_usuario
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - usuarios
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SituacaoRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SituacaoRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SituacaoRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+          description: ''
+components:
+  schemas:
+    AceitarConviteRequest:
+      type: object
+      properties:
+        aceite_termo:
+          type: boolean
+        versao_termo:
+          type: string
+          minLength: 1
+          maxLength: 20
+        token:
+          type: string
+          minLength: 1
+          maxLength: 128
+        senha:
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+      - aceite_termo
+      - senha
+      - token
+      - versao_termo
+    AlterarSenhaRequest:
+      type: object
+      properties:
+        senha_atual:
+          type: string
+          minLength: 1
+          maxLength: 128
+        nova_senha:
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+      - nova_senha
+      - senha_atual
+    AprovarRequest:
+      type: object
+      properties:
+        tipo_organizacao:
+          $ref: '#/components/schemas/TipoOrganizacaoEnum'
+        id_distribuidor:
+          type: integer
+          nullable: true
+        id_cliente:
+          type: integer
+          nullable: true
+        id_perfil:
+          type: integer
+          nullable: true
+    CadastroRequest:
+      type: object
+      properties:
+        aceite_termo:
+          type: boolean
+        versao_termo:
+          type: string
+          minLength: 1
+          maxLength: 20
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 150
+        telefone:
+          type: string
+          maxLength: 20
+        senha:
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+      - aceite_termo
+      - email
+      - nome
+      - senha
+      - versao_termo
+    Cliente:
+      type: object
+      properties:
+        id_cliente:
+          type: integer
+          readOnly: true
+        nome:
+          type: string
+          maxLength: 150
+        email:
+          nullable: true
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 150
+          - type: string
+            maxLength: 0
+        telefone:
+          type: string
+          nullable: true
+          maxLength: 20
+        id_distribuidor:
+          type: integer
+          nullable: true
+        status:
+          $ref: '#/components/schemas/StatusOrganizacaoEnum'
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+        data_atualizacao:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - data_atualizacao
+      - data_criacao
+      - id_cliente
+      - nome
+    ClienteRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 150
+        email:
+          nullable: true
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 150
+          - type: string
+            maxLength: 0
+        telefone:
+          type: string
+          nullable: true
+          maxLength: 20
+        id_distribuidor:
+          type: integer
+          nullable: true
+        status:
+          $ref: '#/components/schemas/StatusOrganizacaoEnum'
+      required:
+      - nome
+    CriarUsuarioRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 150
+        telefone:
+          type: string
+          maxLength: 20
+        tipo_organizacao:
+          $ref: '#/components/schemas/TipoOrganizacaoEnum'
+        id_distribuidor:
+          type: integer
+          nullable: true
+        id_cliente:
+          type: integer
+          nullable: true
+        id_perfil:
+          type: integer
+          nullable: true
+      required:
+      - email
+      - nome
+    DefinirPerfilRequest:
+      type: object
+      properties:
+        id_perfil:
+          type: integer
+      required:
+      - id_perfil
+    Dispositivo:
+      type: object
+      properties:
+        id_dispositivo:
+          type: string
+          format: uuid
+          readOnly: true
+        modelo:
+          type: string
+          readOnly: true
+          nullable: true
+        versao_app:
+          type: string
+          readOnly: true
+          nullable: true
+        ultima_sincronizacao:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        revogado_em:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - data_criacao
+      - id_dispositivo
+      - modelo
+      - revogado_em
+      - ultima_sincronizacao
+      - versao_app
+    DispositivoEntradaRequest:
+      type: object
+      properties:
+        id_dispositivo:
+          type: string
+          format: uuid
+        modelo:
+          type: string
+          maxLength: 80
+        versao_app:
+          type: string
+          maxLength: 20
+      required:
+      - id_dispositivo
+    Distribuidor:
+      type: object
+      properties:
+        id_distribuidor:
+          type: integer
+          readOnly: true
+        nome:
+          type: string
+          maxLength: 150
+        regiao:
+          type: string
+          maxLength: 100
+        email:
+          nullable: true
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 150
+          - type: string
+            maxLength: 0
+        telefone:
+          type: string
+          nullable: true
+          maxLength: 20
+        status:
+          $ref: '#/components/schemas/StatusOrganizacaoEnum'
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+        data_atualizacao:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - data_atualizacao
+      - data_criacao
+      - id_distribuidor
+      - nome
+      - regiao
+    DistribuidorRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 150
+        regiao:
+          type: string
+          minLength: 1
+          maxLength: 100
+        email:
+          nullable: true
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 150
+          - type: string
+            maxLength: 0
+        telefone:
+          type: string
+          nullable: true
+          maxLength: 20
+        status:
+          $ref: '#/components/schemas/StatusOrganizacaoEnum'
+      required:
+      - nome
+      - regiao
+    Dominio:
+      type: object
+      properties:
+        id_dominio:
+          type: integer
+          readOnly: true
+        dominio:
+          type: string
+          maxLength: 120
+        tipo_organizacao:
+          $ref: '#/components/schemas/DominioTipoOrganizacaoEnum'
+        id_distribuidor:
+          type: integer
+          nullable: true
+        ativo:
+          type: boolean
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - data_criacao
+      - dominio
+      - id_dominio
+      - tipo_organizacao
+    DominioRequest:
+      type: object
+      properties:
+        dominio:
+          type: string
+          minLength: 1
+          maxLength: 120
+        tipo_organizacao:
+          $ref: '#/components/schemas/DominioTipoOrganizacaoEnum'
+        id_distribuidor:
+          type: integer
+          nullable: true
+        ativo:
+          type: boolean
+      required:
+      - dominio
+      - tipo_organizacao
+    DominioTipoOrganizacaoEnum:
+      enum:
+      - netafim
+      - distribuidor
+      type: string
+      description: |-
+        * `netafim` - Netafim
+        * `distribuidor` - Distribuidor
+    EsqueciSenhaRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 150
+      required:
+      - email
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 150
+        senha:
+          type: string
+          minLength: 1
+          maxLength: 128
+        dispositivo:
+          $ref: '#/components/schemas/DispositivoEntradaRequest'
+      required:
+      - dispositivo
+      - email
+      - senha
+    Me:
+      type: object
+      properties:
+        id_usuario:
+          type: integer
+          readOnly: true
+        nome:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        telefone:
+          type: string
+          readOnly: true
+          nullable: true
+        situacao:
+          allOf:
+          - $ref: '#/components/schemas/SituacaoUsuarioEnum'
+          readOnly: true
+        tipo_organizacao:
+          readOnly: true
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/TipoOrganizacaoEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        organizacao:
+          allOf:
+          - $ref: '#/components/schemas/Organizacao'
+          nullable: true
+          readOnly: true
+        perfil:
+          allOf:
+          - $ref: '#/components/schemas/PerfilResumo'
+          readOnly: true
+        convite_pendente:
+          type: boolean
+          readOnly: true
+        data_aprovacao:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        ultimo_acesso:
+          type: string
+          format: date-time
+          readOnly: true
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+        permissoes:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        exige_troca_senha:
+          type: boolean
+          readOnly: true
+        mfa_ativo:
+          type: boolean
+          readOnly: true
+        versao_termo_consentimento:
+          type: string
+          readOnly: true
+          nullable: true
+      required:
+      - convite_pendente
+      - data_aprovacao
+      - data_criacao
+      - email
+      - exige_troca_senha
+      - id_usuario
+      - mfa_ativo
+      - nome
+      - organizacao
+      - perfil
+      - permissoes
+      - situacao
+      - telefone
+      - tipo_organizacao
+      - ultimo_acesso
+      - versao_termo_consentimento
+    Mensagem:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    NivelPerfilEnum:
+      enum:
+      - admin
+      - usuario
+      type: string
+      description: |-
+        * `admin` - Administrador
+        * `usuario` - Usuário
+    NullEnum:
+      enum:
+      - null
+    Organizacao:
+      type: object
+      properties:
+        tipo:
+          $ref: '#/components/schemas/TipoOrganizacaoEnum'
+        id:
+          type: integer
+          nullable: true
+        nome:
+          type: string
+      required:
+      - id
+      - nome
+      - tipo
+    PaginatedClienteList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Cliente'
+    PaginatedDispositivoList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dispositivo'
+    PaginatedDistribuidorList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Distribuidor'
+    PaginatedDominioList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dominio'
+    PaginatedUsuarioList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Usuario'
+    PatchedAtualizarDadosRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 150
+        telefone:
+          type: string
+          nullable: true
+          maxLength: 20
+    PatchedClienteRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 150
+        email:
+          nullable: true
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 150
+          - type: string
+            maxLength: 0
+        telefone:
+          type: string
+          nullable: true
+          maxLength: 20
+        id_distribuidor:
+          type: integer
+          nullable: true
+        status:
+          $ref: '#/components/schemas/StatusOrganizacaoEnum'
+    PatchedDistribuidorRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 150
+        regiao:
+          type: string
+          minLength: 1
+          maxLength: 100
+        email:
+          nullable: true
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 150
+          - type: string
+            maxLength: 0
+        telefone:
+          type: string
+          nullable: true
+          maxLength: 20
+        status:
+          $ref: '#/components/schemas/StatusOrganizacaoEnum'
+    PatchedDominioRequest:
+      type: object
+      properties:
+        dominio:
+          type: string
+          minLength: 1
+          maxLength: 120
+        tipo_organizacao:
+          $ref: '#/components/schemas/DominioTipoOrganizacaoEnum'
+        id_distribuidor:
+          type: integer
+          nullable: true
+        ativo:
+          type: boolean
+    Perfil:
+      type: object
+      properties:
+        id_perfil:
+          type: integer
+          readOnly: true
+        nome_perfil:
+          type: string
+          maxLength: 50
+        tipo_organizacao:
+          $ref: '#/components/schemas/TipoOrganizacaoEnum'
+        nivel:
+          $ref: '#/components/schemas/NivelPerfilEnum'
+        descricao:
+          type: string
+          nullable: true
+        permissoes:
+          type: array
+          items:
+            type: string
+          readOnly: true
+      required:
+      - id_perfil
+      - nivel
+      - nome_perfil
+      - permissoes
+      - tipo_organizacao
+    PerfilResumo:
+      type: object
+      properties:
+        id_perfil:
+          type: integer
+          readOnly: true
+        nome_perfil:
+          type: string
+          maxLength: 50
+        tipo_organizacao:
+          $ref: '#/components/schemas/TipoOrganizacaoEnum'
+        nivel:
+          $ref: '#/components/schemas/NivelPerfilEnum'
+      required:
+      - id_perfil
+      - nivel
+      - nome_perfil
+      - tipo_organizacao
+    Permissao:
+      type: object
+      properties:
+        id_permissao:
+          type: integer
+          readOnly: true
+        codigo:
+          type: string
+          maxLength: 50
+        descricao:
+          type: string
+          maxLength: 150
+      required:
+      - codigo
+      - descricao
+      - id_permissao
+    PermissoesDoPerfilRequest:
+      type: object
+      properties:
+        permissoes:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 50
+      required:
+      - permissoes
+    RedefinirSenhaRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 128
+        nova_senha:
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+      - nova_senha
+      - token
+    RefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+      - refresh
+    SituacaoRequest:
+      type: object
+      properties:
+        situacao:
+          $ref: '#/components/schemas/SituacaoSituacaoEnum'
+      required:
+      - situacao
+    SituacaoSituacaoEnum:
+      enum:
+      - ativo
+      - inativo
+      - bloqueado
+      type: string
+      description: |-
+        * `ativo` - ativo
+        * `inativo` - inativo
+        * `bloqueado` - bloqueado
+    SituacaoUsuarioEnum:
+      enum:
+      - pendente
+      - ativo
+      - recusado
+      - inativo
+      - bloqueado
+      type: string
+      description: |-
+        * `pendente` - Pendente
+        * `ativo` - Ativo
+        * `recusado` - Recusado
+        * `inativo` - Inativo
+        * `bloqueado` - Bloqueado
+    StatusOrganizacaoEnum:
+      enum:
+      - ativo
+      - inativo
+      type: string
+      description: |-
+        * `ativo` - Ativo
+        * `inativo` - Inativo
+    Termo:
+      type: object
+      properties:
+        versao_vigente:
+          type: string
+      required:
+      - versao_vigente
+    TipoOrganizacaoEnum:
+      enum:
+      - netafim
+      - distribuidor
+      - cliente
+      type: string
+      description: |-
+        * `netafim` - Netafim
+        * `distribuidor` - Distribuidor
+        * `cliente` - Cliente final
+    Tokens:
+      type: object
+      properties:
+        access:
+          type: string
+        refresh:
+          type: string
+        access_expira_em:
+          type: string
+          format: date-time
+        refresh_expira_em:
+          type: string
+          format: date-time
+        usuario:
+          $ref: '#/components/schemas/Me'
+      required:
+      - access
+      - access_expira_em
+      - refresh
+      - refresh_expira_em
+      - usuario
+    Usuario:
+      type: object
+      properties:
+        id_usuario:
+          type: integer
+          readOnly: true
+        nome:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        telefone:
+          type: string
+          readOnly: true
+          nullable: true
+        situacao:
+          allOf:
+          - $ref: '#/components/schemas/SituacaoUsuarioEnum'
+          readOnly: true
+        tipo_organizacao:
+          readOnly: true
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/TipoOrganizacaoEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        organizacao:
+          allOf:
+          - $ref: '#/components/schemas/Organizacao'
+          nullable: true
+          readOnly: true
+        perfil:
+          allOf:
+          - $ref: '#/components/schemas/PerfilResumo'
+          readOnly: true
+        convite_pendente:
+          type: boolean
+          readOnly: true
+        data_aprovacao:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        ultimo_acesso:
+          type: string
+          format: date-time
+          readOnly: true
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - convite_pendente
+      - data_aprovacao
+      - data_criacao
+      - email
+      - id_usuario
+      - nome
+      - organizacao
+      - perfil
+      - situacao
+      - telefone
+      - tipo_organizacao
+      - ultimo_acesso
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
