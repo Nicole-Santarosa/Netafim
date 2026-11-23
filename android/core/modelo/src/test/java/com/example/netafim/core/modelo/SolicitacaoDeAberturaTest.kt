@@ -103,6 +103,22 @@ class SolicitacaoDeAberturaTest {
     }
 
     @Test
+    fun distribuidorSemDistribuidorDeOrigemERecusado() {
+        // A API devolve 400 no campo id_distribuidor_origem para o perfil Distribuidor sem o campo; o modelo
+        // espelha a regra para o app nem montar o pedido.
+        val erro = assertThrows(IllegalArgumentException::class.java) {
+            solicitacao(origem = OrigemAtendimento.DISTRIBUIDOR, idDistribuidorOrigem = null)
+        }
+        assertEquals("A origem Distribuidor exige o idDistribuidorOrigem.", erro.message)
+    }
+
+    @Test
+    fun distribuidorComDistribuidorDeOrigemEAceito() {
+        val pedido = solicitacao(origem = OrigemAtendimento.DISTRIBUIDOR, idDistribuidorOrigem = 7)
+        assertEquals(7, pedido.idDistribuidorOrigem)
+    }
+
+    @Test
     fun codigosDaAreaSaoOsDaApi() {
         // Os cinco códigos que o contrato e o CHECK do banco aceitam, na mesma ordem.
         assertEquals(

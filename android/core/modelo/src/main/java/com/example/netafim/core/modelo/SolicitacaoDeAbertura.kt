@@ -11,9 +11,11 @@ data class SolicitacaoDeAbertura(
     val origem: OrigemAtendimento,
     val motivo: MotivoAtendimento,
     val idCliente: Int?,
-    // Nulo quando o cliente final não tem distribuidor padrão ou não escolheu um: o atendimento nasce sem
-    // distribuidor de origem e vai direto para a fila do Netafim Admin. Quem monta o corpo da API deve omitir
-    // a chave id_distribuidor_origem nesse caso.
+    // Para a origem Distribuidor o campo é obrigatório e é o distribuidor da sessão: a API devolve 400 no campo
+    // id_distribuidor_origem se faltar ou se for de outro distribuidor (o init abaixo espelha a regra).
+    // Para Netafim e cliente final continua opcional. Nulo quando o cliente final não tem distribuidor padrão
+    // ou não escolheu um: o atendimento nasce sem distribuidor de origem e vai direto para a fila do Netafim
+    // Admin. Quem monta o corpo da API deve omitir a chave id_distribuidor_origem sempre que for nulo.
     val idDistribuidorOrigem: Int?,
     val nomeProdutor: String,
     val nomeFazenda: String,
@@ -39,6 +41,11 @@ data class SolicitacaoDeAbertura(
             require(areaSetor != null) { "A origem Netafim exige a área ou setor." }
         } else {
             require(areaSetor == null) { "Só a origem Netafim informa a área ou setor." }
+        }
+        // Mesma regra do servidor: quem abre como distribuidor sempre informa o próprio distribuidor. Sem isso
+        // a API recusaria a abertura com 400 no campo id_distribuidor_origem, então o app nem monta o pedido.
+        if (origem == OrigemAtendimento.DISTRIBUIDOR) {
+            require(idDistribuidorOrigem != null) { "A origem Distribuidor exige o idDistribuidorOrigem." }
         }
     }
 }
