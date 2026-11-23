@@ -166,12 +166,12 @@ O mesmo corpo do `POST /atendimentos` (schema `AberturaAtendimento`), validado p
 - obrigatórios sempre: `id_atendimento`, `origem`, `motivo`, `contato_solicitante`, `tipo_venda` (`projeto` ou `venda_regular`, sem valor padrão) e `culturas` com pelo menos um id;
 - obrigatórios por origem: `cliente_final` exige `id_cliente`, `cidade` e `nome_fazenda_informado`; `distribuidor` exige `nome_produtor` e `cidade`; `netafim` exige `area_setor`, `nome_produtor` e `cidade`;
 - `programacao_feiras` não é motivo de abertura (400 no campo `motivo`);
-- `id_distribuidor_origem` é opcional em todas as origens. O cliente deve omitir a chave quando não houver valor. O servidor aceita omitida ou nula;
+- `id_distribuidor_origem` é opcional para Netafim e cliente; obrigatório e igual ao distribuidor do cadastro para o perfil Distribuidor (Admin ou Usuário). Para Netafim e cliente, o cliente deve omitir a chave quando não houver valor, e o servidor aceita omitida ou nula. Para o perfil Distribuidor, campo omitido, nulo ou de outro distribuidor é rejeitado com 400 no campo `id_distribuidor_origem` e a mensagem "Informe o distribuidor do seu cadastro.", no push (`rejeitado`, só daquela operação) e no `POST /atendimentos`;
 - `nome_produtor` e `nome_fazenda_informado` vazios ou só com espaços contam como ausentes. O cliente deve omitir a chave quando o texto estiver vazio;
 - chaves desconhecidas e as que o servidor decide (`status`, `numero_protocolo`, `versao`, `sync_seq`, `prioridade`, destinação, técnico, snapshots, `id_solicitante`) são ignoradas. O solicitante é sempre o usuário da sessão;
 - `id_atendimento` dentro do `payload` precisa ser igual ao `id_atendimento` da operação. Se diferir, a operação é rejeitada com 400 no campo `id_atendimento`.
 
-Nota sobre `id_distribuidor_origem`: quando o usuário é distribuidor, o app deve enviar o campo com o valor vindo da sessão autenticada dele, e não de um campo de formulário. Hoje o servidor não valida que o valor enviado é o do distribuidor do usuário; só o banco recusa id inexistente (422 `referencia_invalida`). Endurecimento possível: o servidor preencher ou conferir o valor pela sessão. Estado do endurecimento: Proposta, aguardando confirmação.
+Nota sobre `id_distribuidor_origem`: quando o usuário é distribuidor, o app deve enviar o campo com o valor vindo da sessão autenticada dele, e não de um campo de formulário. O servidor confere o valor contra o distribuidor do cadastro do usuário autenticado (`app_id_distribuidor()`), só quando o usuário é do perfil Distribuidor (`app_tipo_org() = 'distribuidor'`). Usuários Netafim e cliente não são afetados. O servidor não preenche o campo por conta própria, para não mudar a comparação do duplicado (seção 3.5). Para o Distribuidor Admin a obrigatoriedade também evita um 403 enganoso: a policy de SELECT só libera a linha quando o distribuidor de origem, o distribuidor destinado ou a carteira de clientes são dele, então sem o campo ele não consegue ler de volta o atendimento que abriu. O banco continua recusando id inexistente (422 `referencia_invalida`). Estado: Decidido e implementado em 23/11/2026.
 
 ### 3.3 payload de atualizar
 
@@ -210,6 +210,7 @@ Detalhe de cada rejeição (`rejeitado`):
 | status | Causa | erro |
 |---|---|---|
 | 400 | Validação por campo (`tipo_venda` ausente, obrigatório da origem, lista fora dos valores, entidade ou tipo inválido, `id_atendimento` do payload diferente do da operação, `versao_esperada` ausente em atualizar, nenhuma mudança informada) | detail genérico e `campos`: `{"tipo_venda": ["Informe o tipo de venda (projeto ou venda_regular)."]}`. Sem codigo, como no DRF |
+| 400 | `id_distribuidor_origem` ausente, nulo ou de outro distribuidor para usuário do perfil Distribuidor | detail genérico e `campos`: `{"id_distribuidor_origem": ["Informe o distribuidor do seu cadastro."]}`. Rejeita só aquela operação, sem codigo |
 | 400 | Valor que o banco recusa por formato ou tamanho (22xxx) | codigo `valor_invalido` |
 | 403 | RLS ou permissão: `sem_permissao` | codigo `sem_permissao` |
 | 404 | Atualizar um atendimento inexistente, excluído ou invisível ao usuário | codigo `nao_encontrado` e detail "Não encontrado." O código existe só no push; o PATCH isolado segue sem codigo |
@@ -232,6 +233,7 @@ Regra de comparação (decidida em 19/11/2026):
 - Culturas são comparadas como conjunto de ids, sem ordem.
 - `data_abertura` é opcional no serializer (`required: False`, porque o banco usa `now()` por padrão). Só entra na comparação quando o cliente a enviou, e aí vale o mesmo instante em UTC, mesmo escrito em outro fuso. Se não foi enviada, o valor gravado é do servidor e fica de fora.
 - Atendimento excluído logicamente conta como não visível (cai no passo 3).
+- A regra do `id_distribuidor_origem` do perfil Distribuidor (seção 3.2) não altera a comparação do duplicado, porque o servidor não preenche o campo e o valor gravado é o do payload. Caso de borda: se o Netafim Admin trocar o distribuidor do usuário entre a criação e o reenvio, o reenvio volta como `rejeitado` 400 (o payload já não confere com o cadastro) e não como `duplicado` igual.
 
 Regra combinada: conteúdo igual é sucesso, diferente é conflito. Quem confirma e entrega o resultado é a Pessoa 2, no servidor.
 
@@ -333,6 +335,10 @@ Decidido em 19/11/2026 e já refletido no código e neste contrato:
 - Evidências e outras entidades fora do push: `entidade` obrigatória e só `atendimento`.
 - Criação de id que existe mas o usuário não enxerga: rejeitado 409 `duplicado` sem registro. O `payload` de criar é o corpo inteiro do `POST /atendimentos`.
 
+Decidido e implementado em 23/11/2026:
+
+- `id_distribuidor_origem` obrigatório e igual ao distribuidor do cadastro para o usuário do perfil Distribuidor (Admin ou Usuário); 400 no campo `id_distribuidor_origem` quando ausente, nulo ou de outro distribuidor, no `POST /atendimentos` e no push (`rejeitado` só daquela operação, com `campos`). Opcional para Netafim e cliente, e o servidor não preenche o campo (seção 3.2). Não altera a comparação do duplicado (seção 3.5).
+
 Decidido com a Pessoa 4 (22/11/2026), não implementado:
 
 - Coordenador do ciclo, um componente no app que chama push e depois pull, com cada rota independente (seção 4.2 e ponto em aberto 1): Pessoa 2 implementa, só com interfaces, sem Retrofit. Ordem PUSH antes de PULL. Push com falha de rede não dispara pull; 401 interrompe; rejeição individual não impede o pull.
@@ -357,6 +363,8 @@ Decidido com a Pessoa 4 (22/11/2026), não implementado:
 
 Depende de validação do Rodrigo:
 
+- Não implementado: `WITH CHECK` na policy de INSERT de `atendimento` exigindo, para o tipo distribuidor, `id_distribuidor_origem` não nulo e igual a `app_id_distribuidor()`, para fechar por qualquer caminho o vazamento de visibilidade entre distribuidores (hoje a regra vale só pela API; o banco só confere se o distribuidor existe). Seria migração do Rodrigo.
+- Observação, comportamento atual do banco: o Distribuidor Admin que abre sem `id_distribuidor_origem` e sem cliente recebe 403, porque a policy de SELECT não inclui `id_solicitante = usuário` para esse perfil e o `RETURNING` do INSERT não consegue ler a linha. A API já evita o caso ao exigir o campo (seção 3.2).
 - Avaliação do watermark do cursor: trava consultiva em `fn_sync_meta` e pull com lock exclusivo curto lendo o `last_value` (seção 2, regra 4). Impacto em `fn_sync_meta`, concorrência e bloqueio de escrita.
 
 Proposta, aguardando confirmação:

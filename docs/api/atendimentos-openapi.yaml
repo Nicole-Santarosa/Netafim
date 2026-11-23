@@ -147,7 +147,10 @@ paths:
             programacao_feiras, tipo_venda ausente, nulo, vazio ou fora da lista,
             texto vazio em situacao_projeto, estado_projeto,
             tipo_atendimento ou area_setor, ou culturas com id repetido, inexistente ou excluído (erro
-            no campo culturas). Também vem como 400 "valor_invalido" quando o banco recusa
+            no campo culturas), ou id_distribuidor_origem ausente, nulo ou de
+            outro distribuidor para o usuário do perfil Distribuidor (erro no
+            campo id_distribuidor_origem: "Informe o distribuidor do seu
+            cadastro."). Também vem como 400 "valor_invalido" quando o banco recusa
             o formato ou o tamanho de um valor.
           content:
             application/json:
@@ -546,11 +549,14 @@ components:
         (regra da API, não do banco). cliente_final: id_cliente, cidade e
         nome_fazenda_informado. distribuidor: nome_produtor e cidade. netafim:
         area_setor, nome_produtor e cidade. Em todas as origens, tipo_venda e
-        culturas com ao menos um item. O id_distribuidor_origem é opcional em
-        todas as origens: o cliente final sem distribuidor padrão abre o
-        atendimento sem ele, e o atendimento vai direto à fila do Netafim Admin
-        (decisão da Netafim de 18/11/2026). Nulo, texto vazio ou só
-        com espaços contam como ausente. Cada campo que falta responde 400 com o
+        culturas com ao menos um item. O id_distribuidor_origem é opcional para
+        usuários Netafim e de cliente: o cliente final sem distribuidor padrão
+        abre o atendimento sem ele, e o atendimento vai direto à fila do Netafim
+        Admin (decisão da Netafim de 18/11/2026). Para o usuário do perfil
+        Distribuidor (Admin ou Usuário) ele é obrigatório e precisa ser o
+        distribuidor do cadastro dele: ausente, nulo ou de outro distribuidor
+        responde 400 no campo id_distribuidor_origem. Nulo, texto vazio ou só
+        com espaços contam como ausente nos demais campos. Cada campo que falta responde 400 com o
         erro no próprio campo, todos juntos na mesma resposta.
       required:
       - id_atendimento
@@ -586,9 +592,14 @@ components:
           type: integer
           nullable: true
           description: >-
-            Distribuidor escolhido na tela. Opcional: sem ele (nulo ou campo
-            omitido) o atendimento nasce sem distribuidor de origem. Id que não
-            existe responde 422.
+            Distribuidor escolhido na tela. Opcional para usuários Netafim e de
+            cliente: sem ele (nulo ou campo omitido) o atendimento nasce sem
+            distribuidor de origem. Obrigatório para o usuário do perfil
+            Distribuidor (Admin ou Usuário), que só pode informar o
+            distribuidor do próprio cadastro: ausente, nulo ou de outro
+            distribuidor responde 400 neste campo, com a mensagem "Informe o
+            distribuidor do seu cadastro.". O servidor não preenche o campo.
+            Id que não existe responde 422.
         nome_produtor:
           type: string
           nullable: true
