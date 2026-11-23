@@ -1,5 +1,6 @@
 from collections import Counter
 
+from django.db import connection
 from rest_framework import serializers
 
 from apps.atendimentos.models import (
@@ -21,11 +22,14 @@ from apps.atendimentos.servicos import COLUNAS_ALTERAVEIS
 #   cadastro; se o aplicativo pudesse enviar, alguém poderia gravar dados falsos.
 #
 # O id_distribuidor_origem entra, porque o usuário escolhe o distribuidor numa
-# lista na tela. Não há validação extra aqui: se o id não existir, o banco recusa
-# com erro de chave estrangeira e o tradutor de erros responde 422. Ele é sempre
-# opcional (decisão da Netafim de 18/11/2026): o cliente final sem distribuidor
-# padrão abre o atendimento sem ele, e o atendimento fica sem distribuidor de
-# origem, direto na fila do Netafim Admin. O banco já aceita o campo nulo.
+# lista na tela. Se o id não existir, o banco recusa com erro de chave
+# estrangeira e o tradutor de erros responde 422. A única validação daqui é a
+# do usuário de distribuidor, que é obrigado a informar o próprio distribuidor
+# (_distribuidor_do_cadastro_invalido, chamado pelo validate). Para os demais
+# perfis ele é sempre opcional (decisão da Netafim de 18/11/2026): o cliente
+# final sem distribuidor padrão abre o atendimento sem ele, e o atendimento
+# fica sem distribuidor de origem, direto na fila do Netafim Admin. O banco já
+# aceita o campo nulo.
 #
 # Além das colunas, aceita a lista opcional culturas (ids de cultura), que não é
 # coluna do atendimento: o serviço grava cada id em atendimento_cultura.
@@ -51,6 +55,8 @@ from apps.atendimentos.servicos import COLUNAS_ALTERAVEIS
 # por isso é declarado direto no campo (extra_kwargs), e não por origem.
 # Texto único do erro do tipo_venda (ausente, nulo, vazio ou fora da lista).
 MENSAGEM_TIPO_VENDA = "Informe o tipo de venda (projeto ou venda_regular)."
+# Texto do erro do id_distribuidor_origem do usuário de distribuidor.
+MENSAGEM_DISTRIBUIDOR_DO_CADASTRO = "Informe o distribuidor do seu cadastro."
 
 OBRIGATORIOS_POR_ORIGEM = {
     "cliente_final": ("id_cliente", "cidade", "nome_fazenda_informado"),
@@ -144,6 +150,42 @@ class AberturaAtendimentoSerializer(serializers.ModelSerializer):
             },
         }
 
+    def _distribuidor_do_cadastro_invalido(self, dados):
+        """Devolve True quando o usuário é de distribuidor e o
+        id_distribuidor_origem não é o distribuidor do cadastro dele.
+
+        Para esse perfil o campo é obrigatório (Distribuidor Admin e Usuário):
+        ausente, nulo ou de outro distribuidor, tudo vale como erro. Dois
+        motivos. O Distribuidor Admin só enxerga o atendimento cujo
+        distribuidor de origem é o dele (ou de cliente da carteira); sem o
+        campo ele não consegue ler de volta o que acabou de abrir, e o banco
+        responderia um 403 enganoso no RETURNING. E um atendimento de
+        funcionário de distribuidor sem distribuidor de origem não faz
+        sentido. Netafim e cliente seguem com o campo opcional, e o servidor
+        NÃO preenche o valor: preencher mudaria o conteúdo gravado e, com
+        isso, a comparação do reenvio duplicado do sync (sync.md, seção 3.5).
+
+        Quem chama informa o usuário em context["id_usuario"] (a view e o push
+        fazem isso). Sem ele a regra é pulada, que é o caso dos testes do
+        serializer sozinho. Também é pulada se o banco não achar o ator ou se
+        o tipo não for distribuidor; o RLS barra o INSERT de qualquer jeito.
+        """
+        id_usuario = self.context.get("id_usuario")
+        if id_usuario is None:
+            return False
+
+        # O ator já foi informado ao banco na autenticação (set_config local da
+        # transação da requisição), antes de a view chegar aqui. Estas funções
+        # leem esse ator, então uma consulta só devolve o tipo da organização
+        # e o distribuidor do usuário. Sem ator ativo as duas voltam nulas.
+        with connection.cursor() as cursor:
+            cursor.execute("select app_tipo_org(), app_id_distribuidor()")
+            tipo_organizacao, id_do_cadastro = cursor.fetchone()
+
+        if tipo_organizacao != "distribuidor":
+            return False
+        return dados.get("id_distribuidor_origem") != id_do_cadastro
+
     def validate_culturas(self, ids):
         """Recusa ids repetidos e ids de cultura inexistente ou excluída, com o
         erro apontando o campo culturas. Lista ausente ou vazia já foi barrada
@@ -200,6 +242,11 @@ class AberturaAtendimentoSerializer(serializers.ModelSerializer):
             # validate (trim_whitespace), então "   " chega como "".
             if valor is None or valor == "":
                 faltando[campo] = f"Obrigatório quando a origem é {origem}."
+        # Junto o erro do distribuidor do usuário de distribuidor na mesma
+        # resposta. Fica aqui no validate e não num validate_<campo>, porque o
+        # DRF não chama esse método quando o campo vem omitido.
+        if self._distribuidor_do_cadastro_invalido(dados):
+            faltando["id_distribuidor_origem"] = MENSAGEM_DISTRIBUIDOR_DO_CADASTRO
         if faltando:
             raise serializers.ValidationError(faltando)
         return dados

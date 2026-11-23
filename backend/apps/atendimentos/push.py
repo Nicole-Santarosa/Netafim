@@ -156,8 +156,13 @@ def processar_operacao(id_usuario, operacao):
 
 
 def _criar(id_usuario, operacao):
-    # Mesma validação do POST /atendimentos: o payload é o corpo inteiro dele.
-    serializer = AberturaAtendimentoSerializer(data=operacao["payload"])
+    # Mesma validação do POST /atendimentos: o payload é o corpo inteiro dele,
+    # inclusive a conferência do id_distribuidor_origem do usuário de
+    # distribuidor (por isso o id_usuario no context). Se falhar, só esta
+    # operação é rejeitada com 400, como qualquer outro erro de campo.
+    serializer = AberturaAtendimentoSerializer(
+        data=operacao["payload"], context={"id_usuario": id_usuario}
+    )
     if not serializer.is_valid():
         return _rejeitado(400, _erro_de_campos(serializer.errors))
     dados = serializer.validated_data

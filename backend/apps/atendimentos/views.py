@@ -75,8 +75,11 @@ class AtendimentosView(APIView):
 
     def post(self, request):
         # Valida o corpo. Se estiver errado, o DRF responde 400 com o erro por
-        # campo e a função termina aqui.
-        serializer = AberturaAtendimentoSerializer(data=request.data)
+        # campo e a função termina aqui. O id do usuário vai no context porque
+        # o serializer confere o id_distribuidor_origem de quem é de distribuidor.
+        serializer = AberturaAtendimentoSerializer(
+            data=request.data, context={"id_usuario": request.user.pk}
+        )
         serializer.is_valid(raise_exception=True)
 
         # O solicitante é sempre o usuário autenticado, nunca algo do corpo.
