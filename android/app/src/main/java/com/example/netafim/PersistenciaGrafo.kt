@@ -14,11 +14,11 @@ import com.example.netafim.data.repository.SyncConflictRepository
  */
 object PersistenciaGrafo {
 
-    private lateinit var atendimentoLocal: AtendimentoRepository
-    private lateinit var operacoesSyncLocal: SyncOperationRepository
-    private lateinit var conflitosSyncLocal: SyncConflictRepository
+    private lateinit var atendimentoLocal: AtendimentoRepository // Repositório de atendimentos.
+    private lateinit var operacoesSyncLocal: SyncOperationRepository // Repositório da fila de operações de sincronização.
+    private lateinit var conflitosSyncLocal: SyncConflictRepository // Repositório de conflitos de sincronização.
 
-    private var inicializado = false
+    private var inicializado = false // Indica se a persistência local já foi inicializada.
 
     /**
      * Inicializa o banco local e os respectivos repositórios.
@@ -26,13 +26,14 @@ object PersistenciaGrafo {
     fun inicializar(contexto: Context) {
         if (inicializado) return
 
+        //  Inicializa o banco local.
         val bancoLocal = NetafimDatabase.getDatabase(
             contexto.applicationContext
         )
 
         // Repositório de atendimentos.
         atendimentoLocal = AtendimentoRepository(
-            atendimentoDao = bancoLocal.atendimentoDao()
+            banco = bancoLocal
         )
 
         // Repositório da fila de operações de sincronização.
@@ -45,7 +46,7 @@ object PersistenciaGrafo {
             dao = bancoLocal.syncConflictDao()
         )
 
-        inicializado = true
+        inicializado = true // Marca a persistência local como inicializada.
     }
 
     /**
@@ -56,7 +57,7 @@ object PersistenciaGrafo {
             check(inicializado) {
                 "PersistenciaGrafo ainda não foi inicializado."
             }
-            return atendimentoLocal
+            return atendimentoLocal // Retorna o repositório de atendimentos.
         }
 
     /**
@@ -67,7 +68,7 @@ object PersistenciaGrafo {
             check(inicializado) {
                 "PersistenciaGrafo ainda não foi inicializado."
             }
-            return operacoesSyncLocal
+            return operacoesSyncLocal // Retorna o repositório da fila de operações de sincronização.
         }
 
     /**
@@ -78,6 +79,6 @@ object PersistenciaGrafo {
             check(inicializado) {
                 "PersistenciaGrafo ainda não foi inicializado."
             }
-            return conflitosSyncLocal
+            return conflitosSyncLocal // Retorna o repositório de conflitos de sincronização.
         }
 }

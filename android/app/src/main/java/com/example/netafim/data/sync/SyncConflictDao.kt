@@ -52,4 +52,24 @@ interface SyncConflictDao {
         usuarioDonoId: Int,
         idAtendimento: String
     ): Int
+
+    // Verifica se existe conflito associado ao atendimento.
+    @Query("""
+        SELECT COUNT(*) FROM CONFLITO_SYNC
+        WHERE usuarioDonoId = :usuarioDonoId
+        AND idAtendimento = :idAtendimento
+    """)
+    suspend fun contarConflitosDoAtendimento(
+        usuarioDonoId: Int,
+        idAtendimento: String
+    ): Int
+
+    // Conta todos os conflitos registrados para o usuário.
+    @Query("""
+        SELECT COUNT(*) FROM CONFLITO_SYNC
+        WHERE usuarioDonoId = :usuarioDonoId
+    """)
+    suspend fun contarConflitosDoUsuario(
+        usuarioDonoId: Int
+    ): Int
 }

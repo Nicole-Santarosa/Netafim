@@ -73,4 +73,26 @@ interface SyncOperationDao {
     suspend fun contarOperacoes(
         usuarioDonoId: Int
     ): Int
+
+    // Verifica se existe operação de sincronização associada a um atendimento específico.
+    @Query("""
+        SELECT COUNT(*) FROM OPERACAO_SYNC
+        WHERE usuarioDonoId = :usuarioDonoId
+        AND entidade = 'atendimento'
+        AND id = :idAtendimento
+    """)
+    suspend fun contarOperacoesDoAtendimento(
+        usuarioDonoId: Int,
+        idAtendimento: String
+    ): Int
+
+    // Conta todas as operações de atendimento do usuário.
+    @Query("""
+        SELECT COUNT(*) FROM OPERACAO_SYNC
+        WHERE usuarioDonoId = :usuarioDonoId
+        AND entidade = 'atendimento'
+    """)
+    suspend fun contarOperacoesDeAtendimentoDoUsuario(
+        usuarioDonoId: Int
+    ): Int
 }

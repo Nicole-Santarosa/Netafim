@@ -71,7 +71,6 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.datastore.preferences) // Dependência para persistir o cursor global de sincronização PULL
-
-    // Módulo de acesso: autenticação, cadastro, sessão e perfil.
-    implementation(project(":feature:acesso"))
+    implementation(project(":feature:acesso")) // Módulo de acesso: autenticação, cadastro, sessão e perfil.
+    implementation(libs.room.ktx) // Dependência para utilizar withTransaction (permite executar várias operações DAO dentro de uma única transação).
 }

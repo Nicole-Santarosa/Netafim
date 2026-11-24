@@ -118,4 +118,14 @@ interface AtendimentoDao {
         WHERE usuarioDonoId = :usuarioDonoId
     """)
     suspend fun excluirTodosDoUsuario(usuarioDonoId: Int): Int
+
+    // Conta os atendimentos do usuário que ainda não estão sincronizados.
+    @Query("""
+        SELECT COUNT(*) FROM ATENDIMENTO_LOCAL
+        WHERE usuarioDonoId = :usuarioDonoId
+        AND statusLocal != 'sincronizado'
+    """)
+    suspend fun contarAtendimentosNaoSincronizados(
+        usuarioDonoId: Int
+    ): Int
 }
