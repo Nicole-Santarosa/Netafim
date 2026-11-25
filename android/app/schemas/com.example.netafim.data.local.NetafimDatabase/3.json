@@ -1,0 +1,335 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 3,
+    "identityHash": "c2f46a3378154011de1b6eec8bc81e6d",
+    "entities": [
+      {
+        "tableName": "ATENDIMENTO_LOCAL",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`usuarioDonoId` INTEGER NOT NULL, `idAtendimento` TEXT NOT NULL, `numeroProtocolo` TEXT, `dadosJson` TEXT NOT NULL, `origemRegistro` TEXT NOT NULL, `statusLocal` TEXT NOT NULL, `versaoBase` INTEGER NOT NULL, `syncSeqServidor` INTEGER, `dataCriacaoLocal` INTEGER NOT NULL, PRIMARY KEY(`usuarioDonoId`, `idAtendimento`))",
+        "fields": [
+          {
+            "fieldPath": "usuarioDonoId",
+            "columnName": "usuarioDonoId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idAtendimento",
+            "columnName": "idAtendimento",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "numeroProtocolo",
+            "columnName": "numeroProtocolo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dadosJson",
+            "columnName": "dadosJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origemRegistro",
+            "columnName": "origemRegistro",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "statusLocal",
+            "columnName": "statusLocal",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "versaoBase",
+            "columnName": "versaoBase",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncSeqServidor",
+            "columnName": "syncSeqServidor",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "dataCriacaoLocal",
+            "columnName": "dataCriacaoLocal",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "usuarioDonoId",
+            "idAtendimento"
+          ]
+        }
+      },
+      {
+        "tableName": "OPERACAO_SYNC",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`idOperacao` TEXT NOT NULL, `usuarioDonoId` INTEGER NOT NULL, `entidade` TEXT NOT NULL, `id` TEXT NOT NULL, `tipo` TEXT NOT NULL, `versaoBase` INTEGER, `campos` TEXT NOT NULL, `feitoEm` TEXT NOT NULL, `tentativas` INTEGER NOT NULL, `estado` TEXT NOT NULL, PRIMARY KEY(`idOperacao`))",
+        "fields": [
+          {
+            "fieldPath": "idOperacao",
+            "columnName": "idOperacao",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "usuarioDonoId",
+            "columnName": "usuarioDonoId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entidade",
+            "columnName": "entidade",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tipo",
+            "columnName": "tipo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "versaoBase",
+            "columnName": "versaoBase",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "campos",
+            "columnName": "campos",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "feitoEm",
+            "columnName": "feitoEm",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tentativas",
+            "columnName": "tentativas",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estado",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "idOperacao"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_OPERACAO_SYNC_usuarioDonoId_estado",
+            "unique": false,
+            "columnNames": [
+              "usuarioDonoId",
+              "estado"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_OPERACAO_SYNC_usuarioDonoId_estado` ON `${TABLE_NAME}` (`usuarioDonoId`, `estado`)"
+          },
+          {
+            "name": "index_OPERACAO_SYNC_usuarioDonoId_id",
+            "unique": false,
+            "columnNames": [
+              "usuarioDonoId",
+              "id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_OPERACAO_SYNC_usuarioDonoId_id` ON `${TABLE_NAME}` (`usuarioDonoId`, `id`)"
+          }
+        ]
+      },
+      {
+        "tableName": "CONFLITO_SYNC",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`idConflito` TEXT NOT NULL, `usuarioDonoId` INTEGER NOT NULL, `idAtendimento` TEXT NOT NULL, `registroLocalJson` TEXT NOT NULL, `registroServidorJson` TEXT NOT NULL, `versaoLocal` INTEGER NOT NULL, `versaoServidor` INTEGER NOT NULL, `dataIdentificacao` INTEGER NOT NULL, PRIMARY KEY(`idConflito`))",
+        "fields": [
+          {
+            "fieldPath": "idConflito",
+            "columnName": "idConflito",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "usuarioDonoId",
+            "columnName": "usuarioDonoId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idAtendimento",
+            "columnName": "idAtendimento",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "registroLocalJson",
+            "columnName": "registroLocalJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "registroServidorJson",
+            "columnName": "registroServidorJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "versaoLocal",
+            "columnName": "versaoLocal",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "versaoServidor",
+            "columnName": "versaoServidor",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dataIdentificacao",
+            "columnName": "dataIdentificacao",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "idConflito"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_CONFLITO_SYNC_usuarioDonoId_idAtendimento",
+            "unique": false,
+            "columnNames": [
+              "usuarioDonoId",
+              "idAtendimento"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_CONFLITO_SYNC_usuarioDonoId_idAtendimento` ON `${TABLE_NAME}` (`usuarioDonoId`, `idAtendimento`)"
+          },
+          {
+            "name": "index_CONFLITO_SYNC_usuarioDonoId_dataIdentificacao",
+            "unique": false,
+            "columnNames": [
+              "usuarioDonoId",
+              "dataIdentificacao"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_CONFLITO_SYNC_usuarioDonoId_dataIdentificacao` ON `${TABLE_NAME}` (`usuarioDonoId`, `dataIdentificacao`)"
+          }
+        ]
+      },
+      {
+        "tableName": "HISTORICO_LOCAL",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`usuarioDonoId` INTEGER NOT NULL, `idHistorico` INTEGER NOT NULL, `idAtendimento` TEXT NOT NULL, `tipoEvento` TEXT NOT NULL, `origemEvento` TEXT NOT NULL, `valorAnterior` TEXT, `valorNovo` TEXT NOT NULL, `dataEvento` TEXT NOT NULL, PRIMARY KEY(`usuarioDonoId`, `idHistorico`))",
+        "fields": [
+          {
+            "fieldPath": "usuarioDonoId",
+            "columnName": "usuarioDonoId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idHistorico",
+            "columnName": "idHistorico",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idAtendimento",
+            "columnName": "idAtendimento",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tipoEvento",
+            "columnName": "tipoEvento",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origemEvento",
+            "columnName": "origemEvento",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "valorAnterior",
+            "columnName": "valorAnterior",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "valorNovo",
+            "columnName": "valorNovo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dataEvento",
+            "columnName": "dataEvento",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "usuarioDonoId",
+            "idHistorico"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_HISTORICO_LOCAL_usuarioDonoId_idAtendimento",
+            "unique": false,
+            "columnNames": [
+              "usuarioDonoId",
+              "idAtendimento"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_HISTORICO_LOCAL_usuarioDonoId_idAtendimento` ON `${TABLE_NAME}` (`usuarioDonoId`, `idAtendimento`)"
+          },
+          {
+            "name": "index_HISTORICO_LOCAL_usuarioDonoId_dataEvento",
+            "unique": false,
+            "columnNames": [
+              "usuarioDonoId",
+              "dataEvento"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_HISTORICO_LOCAL_usuarioDonoId_dataEvento` ON `${TABLE_NAME}` (`usuarioDonoId`, `dataEvento`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c2f46a3378154011de1b6eec8bc81e6d')"
+    ]
+  }
+}

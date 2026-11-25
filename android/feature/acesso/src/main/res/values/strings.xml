@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="acesso_marca">NETAFIM</string>
+    <string name="acesso_slogan">Mais com cada gota</string>
+
+    <!-- Login -->
+    <string name="acesso_login_titulo">Acessar sua conta</string>
+    <string name="acesso_login_subtitulo">Entre com seu e-mail corporativo Netafim</string>
+    <string name="acesso_email_corporativo">E-mail corporativo</string>
+    <string name="acesso_email_dica">seunome@netafim.com</string>
+    <string name="acesso_senha_dica">••••••••</string>
+    <string name="acesso_ou">ou</string>
+    <string name="acesso_email">E-mail</string>
+    <string name="acesso_senha">Senha</string>
+    <string name="acesso_entrar">Entrar</string>
+    <string name="acesso_esqueci_senha">Esqueci minha senha</string>
+    <string name="acesso_criar_conta">Criar conta</string>
+    <string name="acesso_mostrar_senha">Mostrar senha</string>
+    <string name="acesso_ocultar_senha">Ocultar senha</string>
+
+    <!-- Verificação em duas etapas (MFA) -->
+    <string name="acesso_mfa_login_titulo">Verificação em duas etapas</string>
+    <string name="acesso_mfa_login_explicacao">Abra o aplicativo autenticador e informe o código de 6 dígitos da sua conta Netafim.</string>
+    <string name="acesso_mfa_codigo">Código</string>
+    <string name="acesso_mfa_codigo_dica">Ou use um código de recuperação.</string>
+    <string name="acesso_mfa_verificar">Verificar</string>
+    <string name="acesso_mfa_titulo">Verificação em duas etapas</string>
+    <string name="acesso_mfa_ativa">Ativa. Restam %1$d códigos de recuperação.</string>
+    <string name="acesso_mfa_inativa">Desativada. Ative para exigir um código do aplicativo autenticador ao entrar.</string>
+    <string name="acesso_mfa_ativar">Ativar</string>
+    <string name="acesso_mfa_desativar">Desativar</string>
+    <string name="acesso_mfa_ativar_titulo">Ativar verificação em duas etapas</string>
+    <string name="acesso_mfa_ativar_passo1">1. No aplicativo autenticador (Google Authenticator, Microsoft Authenticator, Authy ou 1Password), adicione uma conta pela chave abaixo.</string>
+    <string name="acesso_mfa_chave">Chave de configuração</string>
+    <string name="acesso_mfa_copiar_chave">Copiar chave</string>
+    <string name="acesso_mfa_abrir_app">Abrir no aplicativo autenticador</string>
+    <string name="acesso_mfa_ativar_passo2">2. Informe o código de 6 dígitos que o aplicativo mostrar.</string>
+    <string name="acesso_mfa_confirmar">Confirmar e ativar</string>
+    <string name="acesso_mfa_recuperacao_titulo">Guarde seus códigos de recuperação</string>
+    <string name="acesso_mfa_recuperacao_explicacao">Cada código vale uma vez e entra no lugar do aplicativo se você perder o aparelho. Eles não serão mostrados de novo.</string>
+    <string name="acesso_mfa_copiar_codigos">Copiar códigos</string>
+    <string name="acesso_mfa_guardei">Guardei os códigos</string>
+    <string name="acesso_mfa_desativar_titulo">Desativar verificação em duas etapas</string>
+    <string name="acesso_mfa_desativar_explicacao">Por segurança, informe a sua senha e um código do aplicativo (ou de recuperação).</string>
+    <string name="acesso_mfa_sem_app">Nenhum aplicativo autenticador encontrado. Digite a chave nele manualmente.</string>
+
+    <!-- Cadastro -->
+    <string name="acesso_cadastro_titulo">Cadastro</string>
+    <string name="acesso_nome">Nome completo</string>
+    <string name="acesso_telefone">Telefone / WhatsApp</string>
+    <string name="acesso_propriedade">Nome da propriedade</string>
+    <string name="acesso_distribuidor">Distribuidor / revenda que atende você</string>
+    <string name="acesso_confirmar_senha">Confirmar senha</string>
+    <string name="acesso_trocar_senha_titulo">Trocar senha</string>
+    <string name="acesso_trocar_senha_explicacao">Informe a senha atual e escolha uma nova. Depois de trocar, você entra de novo com a nova senha.</string>
+    <string name="acesso_trocar_senha_salvar">Salvar nova senha</string>
+    <string name="acesso_senha_atual">Senha atual</string>
+    <string name="acesso_nova_senha">Nova senha</string>
+    <string name="acesso_confirmar_nova_senha">Confirmar nova senha</string>
+    <string name="acesso_dica_senha">Mínimo de 8 caracteres, sem ser só números.</string>
+    <string name="acesso_aceite_termo">Li e aceito o aviso de privacidade (versão %1$s).</string>
+    <string name="acesso_aceite_termo_carregando">Li e aceito o aviso de privacidade.</string>
+    <string name="acesso_enviar_cadastro">Enviar cadastro</string>
+    <string name="acesso_aguardando_titulo">Aguardando validação</string>
+    <string name="acesso_aguardando_mensagem">Seu cadastro está em análise pela Netafim</string>
+    <string name="acesso_aguardando_detalhe">Você receberá um aviso assim que o acesso for liberado.</string>
+    <string name="acesso_voltar_login">Voltar para o login</string>
+    <string name="acesso_tentar_novamente">Tentar novamente</string>
+
+    <!-- Esqueci a senha -->
+    <string name="acesso_esqueci_titulo">Recuperar senha</string>
+    <string name="acesso_enviar_link">Enviar link de recuperação</string>
+
+    <!-- Link do e-mail: convite e redefinição de senha -->
+    <string name="acesso_link_titulo_convite">Definir senha de acesso</string>
+    <string name="acesso_link_titulo_redefinir">Redefinir senha</string>
+    <string name="acesso_link_explicacao_convite">Você foi convidado para o aplicativo Netafim. Crie a sua senha e aceite o aviso de privacidade para começar.</string>
+    <string name="acesso_link_explicacao_redefinir">Crie uma nova senha para entrar no aplicativo.</string>
+    <string name="acesso_link_nova_senha">Nova senha</string>
+    <string name="acesso_link_salvar_senha">Salvar senha</string>
+
+    <!-- Perfil -->
+    <string name="acesso_perfil_titulo">Meu perfil</string>
+    <string name="acesso_perfil_organizacao">Organização</string>
+    <string name="acesso_perfil_perfil">Perfil de acesso</string>
+    <string name="acesso_perfil_email">E-mail</string>
+    <string name="acesso_perfil_telefone">Telefone</string>
+    <string name="acesso_perfil_situacao">Situação</string>
+    <string name="acesso_perfil_permissoes">O que você pode fazer</string>
+    <string name="acesso_perfil_sem_telefone">Não informado</string>
+    <string name="acesso_atualizar">Atualizar</string>
+    <string name="acesso_sair">Sair</string>
+    <string name="acesso_sair_confirmar_titulo">Sair do aplicativo?</string>
+    <string name="acesso_sair_confirmar_texto">Atendimentos ainda não sincronizados continuam salvos neste aparelho.</string>
+    <string name="acesso_cancelar">Cancelar</string>
+    <string name="acesso_voltar">Voltar</string>
+    <string name="acesso_erro">Erro</string>
+
+    <!-- Aprovação de cadastro (Netafim Admin) -->
+    <string name="aprovacao_titulo">Aprovação de cadastro</string>
+    <string name="aprovacao_nome">Nome</string>
+    <string name="aprovacao_email">E-mail</string>
+    <string name="aprovacao_telefone">Telefone</string>
+    <string name="aprovacao_nao_informado">Não informado</string>
+    <string name="aprovacao_recusar">Recusar</string>
+    <string name="aprovacao_aprovar">Aprovar</string>
+    <string name="aprovacao_vazio_titulo">Nenhum cadastro aguardando aprovação</string>
+    <string name="aprovacao_vazio_detalhe">Quando alguém pedir acesso pelo aplicativo, o cadastro aparece aqui.</string>
+    <string name="aprovacao_folha_titulo">Aprovar cadastro</string>
+    <string name="aprovacao_tipo">Tipo de organização</string>
+    <string name="aprovacao_tipo_netafim">Netafim</string>
+    <string name="aprovacao_tipo_distribuidor">Distribuidor</string>
+    <string name="aprovacao_tipo_cliente">Cliente final</string>
+    <string name="aprovacao_organizacao_distribuidor">Distribuidor</string>
+    <string name="aprovacao_organizacao_cliente">Cliente</string>
+    <string name="aprovacao_perfil">Perfil de acesso</string>
+    <string name="aprovacao_sem_opcoes">Nenhuma opção ativa disponível.</string>
+    <string name="aprovacao_confirmar">Confirmar aprovação</string>
+    <string name="aprovacao_recusar_titulo">Recusar cadastro?</string>
+    <string name="aprovacao_recusar_texto">O cadastro de %1$s será recusado e a pessoa será avisada. Essa ação não pode ser desfeita.</string>
+
+    <!-- Gestão de usuários (admin de distribuidor ou de cliente) -->
+    <string name="usuarios_titulo">Gestão de usuários</string>
+    <string name="usuarios_admin">Admin</string>
+    <string name="usuarios_usuario">Usuário</string>
+    <string name="usuarios_adicionar">+ Adicionar usuário</string>
+    <string name="usuarios_vazio_titulo">Nenhum usuário por aqui</string>
+    <string name="usuarios_vazio_detalhe">Convide alguém da sua organização pelo botão abaixo.</string>
+    <string name="usuarios_situacao_pendente">Pendente</string>
+    <string name="usuarios_situacao_recusado">Recusado</string>
+    <string name="usuarios_situacao_inativo">Inativo</string>
+    <string name="usuarios_situacao_bloqueado">Bloqueado</string>
+    <string name="novo_usuario_titulo">Novo usuário</string>
+    <string name="novo_usuario_enviar">Enviar convite</string>
+    <string name="novo_usuario_explicacao">A pessoa recebe um convite por e-mail para criar a senha. O acesso é liberado depois da aprovação da Netafim.</string>
+
+    <!-- Recuperar senha, perfil e outras telas -->
+    <string name="esqueci_enviado_titulo">Verifique seu e-mail</string>
+    <string name="perfil_foto_alterar">Alterar foto de perfil</string>
+    <string name="perfil_foto_descricao">Foto de perfil de %1$s. Toque para alterar.</string>
+    <string name="perfil_foto_titulo">Foto de perfil</string>
+    <string name="perfil_foto_galeria">Escolher da galeria</string>
+    <string name="perfil_foto_camera">Tirar uma foto</string>
+    <string name="perfil_foto_remover">Remover foto</string>
+    <string name="perfil_foto_erro">Não foi possível usar essa imagem. Tente outra.</string>
+    <string name="perfil_foto_so_aparelho">A foto fica salva só neste aparelho.</string>
+    <!-- Detalhe do usuário -->
+    <string name="usuario_detalhe_titulo">Detalhe do usuário</string>
+    <string name="usuario_erro_carregar">Não foi possível carregar este usuário.</string>
+    <string name="usuario_sem_organizacao">Ainda sem organização</string>
+    <string name="usuario_sem_perfil">Ainda sem perfil</string>
+    <string name="usuario_sem_acoes">Você pode ver este usuário, mas não pode alterá-lo.</string>
+    <string name="usuarios_situacao_ativo">Ativo</string>
+    <string name="usuarios_situacao_desconhecida">Desconhecida</string>
+    <string name="usuario_acao_editar">Editar dados</string>
+    <string name="usuario_editar_titulo">Editar usuário</string>
+    <string name="usuario_editar_salvar">Salvar alterações</string>
+    <string name="usuario_acao_perfil">Definir perfil</string>
+    <string name="usuario_acao_convite">Reenviar convite</string>
+    <string name="usuario_acao_ativar">Ativar usuário</string>
+    <string name="usuario_acao_desativar">Desativar usuário</string>
+    <string name="usuario_acao_excluir">Excluir usuário</string>
+    <string name="usuario_desativar_titulo">Desativar %1$s?</string>
+    <string name="usuario_desativar_texto">A pessoa deixa de entrar no aplicativo e as sessões dela são encerradas. Você pode ativá-la de novo depois.</string>
+    <string name="usuario_confirmar_desativar">Desativar</string>
+    <string name="usuario_excluir_titulo">Excluir %1$s?</string>
+    <string name="usuario_excluir_texto">O usuário some das listas e o e-mail fica livre para um novo cadastro. Os atendimentos ligados a ele continuam. Essa ação não pode ser desfeita pelo aplicativo.</string>
+    <string name="usuario_confirmar_excluir">Excluir</string>
+    <string name="usuario_perfil_titulo">Definir perfil</string>
+    <string name="usuario_aviso_ativado">Usuário ativado.</string>
+    <string name="usuario_aviso_desativado">Usuário desativado.</string>
+    <string name="usuario_aviso_perfil">Perfil alterado.</string>
+    <string name="usuario_aviso_convite">Convite reenviado.</string>
+    <!-- Permissões por perfil (RF20) -->
+    <string name="permissoes_titulo">Permissões por perfil</string>
+    <string name="permissoes_explicacao_lista">Escolha um perfil para ver e alterar o que ele pode fazer. A mudança vale para todas as pessoas com esse perfil.</string>
+    <string name="permissoes_explicacao_edicao">Marque o que este perfil pode fazer. A mudança vale já na próxima ação de cada pessoa com esse perfil.</string>
+    <string name="permissoes_vazio">Nenhum perfil encontrado.</string>
+    <string name="permissoes_resumo">%1$s · %2$s</string>
+    <string name="permissoes_tipo_netafim">Netafim</string>
+    <string name="permissoes_tipo_distribuidor">Distribuidor</string>
+    <string name="permissoes_tipo_cliente">Cliente final</string>
+    <string name="permissoes_essencial">Obrigatória para o Netafim Admin</string>
+    <string name="permissoes_salvar">Salvar permissões</string>
+    <plurals name="permissoes_quantidade">
+        <item quantity="one">%d permissão</item>
+        <item quantity="other">%d permissões</item>
+    </plurals>
+
+    <!-- Privacidade (LGPD): direitos do titular -->
+    <string name="privacidade_titulo">Privacidade</string>
+    <string name="privacidade_atalho">Privacidade e meus dados</string>
+    <string name="privacidade_explicacao">Pela Lei Geral de Proteção de Dados (LGPD), você pode pedir uma cópia dos seus dados, corrigi-los ou pedir que sejam anonimizados. O prazo de resposta aparece em cada pedido.</string>
+    <string name="privacidade_baixar">Baixar meus dados</string>
+    <string name="privacidade_baixar_aviso">A cópia traz os dados da sua conta, o consentimento, os seus aparelhos e os seus pedidos. Relatórios e evidências dos atendimentos não fazem parte dela.</string>
+    <string name="privacidade_compartilhar_assunto">Meus dados (App Netafim)</string>
+    <string name="privacidade_compartilhar_titulo">Guardar ou enviar a cópia</string>
+    <string name="privacidade_fazer_pedido">Fazer um pedido</string>
+    <string name="privacidade_meus_pedidos">Meus pedidos</string>
+    <string name="privacidade_sem_pedidos">Você ainda não fez nenhum pedido.</string>
+    <string name="privacidade_pedido_em">Pedido em %1$s</string>
+    <string name="privacidade_prazo">Prazo: %1$s</string>
+    <string name="privacidade_concluido_em">Concluído em %1$s</string>
+    <string name="privacidade_motivo_negativa">Motivo: %1$s</string>
+    <string name="privacidade_status_recebida">Recebido</string>
+    <string name="privacidade_status_em_analise">Em análise</string>
+    <string name="privacidade_status_atendida">Atendido</string>
+    <string name="privacidade_status_negada">Negado</string>
+    <string name="privacidade_novo_titulo">Fazer um pedido</string>
+    <string name="privacidade_novo_explicacao">Escolha o que você quer pedir. Cada tipo de pedido só pode ter um em andamento por vez.</string>
+    <string name="privacidade_observacao">Observação (opcional)</string>
+    <string name="privacidade_observacao_dica">Conte o que você precisa. Até 1000 caracteres.</string>
+    <string name="privacidade_enviar">Enviar pedido</string>
+    <string name="privacidade_aviso_irreversivel">Atenção: se este pedido for atendido, sua conta será anonimizada e não há como desfazer.</string>
+    <string name="privacidade_confirmar_titulo">Tem certeza?</string>
+    <string name="privacidade_confirmar_texto">Se este pedido for atendido, sua conta será anonimizada: você perde o acesso ao aplicativo e não há como desfazer. Os registros legais dos atendimentos continuam guardados.</string>
+    <string name="privacidade_confirmar_sim">Sim, enviar o pedido</string>
+    <string name="privacidade_tipo_confirmacao">Saber se vocês tratam os meus dados</string>
+    <string name="privacidade_tipo_acesso">Receber uma cópia dos meus dados</string>
+    <string name="privacidade_tipo_correcao">Corrigir dados incorretos</string>
+    <string name="privacidade_tipo_anonimizacao">Anonimizar os meus dados</string>
+    <string name="privacidade_tipo_eliminacao">Excluir os meus dados</string>
+    <string name="privacidade_tipo_portabilidade">Levar os meus dados para outro serviço</string>
+    <string name="privacidade_tipo_compartilhamento">Saber com quem os meus dados são compartilhados</string>
+    <string name="privacidade_tipo_revogacao_consentimento">Retirar o meu consentimento</string>
+
+    <!-- Fila de pedidos de privacidade (Netafim Admin) -->
+    <string name="fila_titulo">Pedidos de privacidade</string>
+    <string name="fila_explicacao">Pedidos dos titulares sobre os dados pessoais (LGPD). Os mais próximos do prazo aparecem primeiro.</string>
+    <plurals name="fila_atrasados">
+        <item quantity="one">%d pedido fora do prazo</item>
+        <item quantity="other">%d pedidos fora do prazo</item>
+    </plurals>
+    <string name="fila_filtro_abertos">Abertos</string>
+    <string name="fila_filtro_atendidos">Atendidos</string>
+    <string name="fila_filtro_negados">Negados</string>
+    <string name="fila_filtro_todos">Todos</string>
+    <string name="fila_vazio">Nenhum pedido nesta lista.</string>
+    <string name="fila_atrasado">Fora do prazo</string>
+    <string name="fila_titular_anonimizado">Titular anonimizado</string>
+    <string name="fila_detalhe_titulo">Pedido de privacidade</string>
+    <string name="fila_erro_carregar">Não foi possível abrir o pedido.</string>
+    <string name="fila_dado_titular">Titular</string>
+    <string name="fila_dado_email">E-mail de contato</string>
+    <string name="fila_dado_pedido">Pedido</string>
+    <string name="fila_dado_situacao">Situação</string>
+    <string name="fila_dado_pedido_em">Pedido em</string>
+    <string name="fila_dado_prazo">Prazo</string>
+    <string name="fila_dado_concluido_em">Concluído em</string>
+    <string name="fila_dado_observacao">Observação do titular</string>
+    <string name="fila_dado_motivo">Motivo da negativa</string>
+    <string name="fila_acao_analisar">Marcar em análise</string>
+    <string name="fila_acao_atender">Atender pedido</string>
+    <string name="fila_acao_negar">Negar pedido</string>
+    <string name="fila_acao_dados">Baixar dados do titular</string>
+    <string name="fila_dados_aviso">A cópia traz os dados que o módulo de acesso guarda do titular. Relatórios e evidências dos atendimentos não fazem parte dela.</string>
+    <string name="fila_sem_acoes">Este pedido já foi concluído.</string>
+    <string name="fila_aviso_analise">Pedido em análise.</string>
+    <string name="fila_aviso_atendido">Pedido atendido.</string>
+    <string name="fila_aviso_negado">Pedido negado.</string>
+    <string name="fila_atender_titulo">Atender este pedido?</string>
+    <string name="fila_atender_texto">O pedido será marcado como atendido e o titular verá a resposta.</string>
+    <string name="fila_atender_texto_anonimiza">Atender anonimiza a conta do titular: nome, e-mail e telefone são descaracterizados, a conta é desativada, os aparelhos e as sessões são encerrados e a pessoa deixa de entrar. Não há como desfazer. O histórico legal dos atendimentos é mantido.</string>
+    <string name="fila_atender_confirmar">Sim, atender</string>
+    <string name="fila_negar_titulo">Negar o pedido</string>
+    <string name="fila_negar_texto">Escreva o motivo. É o que o titular vai ler.</string>
+    <string name="fila_negar_motivo">Motivo</string>
+    <string name="fila_negar_confirmar">Negar pedido</string>
+    <string name="fila_tipo_confirmacao">Confirmação de tratamento</string>
+    <string name="fila_tipo_acesso">Acesso aos dados</string>
+    <string name="fila_tipo_correcao">Correção de dados</string>
+    <string name="fila_tipo_anonimizacao">Anonimização</string>
+    <string name="fila_tipo_eliminacao">Eliminação</string>
+    <string name="fila_tipo_portabilidade">Portabilidade</string>
+    <string name="fila_tipo_compartilhamento">Informação de compartilhamento</string>
+    <string name="fila_tipo_revogacao_consentimento">Revogação de consentimento</string>
+</resources>
