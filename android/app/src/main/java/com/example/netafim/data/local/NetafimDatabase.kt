@@ -16,9 +16,10 @@ import com.example.netafim.data.sync.SyncConflictEntity
     entities = [
         AtendimentoEntity::class,
         SyncOperationEntity::class,
-        SyncConflictEntity::class
+        SyncConflictEntity::class,
+        HistoricoEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true // Permite exportar o esquema do banco de dados para um arquivo JSON, útil para versionamento e documentação.
 )
 // Classe abstrata responsável pela criação do banco de dados local e pela definição das DAOs.
@@ -32,6 +33,9 @@ abstract class NetafimDatabase : RoomDatabase() {
 
     // DAO responsável por armazenar os conflitos de sincronização.
     abstract fun syncConflictDao(): SyncConflictDao
+
+    // DAO responsável pelas operações de histórico dos atendimentos.
+    abstract fun historicoDao(): HistoricoDao
 
     companion object {
 
@@ -105,6 +109,41 @@ abstract class NetafimDatabase : RoomDatabase() {
             }
         }
 
+        // Migração da versão 2 para a versão 3.
+        // Cria a tabela de histórico local sem alterar os dados existentes.
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+
+            override fun migrate(db: SupportSQLiteDatabase) {
+
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `HISTORICO_LOCAL` (
+                        `usuarioDonoId` INTEGER NOT NULL,
+                        `idHistorico` INTEGER NOT NULL,
+                        `idAtendimento` TEXT NOT NULL,
+                        `tipoEvento` TEXT NOT NULL,
+                        `origemEvento` TEXT NOT NULL,
+                        `valorAnterior` TEXT,
+                        `valorNovo` TEXT NOT NULL,
+                        `dataEvento` TEXT NOT NULL,
+                        PRIMARY KEY(`usuarioDonoId`, `idHistorico`)
+                    )
+                """)
+
+                db.execSQL("""
+            CREATE INDEX IF NOT EXISTS
+            `index_HISTORICO_LOCAL_usuarioDonoId_idAtendimento`
+            ON `HISTORICO_LOCAL` (`usuarioDonoId`, `idAtendimento`)
+        """)
+
+                db.execSQL("""
+            CREATE INDEX IF NOT EXISTS
+            `index_HISTORICO_LOCAL_usuarioDonoId_dataEvento`
+            ON `HISTORICO_LOCAL` (`usuarioDonoId`, `dataEvento`)
+        """)
+            }
+        }
+
         // Instância do banco de dados.
         @Volatile // Garantia de visibilidade entre threads, evitando problemas de concorrência.
         private var INSTANCE: NetafimDatabase? = null
@@ -117,8 +156,11 @@ abstract class NetafimDatabase : RoomDatabase() {
                     NetafimDatabase::class.java,
                     "netafim_local.db"
                 )
-                    // Registra a migração da versão 1 para a versão 2.
-                    .addMigrations(MIGRATION_1_2)
+                    // Registra a migração da versão 1 para a versão 2 e de 2 para 3.
+                    .addMigrations(
+                        MIGRATION_1_2,
+                        MIGRATION_2_3
+                    )
                     .build().also { INSTANCE = it }
             }
         }

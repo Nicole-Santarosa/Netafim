@@ -5,6 +5,7 @@ import com.example.netafim.data.local.NetafimDatabase
 import com.example.netafim.data.repository.AtendimentoRepository
 import com.example.netafim.data.repository.SyncOperationRepository
 import com.example.netafim.data.repository.SyncConflictRepository
+import com.example.netafim.data.repository.HistoricoRepository
 
 /**
  * Centraliza a inicialização dos repositórios de persistência local.
@@ -13,10 +14,11 @@ import com.example.netafim.data.repository.SyncConflictRepository
  * :feature:acesso permanece independente do Room.
  */
 object PersistenciaGrafo {
-
     private lateinit var atendimentoLocal: AtendimentoRepository // Repositório de atendimentos.
     private lateinit var operacoesSyncLocal: SyncOperationRepository // Repositório da fila de operações de sincronização.
     private lateinit var conflitosSyncLocal: SyncConflictRepository // Repositório de conflitos de sincronização.
+
+    private lateinit var historicoLocal: HistoricoRepository // Repositório de histórico dos atendimentos.
 
     private var inicializado = false // Indica se a persistência local já foi inicializada.
 
@@ -44,6 +46,11 @@ object PersistenciaGrafo {
         // Repositório de conflitos de sincronização.
         conflitosSyncLocal = SyncConflictRepository(
             dao = bancoLocal.syncConflictDao()
+        )
+
+        // Repositório de histórico dos atendimentos.
+        historicoLocal = HistoricoRepository(
+            historicoDao = bancoLocal.historicoDao()
         )
 
         inicializado = true // Marca a persistência local como inicializada.
@@ -80,5 +87,16 @@ object PersistenciaGrafo {
                 "PersistenciaGrafo ainda não foi inicializado."
             }
             return conflitosSyncLocal // Retorna o repositório de conflitos de sincronização.
+        }
+
+    /**
+     * Disponibiliza o repositório de histórico dos atendimentos.
+     */
+    val repositorioHistoricoLocal: HistoricoRepository
+        get() {
+            check(inicializado) {
+                "PersistenciaGrafo ainda não foi inicializado."
+            }
+            return historicoLocal
         }
 }
