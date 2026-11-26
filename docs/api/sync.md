@@ -6,9 +6,9 @@ Responsável pelas rotas: Pessoa 2 (Rafael), conforme a divisão confirmada em 1
 
 Revisão de 21/11/2026: datas com fuso (seção 1), duplicado sem registro tratado como erro (seções 3.4 e 4), nomes de campo separados de valores de `resultado` (seção 3.4) e propostas do grupo registradas na seção 6. Nada disso muda o código.
 
-Estado em 20/11/2026: as duas rotas estão na branch `rafael-atendimentos-models`, sem merge na main, com 316 testes da suíte versionada passando. Não há teste com JWT real, porque o módulo de acesso do Rodrigo ainda não entrou; os testes usam `force_authenticate`.
+Estado em 24/11/2026 (commit 61b87d9): as duas rotas estão na branch `rafael-atendimentos-models`, sem merge na main, com 355 testes da suíte versionada passando. Não há teste com JWT real, porque o módulo de acesso do Rodrigo ainda não entrou; os testes usam `force_authenticate`.
 
-A seção "Pontos em aberto" separa o que foi decidido (19/11/2026) do que segue pendente. O restante descreve o que o código faz hoje. Tudo que ainda não está no código aparece marcado com um destes três estados: "Decidido, não implementado", "Depende de validação do Rodrigo" ou "Proposta, aguardando confirmação". Onde o texto diz "proposta", é algo pendente que não foi implementado. O `pull_atendimentos` atual olha só o `sync_seq` do atendimento.
+A seção "Pontos em aberto" separa o que foi decidido (19/11/2026) do que segue pendente. O restante descreve o que o código faz hoje. Os estados usados no texto são: decidido ou aprovado (combinado, sem código, salvo quando o texto disser implementado), implementado (está no código, com o commit), validado (conferido em teste ou banco, com onde e quando) e pendente (o que ainda falta escrever, revisar, aplicar ou implementar). "Depende de validação" marca o que aguarda a análise do responsável pelo banco. Onde o texto diz "proposta", é algo que ainda não foi decidido nem implementado. O `pull_atendimentos` atual olha só o `sync_seq` do atendimento.
 
 O mesmo conteúdo está no OpenAPI (`atendimentos-openapi.yaml`, tag `sync`). Em caso de divergência entre os dois, corrija os dois.
 
@@ -167,6 +167,7 @@ O mesmo corpo do `POST /atendimentos` (schema `AberturaAtendimento`), validado p
 - obrigatórios por origem: `cliente_final` exige `id_cliente`, `cidade` e `nome_fazenda_informado`; `distribuidor` exige `nome_produtor` e `cidade`; `netafim` exige `area_setor`, `nome_produtor` e `cidade`;
 - `programacao_feiras` não é motivo de abertura (400 no campo `motivo`);
 - `id_distribuidor_origem` é opcional para Netafim e cliente; obrigatório e igual ao distribuidor do cadastro para o perfil Distribuidor (Admin ou Usuário). Para Netafim e cliente, o cliente deve omitir a chave quando não houver valor, e o servidor aceita omitida ou nula. Para o perfil Distribuidor, campo omitido, nulo ou de outro distribuidor é rejeitado com 400 no campo `id_distribuidor_origem` e a mensagem "Informe o distribuidor do seu cadastro.", no push (`rejeitado`, só daquela operação) e no `POST /atendimentos`;
+- `id_cliente` para o perfil Distribuidor (Admin ou Usuário): quando preenchido, em qualquer origem, precisa ser um cliente da carteira do distribuidor do usuário. Fora da carteira ou inexistente é rejeitado com 400 no campo `id_cliente` e a mensagem "Informe um cliente da carteira do seu distribuidor.", no push (`rejeitado`, só daquela operação) e no `POST /atendimentos`. Nulo ou omitido continua aceito (detalhe na seção 6, bloco de 24/11/2026);
 - `nome_produtor` e `nome_fazenda_informado` vazios ou só com espaços contam como ausentes. O cliente deve omitir a chave quando o texto estiver vazio;
 - chaves desconhecidas e as que o servidor decide (`status`, `numero_protocolo`, `versao`, `sync_seq`, `prioridade`, destinação, técnico, snapshots, `id_solicitante`) são ignoradas. O solicitante é sempre o usuário da sessão;
 - `id_atendimento` dentro do `payload` precisa ser igual ao `id_atendimento` da operação. Se diferir, a operação é rejeitada com 400 no campo `id_atendimento`.
@@ -211,6 +212,7 @@ Detalhe de cada rejeição (`rejeitado`):
 |---|---|---|
 | 400 | Validação por campo (`tipo_venda` ausente, obrigatório da origem, lista fora dos valores, entidade ou tipo inválido, `id_atendimento` do payload diferente do da operação, `versao_esperada` ausente em atualizar, nenhuma mudança informada) | detail genérico e `campos`: `{"tipo_venda": ["Informe o tipo de venda (projeto ou venda_regular)."]}`. Sem codigo, como no DRF |
 | 400 | `id_distribuidor_origem` ausente, nulo ou de outro distribuidor para usuário do perfil Distribuidor | detail genérico e `campos`: `{"id_distribuidor_origem": ["Informe o distribuidor do seu cadastro."]}`. Rejeita só aquela operação, sem codigo |
+| 400 | `id_cliente` preenchido fora da carteira ou inexistente para usuário do perfil Distribuidor | detail genérico e `campos`: `{"id_cliente": ["Informe um cliente da carteira do seu distribuidor."]}`. Rejeita só aquela operação, sem codigo |
 | 400 | Valor que o banco recusa por formato ou tamanho (22xxx) | codigo `valor_invalido` |
 | 403 | RLS ou permissão: `sem_permissao` | codigo `sem_permissao` |
 | 404 | Atualizar um atendimento inexistente, excluído ou invisível ao usuário | codigo `nao_encontrado` e detail "Não encontrado." O código existe só no push; o PATCH isolado segue sem codigo |
@@ -233,7 +235,7 @@ Regra de comparação (decidida em 19/11/2026):
 - Culturas são comparadas como conjunto de ids, sem ordem.
 - `data_abertura` é opcional no serializer (`required: False`, porque o banco usa `now()` por padrão). Só entra na comparação quando o cliente a enviou, e aí vale o mesmo instante em UTC, mesmo escrito em outro fuso. Se não foi enviada, o valor gravado é do servidor e fica de fora.
 - Atendimento excluído logicamente conta como não visível (cai no passo 3).
-- A regra do `id_distribuidor_origem` do perfil Distribuidor (seção 3.2) não altera a comparação do duplicado, porque o servidor não preenche o campo e o valor gravado é o do payload. Caso de borda: se o Netafim Admin trocar o distribuidor do usuário entre a criação e o reenvio, o reenvio volta como `rejeitado` 400 (o payload já não confere com o cadastro) e não como `duplicado` igual.
+- A regra do `id_distribuidor_origem` do perfil Distribuidor (seção 3.2) não altera a comparação do duplicado, porque o servidor não preenche o campo e o valor gravado é o do payload. Caso de borda: se o Netafim Admin trocar o distribuidor do usuário entre a criação e o reenvio, o reenvio volta como `rejeitado` 400 (o payload já não confere com o cadastro) e não como `duplicado` igual. Sessão desatualizada: se a troca acontecer com a sessão do usuário aberta, o app mantém o id antigo do distribuidor até renovar a sessão, e o backend responde 400 no campo `id_distribuidor_origem` às criações novas até lá.
 
 Regra combinada: conteúdo igual é sucesso, diferente é conflito. Quem confirma e entrega o resultado é a Pessoa 2, no servidor.
 
@@ -303,7 +305,17 @@ Procedimento:
 5. Aplicar de forma idempotente.
 6. Persistir o cursor só depois de cada página inteira ter sido aplicada com sucesso no Room.
 7. Os tombstones (`removido: true`) apagam a cópia local só quando ela está em `sincronizado`. Regra do tombstone, Decidido com a Pessoa 4 (22/11/2026), não implementado: se a cópia local estiver com `statusLocal` igual a `pendente_envio` ou `conflito`, o tombstone não apaga o registro. O app mantém a cópia e o que o usuário digitou. Se o PUSH seguinte devolver 404 ou 403 por operação (`rejeitado`), o registro vai para `erro` com a mensagem, mas os dados do usuário não são apagados. Só registros em `sincronizado` são apagados pelo tombstone.
-8. Reconciliação. Proposta, aguardando a Pessoa 4 (sugestão do Rodrigo): depois que todas as páginas do `desde = 0` terminarem com sucesso, a cópia local em `sincronizado` cujo id não veio no pull é tratada como removida, com a mesma proteção de `pendente_envio` e `conflito`. Só vale para o pull completo. Motivo: o RLS de `atendimento` depende de `id_tecnico_responsavel` e `id_distribuidor`, que o PATCH pode alterar. Um atendimento reatribuído some do pull do técnico antigo sem tombstone, porque para ele o registro deixou de ser visível, e a cópia local dele só sai por este passo.
+8. Reconciliação. Regra aprovada em 24/11/2026, implementação pendente na camada local. Condições (na camada local, os estados são `SINCRONIZADO`, `PENDENTE_DE_ENVIO`, `CONFLITO` e `ERRO`):
+   - roda só depois de todas as páginas do `desde = 0` aplicadas com sucesso e com `tem_mais` (`temMais` na camada local) igual a false na última página;
+   - guarda os ids recebidos durante todo o PULL completo e compara com os atendimentos locais do usuário da sessão (`usuarioDonoId`);
+   - remove somente as cópias em `sincronizado` cujo id não veio no PULL completo;
+   - preserva as cópias em `pendente_envio`, `conflito` e `erro`;
+   - qualquer falha de página, de comunicação ou de persistência cancela a reconciliação inteira;
+   - nunca roda no PULL incremental.
+
+   Motivo: o RLS de `atendimento` depende de `id_tecnico_responsavel` e `id_distribuidor`, que o PATCH pode alterar. Um atendimento reatribuído some do pull do técnico antigo sem tombstone, porque para ele o registro deixou de ser visível, e a cópia local dele só sai por este passo.
+
+   Limitação: os tombstones nunca são apagados no servidor, então o `desde = 0` devolve todos eles e a lista só cresce (seção 5, limitação 6).
 
 ### 4.2 Ordem do ciclo
 
@@ -313,9 +325,9 @@ Ordem de sincronização: o rascunho do Rodrigo recomenda push antes de pull. A 
 
 1. Eventos de histórico `reagendado`, `reclassificado` e `editado_pos_finalizacao` não avançam o `sync_seq` do atendimento (seção 2). Válida hoje. A correção decidida é a coluna `sync_seq` em `historico_atendimento` (seção 6), ainda não implementada.
 2. O cursor é tirado na escrita e não no commit (seção 2, regra 4). Ele é uma posição de sincronização com sobreposição e recuperação por resincronização completa, e não uma garantia absoluta: uma transação que confirma depois de a sua posição sair da janela de 1.000 só é recuperada pela resincronização completa (seção 4, subseção "Resincronização completa"). A janela de 1.000 conta posições globais da `seq_sync`, compartilhada por 22 tabelas, e não atendimentos, e a migração 019 também consome números dela. A trava consultiva como melhoria futura Depende de validação do Rodrigo (seção 2, regra 4).
-3. Reenvio de atualização cuja resposta se perdeu volta como conflito de versão (seção 3.6). Não há tabela de operações processadas (migração 020, número confirmado pelo Rodrigo, ainda sem arquivo). O app percebe olhando o `registro_servidor`. Ressalva da Pessoa 4, vale mesmo depois da 020: a retenção de 90 dias, igual à do refresh token, não é necessariamente o tempo máximo que uma operação fica pendente. Depois de expirada a retenção, o reenvio pode voltar como `conflito_de_versao` falso, sem duplicar a atualização.
+3. Reenvio de atualização cuja resposta se perdeu volta como conflito de versão (seção 3.6). Não há tabela de operações processadas (migração 020, em escrita, sem validação; seção 6). O app percebe olhando o `registro_servidor`. Ressalva da Pessoa 4, vale mesmo depois da 020: a retenção de 90 dias, igual à do refresh token, não é necessariamente o tempo máximo que uma operação fica pendente. Depois de expirada a retenção, o reenvio pode voltar como `conflito_de_versao` falso, sem duplicar a atualização.
 4. O pull só olha o `sync_seq` do atendimento. Os vínculos de cultura têm `sync_seq` próprio, mas nenhuma rota da API altera cultura depois da abertura, e na abertura o vínculo é gravado na mesma transação do atendimento. Se isso mudar, o pull deixa de cobrir (seção 6, ponto em aberto 3).
-5. Atendimento reatribuído sai do pull do técnico antigo sem tombstone. O RLS de `atendimento` depende de `id_tecnico_responsavel` e `id_distribuidor`, que o PATCH pode alterar, e para o técnico antigo o registro deixa de ser visível, em vez de aparecer como excluído. No pull incremental a cópia antiga continua no aparelho e só sai na próxima resincronização completa (seção 4.1, passo 8, proposta aguardando a Pessoa 4).
+5. Atendimento reatribuído sai do pull do técnico antigo sem tombstone. O RLS de `atendimento` depende de `id_tecnico_responsavel` e `id_distribuidor`, que o PATCH pode alterar, e para o técnico antigo o registro deixa de ser visível, em vez de aparecer como excluído. No pull incremental a cópia antiga continua no aparelho e só sai na próxima resincronização completa (seção 4.1, passo 8, regra aprovada em 24/11/2026, implementação pendente na camada local).
 6. Os tombstones nunca são apagados no servidor: não há DELETE em `atendimento` e o expurgo de manutenção não os toca. Por isso o `desde = 0` sempre devolve todos e a lista só cresce.
 
 ## 6. Decisões e pontos em aberto
@@ -323,7 +335,7 @@ Ordem de sincronização: o rascunho do Rodrigo recomenda push antes de pull. A 
 Decidido em 19/11/2026 e já refletido no código e neste contrato:
 
 - Comparação do duplicado no servidor, com a regra da seção 3.5.
-- Sem tabela de operações no PostgreSQL (migração 020, número confirmado pelo Rodrigo, ainda sem arquivo): o push funciona sem ela. Criar é idempotente pelo UUID. Atualizar tem a limitação da seção 3.6.
+- Sem tabela de operações no PostgreSQL (migração 020, em escrita, sem validação): o push funciona sem ela. Criar é idempotente pelo UUID. Atualizar tem a limitação da seção 3.6.
 - Nomes deste contrato: `id_atendimento`, `versao_esperada`, `payload` e os resultados `criado`, `atualizado`, `duplicado`, `conflito_de_versao`, `rejeitado`. Eles divergem do rascunho v0.1 do Rodrigo (`id`, `versao_base`, `campos`, `aplicado`, `conflito`).
 - `id_atendimento` do payload diferente do da operação, e entidade desconhecida: 400 no campo, só daquela operação.
 - Conflito não é gravado em `sync_conflito` na v1. A tabela existe no banco, mas não é usada: não há tela nem rota de resolução, e o `registro_servidor` já volta na resposta do push. Fica para outra fase.
@@ -339,37 +351,54 @@ Decidido e implementado em 23/11/2026:
 
 - `id_distribuidor_origem` obrigatório e igual ao distribuidor do cadastro para o usuário do perfil Distribuidor (Admin ou Usuário); 400 no campo `id_distribuidor_origem` quando ausente, nulo ou de outro distribuidor, no `POST /atendimentos` e no push (`rejeitado` só daquela operação, com `campos`). Opcional para Netafim e cliente, e o servidor não preenche o campo (seção 3.2). Não altera a comparação do duplicado (seção 3.5).
 
+Decidido e implementado em 24/11/2026 (commit 61b87d9):
+
+- `id_cliente` para o perfil Distribuidor (Admin ou Usuário): quando preenchido, precisa ser um cliente da carteira do distribuidor do usuário, conferido por `app_cliente_visivel(id_cliente)` na mesma consulta que lê o ator (`app_tipo_org()` e `app_id_distribuidor()`). Fora da carteira responde 400 no campo `id_cliente`, com a mensagem "Informe um cliente da carteira do seu distribuidor.". Nulo ou omitido continua aceito. Vale para qualquer origem, inclusive `cliente_final`. Cliente inexistente passa de 422 (`referencia_invalida`, chave estrangeira) para 400 nesse perfil. Cliente excluído logicamente ou inativo não é filtrado, igual ao banco. Vale no `POST /atendimentos` e no push, em que só a operação errada vira `rejeitado`, com status 400 e `campos`. Usuários Netafim e cliente não são afetados. O servidor não preenche nem altera o campo, então a comparação do duplicado (seção 3.5) não muda. Validado na suíte versionada (355 testes, 19 novos em `test_distribuidor_origem.py`) contra o PostgreSQL local em Docker, em 24/11/2026. No banco, a policy de INSERT ainda não amarra essa regra (proposta da migração 021, abaixo).
+
 Decidido com a Pessoa 4 (22/11/2026), não implementado:
 
 - Coordenador do ciclo, um componente no app que chama push e depois pull, com cada rota independente (seção 4.2 e ponto em aberto 1): Pessoa 2 implementa, só com interfaces, sem Retrofit. Ordem PUSH antes de PULL. Push com falha de rede não dispara pull; 401 interrompe; rejeição individual não impede o pull.
-- `sync_seq` do histórico. Decidido com a Pessoa 4 (22/11/2026), não implementado, depende de migração do Rodrigo. Coluna `sync_seq` em `historico_atendimento`, usando a mesma `seq_sync` do atendimento, com um único cursor global. Estrutura confirmada pela Pessoa 4. Migração 019, número confirmado pelo Rodrigo. Estado: Decidido, não implementado. A migração faz `ADD COLUMN sync_seq bigint NOT NULL DEFAULT 0` (só metadado), cria um gatilho `BEFORE INSERT` próprio, com função `SECURITY DEFINER` e `search_path` fixo, que usa `nextval('seq_sync')` (só o `postgres` tem USAGE em `seq_sync`; a `fn_sync_meta` não serve, porque grava `data_atualizacao`, que o histórico não tem) e cria um índice comum em `sync_seq`, não único, porque os eventos antigos ficam com 0. Sem problema de volume: as tabelas estão vazias no banco real, que é PostgreSQL 17. A coluna nova não mexe em `fn_atendimento_antes`. Quem escreve o SQL é o Douglas; o Rodrigo revisa e aplica.
+- `sync_seq` do histórico. Decidido com a Pessoa 4 (22/11/2026), não implementado, depende de migração do Rodrigo. Coluna `sync_seq` em `historico_atendimento`, usando a mesma `seq_sync` do atendimento, com um único cursor global. Estrutura confirmada pela Pessoa 4. Migração 019, número confirmado pelo Rodrigo. Estado: Decidido, não implementado. A migração faz `ADD COLUMN sync_seq bigint NOT NULL DEFAULT 0` (só metadado), cria um gatilho `BEFORE INSERT` próprio, com função `SECURITY DEFINER` e `search_path` fixo, que usa `nextval('seq_sync')` (só o `postgres` tem USAGE em `seq_sync`; a `fn_sync_meta` não serve, porque grava `data_atualizacao`, que o histórico não tem) e cria um índice comum em `sync_seq`, não único, porque os eventos antigos ficam com 0. Sem problema de volume: as tabelas estão vazias no banco real, que é PostgreSQL 17. A coluna nova não mexe em `fn_atendimento_antes`. Quem escreve o SQL é o responsável pela camada de pesquisa e notificações; o responsável pelo banco revisa e aplica. Estado da migração 019 em 26/11/2026: no bloco "Migrações 019 e 020", abaixo.
 - Formato futuro do pull, com a coluna acima. Decidido, não implementado (o pull atual segue a seção 2):
   - um item por atendimento, com o histórico completo; o `limite` passa a contar atendimentos;
   - o `sync_seq` efetivo do atendimento na ordenação é o maior entre o dele e o dos seus eventos;
   - o `cursor` da página é o maior `sync_seq` efetivo da página, e o registro mantém o próprio `sync_seq`;
   - eventos antigos ficam com `sync_seq = 0` (o histórico é imutável, sem UPDATE) e só chegam ao aparelho pela resincronização completa (seção 4, subseção "Resincronização completa"), não pelo pull incremental;
   - regra do app depois da mudança: aplicar os eventos novos mesmo quando a `versao` do atendimento não mudou, deduplicando por `id_historico`. Hoje continua valendo a regra da seção 4 (só substituir se `versao` ou `sync_seq` forem maiores).
-- Resincronização completa: gatilhos e procedimento na seção 4, subseção "Resincronização completa", com a regra do tombstone no passo 7. O passo 8 (reconciliação) segue como proposta, abaixo.
-- `sync_operacao` na v1, versão mínima, só para atualizar. Decidido com a Pessoa 4 (22/11/2026), não implementado. Chave: `id_operacao`, estável em todo reenvio. Registro: `id_operacao`, `id_usuario`, `id_dispositivo`, `id_atendimento`, hash do conteúdo, `resultado`, `resposta` jsonb e data. Na v1 só o resultado `atualizado` é guardado. Mesmo `id_operacao`, mesmo usuário e mesmo hash devolve o resultado original sem reaplicar. Migração 020, número confirmado pelo Rodrigo; retenção de 90 dias confirmada pelo Rodrigo, igual à do refresh token. Regras:
+- Resincronização completa: gatilhos e procedimento na seção 4, subseção "Resincronização completa", com a regra do tombstone no passo 7. O passo 8 (reconciliação) é regra aprovada em 24/11/2026, com implementação pendente na camada local.
+- `sync_operacao` na v1, versão mínima, só para atualizar. Decidido com a camada local (22/11/2026), não implementado. Chave: `id_operacao`, estável em todo reenvio. Na v1 só o resultado `atualizado` é guardado. Mesmo `id_operacao`, mesmo usuário e mesmo hash devolve o resultado original sem reaplicar. Migração 020 (estado no bloco "Migrações 019 e 020", abaixo). Especificação da 020:
+  - colunas: `id_operacao` uuid (chave primária), `id_usuario`, `id_dispositivo`, `id_atendimento`, `hash_conteudo` (SHA-256 em hexadecimal, 64 caracteres), `resultado` com `CHECK (resultado IN ('atualizado'))` na v1, `resposta` jsonb e `criado_em`;
+  - índice em `criado_em`;
   - RLS por `id_usuario = app_usuario_id()`: cada usuário só enxerga as próprias operações;
-  - guardar o `id_usuario` e comparar com o usuário da requisição;
-  - mesmo `id_operacao` com outro usuário ou com hash diferente devolve 409 com `codigo: operacao_reutilizada`, sem revelar o resultado guardado. O código entra na tabela de erros do PR #31, não no PR #3;
-  - o hash é determinístico: JSON canônico com chaves ordenadas e SHA-256 de `tipo`, `id_atendimento`, `versao_esperada` e `payload`;
   - o `app_django` recebe só SELECT e INSERT;
-  - a limpeza dos 90 dias fica em pg_cron, que a própria 020 instala (está disponível no projeto, ainda não instalado);
-  - concorrência, Proposta, aguardando o Rodrigo: o código do push toma `pg_advisory_xact_lock` por `id_operacao`, dentro do savepoint, e depois faz o SELECT, o PATCH e o INSERT do resultado, tudo na mesma transação. Um 23505 no INSERT (o `id_operacao` é de outro usuário e o RLS o esconde) desfaz o savepoint e devolve `operacao_reutilizada`;
-  - limitação conhecida, ressalva da Pessoa 4: o prazo do refresh token não é necessariamente o tempo máximo de uma operação pendente. Depois de expirada a retenção, o reenvio pode voltar como `conflito_de_versao` falso, sem duplicar a atualização, porque a `versao_esperada` já impede.
+  - o hash é determinístico: JSON canônico com chaves ordenadas e SHA-256 de `tipo`, `id_atendimento`, `versao_esperada` e `payload`;
+  - mesmo `id_operacao` com hash diferente, ou de outro usuário, devolve 409 com `codigo: operacao_reutilizada`, sem revelar o resultado guardado. No contexto do sync, só o código é definido aqui; ele entra na tabela de erros do PR #31, não no PR #3;
+  - retenção de 90 dias, igual à do refresh token. O pg_cron não faz parte da 020: a limpeza será uma migration separada, posterior à 020, com data a definir pelo responsável pelo banco;
+  - concorrência: desenho acordado em 24/11/2026, com a confirmação final do responsável pelo banco ainda pendente, não implementado. Tudo dentro do savepoint da operação, na mesma transação da requisição:
+    1. `pg_advisory_xact_lock(hashtextextended('sync_operacao:' || id_operacao::text, 0))`;
+    2. SELECT da `sync_operacao` pelo `id_operacao`, sob RLS (só enxerga as operações do próprio usuário);
+    3. se achar com o mesmo hash, devolve a `resposta` armazenada, sem reaplicar; se achar com hash diferente, devolve 409 `operacao_reutilizada`;
+    4. se não achar, faz o PATCH (`atualizar_atendimento`) e grava o resultado com INSERT;
+    5. erro 23505 nesse INSERT (o `id_operacao` é de outro usuário, invisível pela RLS no SELECT) desfaz o savepoint e devolve `operacao_reutilizada`.
+
+    O desenho depende do nível de isolamento READ COMMITTED, para que o SELECT feito depois do lock enxergue a linha que outra transação confirmou enquanto esperava. É o padrão hoje: o Django roda com `ATOMIC_REQUESTS = True` e sem `isolation_level` definido nas opções do banco, então vale o padrão do PostgreSQL. Se o nível mudar, o desenho precisa ser revisto;
+  - limitação conhecida, ressalva da camada local: o prazo do refresh token não é necessariamente o tempo máximo de uma operação pendente. Depois de expirada a retenção, o reenvio pode voltar como `conflito_de_versao` falso, sem duplicar a atualização, porque a `versao_esperada` já impede.
 - `completarTipoDeVenda`, implementação da Pessoa 4, tela da Pessoa 2: `suspend fun completarTipoDeVenda(id: String, tipoVenda: TipoVenda): ResultadoDaAcao`. Atualiza o atendimento local e reativa a operação que já está na fila, sem criar duplicata. O sucesso só é retornado depois da confirmação da transação no Room.
+
+Migrações 019 e 020, estado em 26/11/2026 (nenhuma aplicada no banco real):
+
+- 019, coluna `sync_seq` em `historico_atendimento`, com a mesma sequência `seq_sync`: escrita pelo responsável pela camada de pesquisa e notificações. Validada localmente em PostgreSQL 16 em 26/11/2026, sobre um baseline mínimo: aplicação da migration, teste, rollback e INSERT como `app_django`. Pendentes: revisão e aplicação no banco real pelo responsável pelo banco. O pull ainda não usa a coluna (seção 2).
+- 020, tabela `sync_operacao`: em escrita, sem validação. Especificação no item `sync_operacao`, acima. Não inclui pg_cron.
+- Limpeza da retenção de 90 dias da `sync_operacao`: migration separada, posterior à 020, com data a definir pelo responsável pelo banco. Sem arquivo.
 
 Depende de validação do Rodrigo:
 
-- Não implementado: `WITH CHECK` na policy de INSERT de `atendimento` exigindo, para o tipo distribuidor, `id_distribuidor_origem` não nulo e igual a `app_id_distribuidor()`, para fechar por qualquer caminho o vazamento de visibilidade entre distribuidores (hoje a regra vale só pela API; o banco só confere se o distribuidor existe). Seria migração do Rodrigo.
 - Observação, comportamento atual do banco: o Distribuidor Admin que abre sem `id_distribuidor_origem` e sem cliente recebe 403, porque a policy de SELECT não inclui `id_solicitante = usuário` para esse perfil e o `RETURNING` do INSERT não consegue ler a linha. A API já evita o caso ao exigir o campo (seção 3.2).
 - Avaliação do watermark do cursor: trava consultiva em `fn_sync_meta` e pull com lock exclusivo curto lendo o `last_value` (seção 2, regra 4). Impacto em `fn_sync_meta`, concorrência e bloqueio de escrita.
 
 Proposta, aguardando confirmação:
 
-- Reconciliação ao fim do pull completo (sugestão do Rodrigo, aguardando a Pessoa 4): seção 4.1, passo 8.
+- Migração 021, `WITH CHECK` na policy de INSERT de `atendimento`. Proposta, aguardando o responsável pelo banco; não decidida e não implementada. Para o tipo distribuidor, exigiria `id_distribuidor_origem = app_id_distribuidor()` e (`id_cliente` nulo ou `app_cliente_visivel(id_cliente)`), para fechar por qualquer caminho o vazamento de visibilidade entre distribuidores. Hoje essas regras valem só na API (seção 3.2 e blocos de 23 e 24/11/2026 acima): a policy de INSERT ainda não amarra o perfil Distribuidor, só confere o `id_cliente` do usuário de cliente.
 - Integração (enviada ao grupo em 21/11/2026): Pessoa 2 integra HTTP, coordenador e Room e escreve os testes integrados; Pessoa 4 testa a persistência Room; Pessoa 1 valida em aparelho contra o Supabase real depois do merge do acesso.
 
 Em aberto:
@@ -377,4 +406,4 @@ Em aberto:
 1. Quem orquestra o ciclo completo (ordem de push e pull). Alinhado com a Pessoa 4 em 22/11/2026, pendente de consolidação por escrito do grupo; implementação não iniciada. A orquestração é do app (componente coordenador que chama push e depois pull) e cada rota fica independente. Fica registrado aqui até o grupo consolidar por escrito.
 2. `sync_seq` dos eventos de histórico (`reagendado`, `reclassificado`, `editado_pos_finalizacao`). Decidido com a Pessoa 4 (22/11/2026), não implementado, depende de migração do Rodrigo. A decisão é a coluna `sync_seq` em `historico_atendimento`, com a mesma `seq_sync` e um único cursor global; o detalhe, o formato futuro do pull e a regra do app estão no bloco "Decidido com a Pessoa 4" acima. Até a migração entrar, vale a limitação da seção 2.
 3. Vínculos de cultura fora do `sync_seq` do atendimento. Conferido em leitura do SQL (`infra/db/02_funcoes_gatilhos.sql`): o único gatilho de `atendimento_cultura` é `trg_sync` (`fn_sync_meta`), que só preenche o `data_atualizacao` e o `sync_seq` da própria linha de vínculo. Nada toca o atendimento. Hoje não há rota que mude cultura depois da abertura, e na abertura o vínculo nasce na mesma transação do atendimento, então não há perda. Se uma rota assim for criada, uma mudança de cultura não sobe o `sync_seq` do atendimento e não chegaria no pull. Nesse caso a mudança precisa subir o `sync_seq` do atendimento (uma regra própria, a decidir: subir o `sync_seq` do atendimento sem somar na `versao`).
-4. Tabela `sync_operacao` e a migração dela, número 020 confirmado pelo Rodrigo. A versão mínima, só para atualizar, está Decidida com a Pessoa 4 (22/11/2026), não implementada; retenção de 90 dias confirmada pelo Rodrigo; a parte de concorrência é Proposta, aguardando o Rodrigo (`id_operacao` como chave, `id_dispositivo`, `resultado`, `resposta` em jsonb, data). Fica descrita como saída para o conflito falso do reenvio de atualização, sem criar nada. Se for criada, o push devolve a `resposta` guardada quando a operação repetir.
+4. Tabela `sync_operacao`, migração 020 (em escrita, sem validação). A versão mínima, só para atualizar, está decidida com a camada local (22/11/2026), não implementada. O desenho de concorrência foi acordado em 24/11/2026, com a confirmação final do responsável pelo banco ainda pendente, não implementado. A especificação e o desenho estão no item `sync_operacao` acima; a limpeza dos 90 dias fica para uma migration separada e posterior. Fica descrita como saída para o conflito falso do reenvio de atualização. Quando existir, o push devolve a `resposta` guardada quando a operação repetir.

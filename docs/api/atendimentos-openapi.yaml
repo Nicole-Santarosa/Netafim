@@ -150,7 +150,10 @@ paths:
             no campo culturas), ou id_distribuidor_origem ausente, nulo ou de
             outro distribuidor para o usuário do perfil Distribuidor (erro no
             campo id_distribuidor_origem: "Informe o distribuidor do seu
-            cadastro."). Também vem como 400 "valor_invalido" quando o banco recusa
+            cadastro."), ou id_cliente preenchido fora da carteira ou
+            inexistente para o usuário do perfil Distribuidor (erro no campo
+            id_cliente: "Informe um cliente da carteira do seu
+            distribuidor."). Também vem como 400 "valor_invalido" quando o banco recusa
             o formato ou o tamanho de um valor.
           content:
             application/json:
@@ -555,7 +558,10 @@ components:
         Admin (decisão da Netafim de 18/11/2026). Para o usuário do perfil
         Distribuidor (Admin ou Usuário) ele é obrigatório e precisa ser o
         distribuidor do cadastro dele: ausente, nulo ou de outro distribuidor
-        responde 400 no campo id_distribuidor_origem. Nulo, texto vazio ou só
+        responde 400 no campo id_distribuidor_origem. Para esse mesmo perfil,
+        o id_cliente, quando preenchido e em qualquer origem, precisa ser um
+        cliente da carteira do distribuidor: fora da carteira ou inexistente
+        responde 400 no campo id_cliente. Nulo, texto vazio ou só
         com espaços contam como ausente nos demais campos. Cada campo que falta responde 400 com o
         erro no próprio campo, todos juntos na mesma resposta.
       required:
@@ -583,7 +589,15 @@ components:
         id_cliente:
           type: integer
           nullable: true
-          description: Obrigatório quando a origem é cliente_final.
+          description: >-
+            Obrigatório quando a origem é cliente_final. Para o usuário do
+            perfil Distribuidor (Admin ou Usuário), quando preenchido em
+            qualquer origem, precisa ser um cliente da carteira do
+            distribuidor dele: fora da carteira ou inexistente responde 400
+            neste campo, com a mensagem "Informe um cliente da carteira do seu
+            distribuidor.". Nulo ou omitido continua aceito. O servidor não
+            preenche nem altera o campo. Para os demais perfis, id que não
+            existe responde 422.
         id_propriedade:
           type: integer
           nullable: true
