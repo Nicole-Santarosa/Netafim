@@ -1,0 +1,1284 @@
+openapi: 3.0.3
+info:
+  title: API Netafim Pós-venda - Atendimentos
+  version: 0.1.0
+  description: |-
+    Contrato dos endpoints de atendimento (abertura, protocolo, status e consulta).
+    A autenticação (login e renovação de token) está no contrato do módulo de acesso.
+
+    Notas para o aplicativo Android
+
+    Quem decide o quê
+    - O servidor define protocolo (numero_protocolo), versao, sync_seq, status inicial
+      (sempre "aberto") e prioridade. O app não envia esses campos; se enviar, são
+      ignorados.
+    - O id_atendimento é gerado no aparelho (UUID). Os snapshots do cliente e da
+      propriedade não são aceitos do app.
+    - O solicitante é sempre o usuário autenticado, mesmo que o corpo traga outro.
+
+    Duplicado no POST (409 "duplicado")
+    - O banco recusa um id_atendimento que já existe, qualquer que seja o dono. Por
+      isso o 409 sozinho não prova que o atendimento é do usuário. Só trate como
+      sucesso depois de um GET /atendimentos/{id_atendimento} que devolva 200: o GET
+      confirma que o atendimento existe e que este usuário pode vê-lo. Se o GET
+      devolver 404, o id pertence a algo que o usuário não enxerga: nesse caso o app
+      deve gerar um novo id_atendimento (UUID) e reenviar o mesmo conteúdo no POST.
+
+    Versão velha no PATCH (409 "conflito_de_versao")
+    - Significa que outra pessoa alterou o atendimento depois da versão que o app
+      tem. A resposta traz versao_atual. O app deve recarregar o atendimento
+      (GET), mostrar o estado novo e só então tentar de novo com a versão atualizada.
+
+    Visibilidade e permissão
+    - Um atendimento que o usuário não pode ver responde 404, igual a um id que não
+      existe ou a um atendimento excluído. O servidor não revela que ele existe.
+    - Um atendimento que o usuário vê mas não pode alterar responde 403
+      ("sem_permissao") no PATCH, desde que a versao enviada seja a atual. Com versao
+      velha a resposta é 409, porque a comparação de versão vem antes. Regras de
+      status e de quem pode destinar, cancelar ou vincular técnico são do banco e
+      respondem 422.
+
+    Formato dos erros
+    - Erros de regra e de banco: {"codigo": "...", "detail": "..."}.
+    - Erros de validação de campo (400), de rota inexistente ou de página inválida
+      (404) e de autenticação seguem o formato padrão do DRF e não têm o campo
+      "codigo". A validação por campo vem como {"campo": ["mensagem"]}.
+servers:
+- url: http://localhost:8000
+  description: Desenvolvimento local
+tags:
+- name: atendimentos
+  description: Abertura, consulta e alteração de atendimentos.
+- name: sync
+  description: >-
+    Sincronização com o aplicativo (pull e push). As duas rotas são
+    independentes: quem orquestra o ciclo (ordem de push e pull) é o app,
+    decisão do grupo ainda pendente. As duas rotas estão na branch
+    rafael-atendimentos-models, sem merge na main, com 316 testes passando e
+    sem teste com JWT real (usam force_authenticate). Veja docs/api/sync.md.
+security:
+- jwtAuth: []
+paths:
+  /api/v1/atendimentos:
+    get:
+      operationId: v1_atendimentos_list
+      tags:
+      - atendimentos
+      summary: Lista os atendimentos visíveis ao usuário
+      description: |-
+        Devolve só o que o usuário pode ver; quem decide isso é o banco (RLS), não
+        há filtro por perfil na API. Atendimentos excluídos logicamente não
+        aparecem. Ordem: data_abertura do mais novo para o mais antigo, com
+        id_atendimento para desempatar. Paginação de 25 por página (o tamanho não
+        é configurável pelo app).
+      parameters:
+      - in: query
+        name: status
+        required: false
+        description: Filtra por status. Qualquer outro valor responde 400.
+        schema:
+          $ref: '#/components/schemas/Status'
+      - in: query
+        name: origem
+        required: false
+        description: |-
+          Filtra por origem (netafim, distribuidor ou cliente_final). Qualquer
+          outro valor responde 400. Junto com status, os dois filtros valem como E.
+        schema:
+          $ref: '#/components/schemas/Origem'
+      - in: query
+        name: page
+        required: false
+        description: Número da página, a partir de 1. Página inexistente responde 404.
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      responses:
+        '200':
+          description: Página de atendimentos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaAtendimentos'
+        '400':
+          description: O valor de status ou de origem não é um dos valores válidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '404':
+          description: Página inexistente (por exemplo, além da última).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroPadrao'
+    post:
+      operationId: v1_atendimentos_create
+      tags:
+      - atendimentos
+      summary: Abre um atendimento
+      description: |-
+        Cria o atendimento com status "aberto". O protocolo OS-#### é gerado pelo
+        servidor. O corpo é só JSON. Campos fora da lista abaixo (status, protocolo,
+        versao, sync_seq, prioridade, destinação, técnico, snapshots, id_solicitante)
+        são ignorados.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AberturaAtendimento'
+      responses:
+        '201':
+          description: Atendimento aberto.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AtendimentoCriado'
+        '400':
+          description: >-
+            Campo obrigatório ausente, valor fora da lista, formato inválido, ou
+            regra entre campos (obrigatório da origem ausente, nulo, vazio ou só
+            com espaços, com o erro em cada campo que falta; veja a descrição de
+            AberturaAtendimento), culturas ausente ou vazia, motivo
+            programacao_feiras, tipo_venda ausente, nulo, vazio ou fora da lista,
+            texto vazio em situacao_projeto, estado_projeto,
+            tipo_atendimento ou area_setor, ou culturas com id repetido, inexistente ou excluído (erro
+            no campo culturas), ou id_distribuidor_origem ausente, nulo ou de
+            outro distribuidor para o usuário do perfil Distribuidor (erro no
+            campo id_distribuidor_origem: "Informe o distribuidor do seu
+            cadastro."), ou id_cliente preenchido fora da carteira ou
+            inexistente para o usuário do perfil Distribuidor (erro no campo
+            id_cliente: "Informe um cliente da carteira do seu
+            distribuidor."). Também vem como 400 "valor_invalido" quando o banco recusa
+            o formato ou o tamanho de um valor.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/ErroValidacao'
+                - $ref: '#/components/schemas/ErroRegra'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '403':
+          description: >-
+            O banco recusou a abertura por permissão: o perfil não pode abrir
+            atendimento, ou o usuário de cliente informou um id_cliente que não é
+            da própria empresa, ou não enviou id_cliente (a policy de INSERT só
+            deixa o usuário de cliente abrir para a própria empresa).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroRegra'
+              example:
+                codigo: sem_permissao
+                detail: Você não tem permissão para esta operação.
+        '409':
+          description: >-
+            O id_atendimento já existe (código "duplicado"). Veja a nota sobre
+            duplicado no início deste contrato.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroRegra'
+              example:
+                codigo: duplicado
+                detail: Já existe um registro com esses dados.
+        '422':
+          description: >-
+            O banco recusou por regra de negócio ("regra_de_negocio"), por
+            referência que não existe, como id_cliente, id_propriedade ou
+            id_distribuidor_origem inválido ("referencia_invalida"), ou por campo
+            obrigatório que ficou sem valor ("campo_obrigatorio"). Quando a causa é
+            um CHECK da tabela, a mensagem é fixa; quando é um gatilho, a mensagem
+            é a escrita no próprio gatilho.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroRegra'
+              examples:
+                check:
+                  summary: CHECK da tabela (mensagem fixa)
+                  value:
+                    codigo: regra_de_negocio
+                    detail: Os dados informados não atendem às regras do sistema.
+                referencia:
+                  summary: Referência que não existe
+                  value:
+                    codigo: referencia_invalida
+                    detail: Um dos valores informados não existe ou não pode ser usado.
+  /api/v1/atendimentos/{id_atendimento}:
+    parameters:
+    - in: path
+      name: id_atendimento
+      required: true
+      description: UUID do atendimento, gerado no aparelho.
+      schema:
+        type: string
+        format: uuid
+    get:
+      operationId: v1_atendimentos_retrieve
+      tags:
+      - atendimentos
+      summary: Detalhe do atendimento com a linha do tempo
+      description: |-
+        Dados completos mais a chave "historico", com os eventos do mais antigo
+        para o mais novo (data_evento e id_historico). A observação do evento e o
+        responsável não são devolvidos.
+      responses:
+        '200':
+          description: Atendimento e histórico.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AtendimentoDetalhe'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+    patch:
+      operationId: v1_atendimentos_partial_update
+      tags:
+      - atendimentos
+      summary: Altera status, destinação, técnico ou situação do projeto
+      description: |-
+        Envie a versao que o app conhece e ao menos uma mudança. A alteração só é
+        aplicada se a versao for a atual (controle de concorrência otimista). A
+        máquina de estados e quem pode cada mudança são regras do banco: cancelar,
+        destinar e encerrar são do Netafim Admin; trocar técnico exige a permissão
+        de vincular técnico. A situação do projeto (situacao_projeto) só pode ser
+        alterada depois da abertura pelo Netafim Admin (regra do banco): para os
+        outros perfis a resposta é 422. Mandar o valor que já está gravado não
+        conta como alteração. Chaves fora da lista são ignoradas. Responde com o
+        mesmo formato do GET, já com a versao nova.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlteracaoAtendimento'
+      responses:
+        '200':
+          description: Atendimento atualizado, com o histórico.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AtendimentoDetalhe'
+        '400':
+          description: >-
+            versao ausente, valor de status, destinado_a ou situacao_projeto fora
+            da lista, ou nenhuma mudança informada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '403':
+          description: >-
+            O atendimento é visível, a versao confere, mas o banco não deixou
+            alterar (o perfil não pode alterar este atendimento, por exemplo um
+            perfil de cliente que não o abriu).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroRegra'
+              example:
+                codigo: sem_permissao
+                detail: Você não tem permissão para alterar este atendimento.
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+        '409':
+          description: >-
+            A versao enviada não é a atual (código "conflito_de_versao"). Traz
+            versao_atual. Recarregue o atendimento antes de tentar de novo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroConflitoVersao'
+        '422':
+          description: >-
+            O gatilho do banco recusou: transição de status não permitida, perfil
+            sem permissão para a mudança (por exemplo, cliente tentando destinar ou
+            cancelar), pré-requisito que falta (agendamento, relatório ou pesquisa),
+            ou referência inexistente em id_distribuidor ou id_tecnico_responsavel
+            ("referencia_invalida"). A mensagem do gatilho vem em detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroRegra'
+              examples:
+                destinacao:
+                  summary: Perfil sem permissão para destinar
+                  value:
+                    codigo: regra_de_negocio
+                    detail: somente o Netafim Admin destina o atendimento
+                situacao_projeto:
+                  summary: Perfil que não é Netafim Admin alterando a situação do projeto
+                  value:
+                    codigo: regra_de_negocio
+                    detail: somente o Netafim Admin altera a situação do projeto
+  /api/v1/culturas:
+    get:
+      operationId: v1_culturas_list
+      tags:
+      - atendimentos
+      summary: Catálogo de culturas para o formulário de abertura
+      description: |-
+        Lista simples, sem paginação (o catálogo é pequeno), só com as culturas
+        em uso (excluídas logicamente não aparecem), em ordem de nome e depois de
+        id_cultura. O id_cultura é o que vai na lista culturas do POST de abertura.
+      responses:
+        '200':
+          description: Culturas em uso.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Cultura'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+  /api/v1/sync/pull:
+    get:
+      operationId: v1_sync_pull
+      tags:
+      - sync
+      summary: Pull da sincronização
+      description: |-
+        Devolve os atendimentos com sync_seq maior que desde, em ordem crescente,
+        no máximo limite por chamada. Base: a função pull_atendimentos. Quem
+        decide o que cada perfil recebe é o RLS (a rota não filtra por usuário).
+
+        Regras: o cursor é tirado na escrita e não no commit, então o app pode
+        receber registros repetidos; a mitigação combinada é pedir com
+        sobreposição de 1.000 (desde = max(0, cursor - 1000)) e aplicar de forma
+        idempotente. O atendimento excluído logicamente desce como tombstone.
+        Repita a chamada com desde igual ao cursor enquanto tem_mais for true.
+
+        Limitação conhecida: os eventos de histórico reagendado, reclassificado e
+        editado_pos_finalizacao não avançam o sync_seq do atendimento, então só
+        chegam no pull quando o atendimento mudar por outro motivo. Proposta
+        pendente (não implementada, depende de migração): subir só o sync_seq do
+        atendimento nesses três eventos, sem somar na versao.
+      parameters:
+      - in: query
+        name: desde
+        required: false
+        description: Cursor. Só vêm registros com sync_seq maior que este valor.
+        schema:
+          type: integer
+          format: int64
+          minimum: 0
+          default: 0
+      - in: query
+        name: limite
+        required: false
+        description: Tamanho máximo da página.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 200
+      responses:
+        '200':
+          description: Página de itens, o cursor novo e se há mais páginas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullResposta'
+        '400':
+          description: >-
+            desde ou limite fora da faixa ou que não é inteiro. O corpo aponta o
+            campo, por exemplo {"desde": ["Informe um número inteiro."]}.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+  /api/v1/sync/push:
+    post:
+      operationId: v1_sync_push
+      tags:
+      - sync
+      summary: Push da sincronização
+      description: |-
+        Recebe um lote de 1 a 50 operações e processa na ordem do array. Cada
+        operação roda numa transação própria (savepoint): uma recusa não derruba
+        as outras. Reaproveita abrir_atendimento (criar) e atualizar_atendimento
+        (atualizar), então a máquina de estados e as permissões continuam sendo
+        do gatilho do banco.
+
+        O lote lido responde sempre 200, com um resultado por operação, na mesma
+        ordem. Resultados: criado (201), atualizado (200), duplicado (comparacao
+        igual: 200, sucesso; comparacao diferente: 409, conflito),
+        conflito_de_versao (409) e rejeitado (400, 403, 404, 409 ou 422). O campo
+        status de cada resultado é o código HTTP equivalente da mesma operação
+        no endpoint isolado. criado, atualizado, duplicado, conflito_de_versao e
+        rejeitado são valores do campo resultado, não campos. As datas saem com o
+        deslocamento de America/Sao_Paulo (por exemplo -03:00), não com Z.
+
+        Idempotência: criar nunca duplica (a chave é o UUID do app). Atualizar
+        nunca soma a versao duas vezes (UPDATE com WHERE versao), mas o reenvio
+        de uma atualização cuja resposta se perdeu volta como conflito_de_versao
+        falso, porque o servidor não guarda as operações já processadas (não há
+        tabela de operações nem migração 009 nesta versão). O registro_servidor
+        do conflito deixa o app perceber que a atualização já foi aplicada.
+
+        Duplicado: se o UUID da criação já existe, o servidor relê o atendimento.
+        Invisível ao usuário: rejeitado 409 duplicado, sem registro (o app marca erro
+        local, sem GET e sem reenvio automático). Visível: compara
+        só os campos que o POST de criação aceita (chave ausente vale nulo ou
+        vazio; culturas como conjunto sem ordem; data_abertura só se foi enviada,
+        pelo instante em UTC) e responde duplicado igual (200) ou diferente (409).
+
+        Operação com entidade diferente de atendimento, id_atendimento do payload
+        diferente do da operação ou campo inválido vira resultado rejeitado 400,
+        com os campos em erro.campos. Atualizar um atendimento inexistente,
+        excluído ou invisível vira rejeitado 404 com codigo nao_encontrado (só no
+        push; o PATCH isolado segue sem codigo).
+
+        A chamada das funções de notificação (migração 015) não foi implementada:
+        há só um ponto de extensão comentado no código, depois da criação.
+        Conflitos não são gravados em sync_conflito nesta versão.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushRequisicao'
+      responses:
+        '200':
+          description: Lote lido. Um resultado por operação, mesmo com falhas dentro.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushResposta'
+        '400':
+          description: >-
+            Problema do lote inteiro: corpo fora do formato, lista de operações
+            vazia ou com mais de 50 itens (mensagem "O lote aceita no máximo 50
+            operações."), id_operacao ausente, inválido ou repetido no lote.
+            Formato padrão do DRF, sem codigo. Nenhuma operação é executada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+components:
+  schemas:
+    Cultura:
+      type: object
+      properties:
+        id_cultura:
+          type: integer
+        nome:
+          type: string
+    Status:
+      type: string
+      enum:
+      - aberto
+      - destinado
+      - agendado
+      - em_atendimento
+      - resolvido
+      - encerrado
+      - encerrado_sem_avaliacao
+      - cancelado
+    Origem:
+      type: string
+      enum:
+      - netafim
+      - distribuidor
+      - cliente_final
+    Motivo:
+      type: string
+      enum:
+      - digital_farming
+      - duvidas
+      - entrega_tecnica
+      - pos_venda
+      - programacao_feiras
+      - treinamento
+    Prioridade:
+      type: string
+      enum:
+      - baixa
+      - media
+      - alta
+    DestinadoA:
+      type: string
+      enum:
+      - netafim
+      - distribuidor
+    AreaSetor:
+      type: string
+      enum:
+      - comercial
+      - engenharia
+      - instalacao
+      - marketing
+      - pos_venda
+    SituacaoProjeto:
+      type: string
+      enum:
+      - garantia
+      - fora_garantia
+      - instalacao
+    EstadoProjeto:
+      type: string
+      enum:
+      - operando
+      - nao_operando
+    TipoVenda:
+      type: string
+      enum:
+      - projeto
+      - venda_regular
+    TipoAtendimento:
+      type: string
+      enum:
+      - online
+      - presencial
+    AberturaAtendimento:
+      type: object
+      description: >-
+        Obrigatórios por origem, conforme o formulário de solicitação da Netafim
+        (regra da API, não do banco). cliente_final: id_cliente, cidade e
+        nome_fazenda_informado. distribuidor: nome_produtor e cidade. netafim:
+        area_setor, nome_produtor e cidade. Em todas as origens, tipo_venda e
+        culturas com ao menos um item. O id_distribuidor_origem é opcional para
+        usuários Netafim e de cliente: o cliente final sem distribuidor padrão
+        abre o atendimento sem ele, e o atendimento vai direto à fila do Netafim
+        Admin (decisão da Netafim de 18/11/2026). Para o usuário do perfil
+        Distribuidor (Admin ou Usuário) ele é obrigatório e precisa ser o
+        distribuidor do cadastro dele: ausente, nulo ou de outro distribuidor
+        responde 400 no campo id_distribuidor_origem. Para esse mesmo perfil,
+        o id_cliente, quando preenchido e em qualquer origem, precisa ser um
+        cliente da carteira do distribuidor: fora da carteira ou inexistente
+        responde 400 no campo id_cliente. Nulo, texto vazio ou só
+        com espaços contam como ausente nos demais campos. Cada campo que falta responde 400 com o
+        erro no próprio campo, todos juntos na mesma resposta.
+      required:
+      - id_atendimento
+      - origem
+      - motivo
+      - contato_solicitante
+      - tipo_venda
+      - culturas
+      properties:
+        id_atendimento:
+          type: string
+          format: uuid
+          description: Gerado no aparelho. Reenviar o mesmo id responde 409.
+        origem:
+          $ref: '#/components/schemas/Origem'
+        motivo:
+          allOf:
+          - $ref: '#/components/schemas/Motivo'
+          description: >-
+            Na abertura só valem cinco motivos: digital_farming, duvidas,
+            entrega_tecnica, pos_venda e treinamento. programacao_feiras responde
+            400 no campo motivo, porque só existe no relatório de resolução (o
+            schema Motivo é o mesmo da resposta e segue com os seis valores).
+        id_cliente:
+          type: integer
+          nullable: true
+          description: >-
+            Obrigatório quando a origem é cliente_final. Para o usuário do
+            perfil Distribuidor (Admin ou Usuário), quando preenchido em
+            qualquer origem, precisa ser um cliente da carteira do
+            distribuidor dele: fora da carteira ou inexistente responde 400
+            neste campo, com a mensagem "Informe um cliente da carteira do seu
+            distribuidor.". Nulo ou omitido continua aceito. O servidor não
+            preenche nem altera o campo. Para os demais perfis, id que não
+            existe responde 422.
+        id_propriedade:
+          type: integer
+          nullable: true
+          description: Exige id_cliente e precisa ser uma propriedade desse cliente.
+        id_distribuidor_origem:
+          type: integer
+          nullable: true
+          description: >-
+            Distribuidor escolhido na tela. Opcional para usuários Netafim e de
+            cliente: sem ele (nulo ou campo omitido) o atendimento nasce sem
+            distribuidor de origem. Obrigatório para o usuário do perfil
+            Distribuidor (Admin ou Usuário), que só pode informar o
+            distribuidor do próprio cadastro: ausente, nulo ou de outro
+            distribuidor responde 400 neste campo, com a mensagem "Informe o
+            distribuidor do seu cadastro.". O servidor não preenche o campo.
+            Id que não existe responde 422.
+        nome_produtor:
+          type: string
+          nullable: true
+          maxLength: 150
+          description: Obrigatório quando a origem é distribuidor ou netafim.
+        nome_fazenda_informado:
+          type: string
+          nullable: true
+          maxLength: 150
+          description: Obrigatório quando a origem é cliente_final.
+        cidade:
+          type: string
+          nullable: true
+          maxLength: 100
+          description: Obrigatório em todas as origens.
+        area_setor:
+          allOf:
+          - $ref: '#/components/schemas/AreaSetor'
+          nullable: true
+          description: >-
+            Obrigatório quando a origem é netafim. Texto vazio ("") responde 400
+            no campo.
+        contato_solicitante:
+          type: string
+          maxLength: 20
+        numero_projeto_br:
+          type: string
+          nullable: true
+          maxLength: 30
+        situacao_projeto:
+          allOf:
+          - $ref: '#/components/schemas/SituacaoProjeto'
+          nullable: true
+          description: >-
+            Opcional. Texto vazio ("") responde 400 no campo; para não informar,
+            use nulo ou omita o campo.
+        estado_projeto:
+          allOf:
+          - $ref: '#/components/schemas/EstadoProjeto'
+          nullable: true
+          description: >-
+            Opcional. Texto vazio ("") responde 400 no campo; para não informar,
+            use nulo ou omita o campo.
+        tipo_venda:
+          allOf:
+          - $ref: '#/components/schemas/TipoVenda'
+          description: >-
+            Obrigatório em todas as origens. Ausente, nulo, texto vazio ("") ou
+            valor fora da lista respondem 400 no campo.
+        tipo_atendimento:
+          allOf:
+          - $ref: '#/components/schemas/TipoAtendimento'
+          nullable: true
+          description: >-
+            Opcional. Texto vazio ("") responde 400 no campo; para não informar,
+            use nulo ou omita o campo.
+        descricao_problema:
+          type: string
+          nullable: true
+        data_inicio_problema:
+          type: string
+          format: date
+          nullable: true
+        data_sugerida:
+          type: string
+          format: date
+          nullable: true
+        necessidade:
+          type: string
+          nullable: true
+        qtd_participantes_prevista:
+          type: integer
+          nullable: true
+          minimum: 1
+        data_abertura:
+          type: string
+          format: date-time
+          description: >-
+            Relógio do aparelho. Opcional; sem ele o servidor usa a hora atual.
+        culturas:
+          type: array
+          minItems: 1
+          description: >-
+            Ids das culturas do atendimento. Obrigatória em todas as origens, com
+            ao menos um item: ausente ou vazia responde 400 no campo. Cada id precisa existir e não estar excluído, sem
+            repetição. Os vínculos são gravados na mesma transação do atendimento
+            e aparecem no detalhe; a resposta 201 não muda.
+          items:
+            type: integer
+    AtendimentoCriado:
+      type: object
+      properties:
+        id_atendimento:
+          type: string
+          format: uuid
+        numero_protocolo:
+          type: string
+          example: OS-0001
+        status:
+          $ref: '#/components/schemas/Status'
+        prioridade:
+          $ref: '#/components/schemas/Prioridade'
+        versao:
+          type: integer
+        sync_seq:
+          type: integer
+          format: int64
+        data_abertura:
+          type: string
+          format: date-time
+    AtendimentoLista:
+      type: object
+      properties:
+        id_atendimento:
+          type: string
+          format: uuid
+        numero_protocolo:
+          type: string
+        status:
+          $ref: '#/components/schemas/Status'
+        motivo:
+          $ref: '#/components/schemas/Motivo'
+        origem:
+          $ref: '#/components/schemas/Origem'
+        nome_produtor:
+          type: string
+          nullable: true
+        nome_fazenda_informado:
+          type: string
+          nullable: true
+        cidade:
+          type: string
+          nullable: true
+        id_tecnico_responsavel:
+          type: integer
+          nullable: true
+          description: Técnico atribuído ao atendimento, ou nulo enquanto ninguém foi atribuído.
+        data_abertura:
+          type: string
+          format: date-time
+        data_atualizacao:
+          type: string
+          format: date-time
+        versao:
+          type: integer
+        sync_seq:
+          type: integer
+          format: int64
+    PaginaAtendimentos:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Total de atendimentos visíveis (com o filtro, se houver).
+        next:
+          type: string
+          format: uri
+          nullable: true
+          description: URL da próxima página, ou nulo na última.
+        previous:
+          type: string
+          format: uri
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AtendimentoLista'
+    EventoHistorico:
+      type: object
+      properties:
+        id_historico:
+          type: integer
+          format: int64
+        tipo_evento:
+          type: string
+          enum:
+          - criado
+          - protocolo_gerado
+          - destinado
+          - atribuido
+          - agendado
+          - reagendado
+          - status_alterado
+          - reclassificado
+          - editado_pos_finalizacao
+          - excluido
+        origem_evento:
+          type: string
+          enum:
+          - usuario
+          - sistema
+        valor_anterior:
+          type: string
+          nullable: true
+        valor_novo:
+          type: string
+        data_evento:
+          type: string
+          format: date-time
+    AtendimentoDetalhe:
+      type: object
+      properties:
+        id_atendimento:
+          type: string
+          format: uuid
+        numero_protocolo:
+          type: string
+        origem:
+          $ref: '#/components/schemas/Origem'
+        motivo:
+          $ref: '#/components/schemas/Motivo'
+        status:
+          $ref: '#/components/schemas/Status'
+        prioridade:
+          $ref: '#/components/schemas/Prioridade'
+        id_solicitante:
+          type: integer
+        id_cliente:
+          type: integer
+          nullable: true
+        id_propriedade:
+          type: integer
+          nullable: true
+        id_distribuidor_origem:
+          type: integer
+          nullable: true
+        nome_produtor:
+          type: string
+          nullable: true
+        nome_fazenda_informado:
+          type: string
+          nullable: true
+        cidade:
+          type: string
+          nullable: true
+        area_setor:
+          allOf:
+          - $ref: '#/components/schemas/AreaSetor'
+          nullable: true
+        destinado_a:
+          allOf:
+          - $ref: '#/components/schemas/DestinadoA'
+          nullable: true
+        id_distribuidor:
+          type: integer
+          nullable: true
+        id_tecnico_responsavel:
+          type: integer
+          nullable: true
+        contato_solicitante:
+          type: string
+        numero_projeto_br:
+          type: string
+          nullable: true
+        situacao_projeto:
+          allOf:
+          - $ref: '#/components/schemas/SituacaoProjeto'
+          nullable: true
+        estado_projeto:
+          allOf:
+          - $ref: '#/components/schemas/EstadoProjeto'
+          nullable: true
+        tipo_venda:
+          allOf:
+          - $ref: '#/components/schemas/TipoVenda'
+          nullable: true
+        tipo_atendimento:
+          allOf:
+          - $ref: '#/components/schemas/TipoAtendimento'
+          nullable: true
+        descricao_problema:
+          type: string
+          nullable: true
+        data_inicio_problema:
+          type: string
+          format: date
+          nullable: true
+        data_sugerida:
+          type: string
+          format: date
+          nullable: true
+        necessidade:
+          type: string
+          nullable: true
+        qtd_participantes_prevista:
+          type: integer
+          nullable: true
+        snapshot_cliente:
+          type: object
+          nullable: true
+          description: Cópia do cliente na abertura. Hoje o servidor ainda não a preenche.
+        snapshot_propriedade:
+          type: object
+          nullable: true
+          description: Cópia da propriedade na abertura. Hoje o servidor ainda não a preenche.
+        data_abertura:
+          type: string
+          format: date-time
+        data_conclusao:
+          type: string
+          format: date-time
+          nullable: true
+        data_encerramento:
+          type: string
+          format: date-time
+          nullable: true
+        versao:
+          type: integer
+        sync_seq:
+          type: integer
+          format: int64
+          nullable: true
+          description: >-
+            Cursor da sincronização, gerado pelo banco a cada gravação. É o mesmo
+            valor que a lista devolve e que o pull da sincronização usa para ordenar.
+        data_criacao:
+          type: string
+          format: date-time
+        data_atualizacao:
+          type: string
+          format: date-time
+        culturas:
+          type: array
+          description: |-
+            Culturas ligadas ao atendimento, em ordem de nome. Vínculos e culturas
+            excluídos logicamente não aparecem. Lista vazia quando não há cultura.
+          items:
+            type: object
+            properties:
+              id_cultura:
+                type: integer
+              nome:
+                type: string
+        historico:
+          type: array
+          description: |-
+            Eventos do atendimento, do mais antigo para o mais novo (data_evento e
+            id_historico). O id_historico é estável: o aplicativo o usa para não
+            duplicar o evento. O registro do pull da sincronização traz esta mesma
+            chave, porque a tabela de histórico não tem sync_seq próprio. Limitação
+            do pull: reagendado, reclassificado e editado pós-finalização são
+            gravados pelo banco sem alterar o atendimento, então o sync_seq dele não
+            sobe e esses eventos só chegam no pull quando o atendimento mudar por
+            outro motivo. Este GET sempre lê o histórico direto da tabela.
+          items:
+            $ref: '#/components/schemas/EventoHistorico'
+    AlteracaoAtendimento:
+      type: object
+      required:
+      - versao
+      properties:
+        versao:
+          type: integer
+          minimum: 1
+          description: Versão que o app conhece. Precisa ser a atual para a mudança valer.
+        status:
+          $ref: '#/components/schemas/Status'
+        destinado_a:
+          $ref: '#/components/schemas/DestinadoA'
+        id_distribuidor:
+          type: integer
+        id_tecnico_responsavel:
+          type: integer
+          nullable: true
+          description: Use nulo para desvincular o técnico.
+        situacao_projeto:
+          allOf:
+          - $ref: '#/components/schemas/SituacaoProjeto'
+          nullable: true
+          description: >-
+            Mesma lista e mesma anulabilidade do POST. Ausente não muda nada; nulo
+            limpa a situação. Depois da abertura só o Netafim Admin altera (422
+            para os outros perfis).
+      description: Além de versao, informe ao menos um dos outros campos.
+    Tombstone:
+      type: object
+      description: >-
+        Registro de um atendimento excluído logicamente, no pull. Só estas três
+        chaves, sem historico e sem culturas.
+      properties:
+        id_atendimento:
+          type: string
+          format: uuid
+        versao:
+          type: integer
+        sync_seq:
+          type: integer
+          format: int64
+    ItemDoPull:
+      type: object
+      properties:
+        entidade:
+          type: string
+          enum:
+          - atendimento
+          description: Só atendimento hoje. Reservado para outras entidades.
+        removido:
+          type: boolean
+          description: True quando o atendimento tem deletado_em preenchido.
+        registro:
+          description: >-
+            removido false: o mesmo JSON do detalhe, com culturas e historico
+            (o historico inteiro do atendimento, por data_evento e id_historico).
+            removido true: só id_atendimento, versao e sync_seq.
+          oneOf:
+          - $ref: '#/components/schemas/AtendimentoDetalhe'
+          - $ref: '#/components/schemas/Tombstone'
+    PullResposta:
+      type: object
+      properties:
+        itens:
+          type: array
+          description: Em ordem crescente de sync_seq, no máximo o limite pedido.
+          items:
+            $ref: '#/components/schemas/ItemDoPull'
+        cursor:
+          type: integer
+          format: int64
+          description: >-
+            Maior sync_seq da página. Com a página vazia, é o próprio desde
+            recebido.
+        tem_mais:
+          type: boolean
+          description: True quando existe outra página.
+    PayloadAtualizacao:
+      type: object
+      description: >-
+        Campos que o PATCH de atendimento aceita, sem a versao (que vai em
+        versao_esperada na operação). Ao menos um é obrigatório. Chaves
+        desconhecidas, inclusive tipo_venda e uma versao dentro do payload, são
+        ignoradas.
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        destinado_a:
+          $ref: '#/components/schemas/DestinadoA'
+        id_distribuidor:
+          type: integer
+        id_tecnico_responsavel:
+          type: integer
+          nullable: true
+          description: Use nulo para desvincular o técnico.
+        situacao_projeto:
+          allOf:
+          - $ref: '#/components/schemas/SituacaoProjeto'
+          nullable: true
+    OperacaoDoPush:
+      type: object
+      required:
+      - id_operacao
+      - entidade
+      - tipo
+      - id_atendimento
+      - payload
+      properties:
+        id_operacao:
+          type: string
+          format: uuid
+          description: >-
+            Gerado no app, único por operação. Hoje só correlaciona a resposta;
+            ao reenviar uma operação da fila, use o mesmo valor.
+        entidade:
+          type: string
+          enum:
+          - atendimento
+          description: Só atendimento na v1. Outro valor responde rejeitado 400.
+        tipo:
+          type: string
+          enum:
+          - criar
+          - atualizar
+        id_atendimento:
+          type: string
+          format: uuid
+          description: UUID do atendimento, gerado no app.
+        versao_esperada:
+          type: integer
+          minimum: 1
+          description: >-
+            Obrigatório em atualizar: a última versao que o app recebeu. Ignorado
+            em criar.
+        payload:
+          description: >-
+            tipo criar: o mesmo corpo do POST /atendimentos (AberturaAtendimento),
+            com o id_atendimento igual ao da operação (se diferir, rejeitado 400
+            no campo id_atendimento). tipo atualizar: PayloadAtualizacao.
+          oneOf:
+          - $ref: '#/components/schemas/AberturaAtendimento'
+          - $ref: '#/components/schemas/PayloadAtualizacao'
+    PushRequisicao:
+      type: object
+      required:
+      - operacoes
+      properties:
+        operacoes:
+          type: array
+          minItems: 1
+          maxItems: 50
+          description: Processadas na ordem do array, cada uma em savepoint.
+          items:
+            $ref: '#/components/schemas/OperacaoDoPush'
+    ErroDaOperacao:
+      type: object
+      required:
+      - detail
+      properties:
+        codigo:
+          type: string
+          description: >-
+            Opcional. Quando houver: regra_de_negocio, referencia_invalida,
+            campo_obrigatorio, valor_invalido, duplicado, sem_permissao,
+            conflito_de_versao ou nao_encontrado (este último só no push). A
+            validação por campo (400) vem sem codigo, como no DRF.
+        detail:
+          type: string
+        campos:
+          type: object
+          description: >-
+            Validação por campo (400). A chave é o campo e o valor é a lista de
+            mensagens.
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        versao_atual:
+          type: integer
+          description: Só no conflito_de_versao.
+    ResultadoDaOperacao:
+      type: object
+      required:
+      - id_operacao
+      - id_atendimento
+      - resultado
+      - status
+      properties:
+        id_operacao:
+          type: string
+          format: uuid
+        id_atendimento:
+          type: string
+          format: uuid
+          nullable: true
+          description: >-
+            Devolvido como veio na operação. Nulo só quando a operação veio sem
+            id_atendimento ou com um valor que não é texto.
+        resultado:
+          type: string
+          enum:
+          - criado
+          - atualizado
+          - duplicado
+          - conflito_de_versao
+          - rejeitado
+        status:
+          type: integer
+          description: >-
+            Código HTTP equivalente da mesma operação no endpoint isolado. criado
+            201; atualizado 200; duplicado igual 200; duplicado diferente 409;
+            conflito_de_versao 409; rejeitado 400, 403, 404, 409 (id existe mas o
+            usuário não o enxerga) ou 422.
+        comparacao:
+          type: string
+          enum:
+          - igual
+          - diferente
+          description: >-
+            Só em duplicado. igual é sucesso idempotente; diferente é conflito.
+            O servidor compara o conteúdo enviado com o gravado.
+        registro:
+          description: >-
+            Em criado, atualizado e duplicado igual: o detalhe completo do
+            atendimento (o mesmo formato do pull), com versao, sync_seq,
+            numero_protocolo e historico.
+          allOf:
+          - $ref: '#/components/schemas/AtendimentoDetalhe'
+        registro_servidor:
+          description: >-
+            Em duplicado diferente e em conflito_de_versao: o registro atual do
+            servidor, para o app mostrar e guardar. No conflito_de_versao isto só
+            existe no push; o PATCH isolado devolve apenas a versao_atual.
+          allOf:
+          - $ref: '#/components/schemas/AtendimentoDetalhe'
+        erro:
+          $ref: '#/components/schemas/ErroDaOperacao'
+    PushResposta:
+      type: object
+      required:
+      - resultados
+      properties:
+        resultados:
+          type: array
+          description: Um resultado por operação enviada, na mesma ordem e com o mesmo tamanho.
+          items:
+            $ref: '#/components/schemas/ResultadoDaOperacao'
+    ErroRegra:
+      type: object
+      description: Erro de regra, de permissão ou de banco.
+      required:
+      - codigo
+      - detail
+      properties:
+        codigo:
+          type: string
+          description: >-
+            Código estável: regra_de_negocio, referencia_invalida,
+            campo_obrigatorio, valor_invalido, duplicado ou sem_permissao.
+        detail:
+          type: string
+    ErroConflitoVersao:
+      type: object
+      required:
+      - codigo
+      - detail
+      - versao_atual
+      properties:
+        codigo:
+          type: string
+          enum:
+          - conflito_de_versao
+        detail:
+          type: string
+        versao_atual:
+          type: integer
+          description: Versão que está no banco agora.
+    ErroValidacao:
+      type: object
+      description: >-
+        Formato padrão do DRF para validação por campo: a chave é o nome do campo e
+        o valor é a lista de mensagens. Erros que não são de um campo específico
+        vêm em non_field_errors. Não tem o campo "codigo".
+      additionalProperties:
+        type: array
+        items:
+          type: string
+      example:
+        origem:
+        - '"x" não é uma escolha válida.'
+    ErroPadrao:
+      type: object
+      description: Formato padrão do DRF. Não tem o campo "codigo".
+      properties:
+        detail:
+          type: string
+  responses:
+    NaoAutenticado:
+      description: >-
+        Token ausente, inválido ou expirado. A resposta vem do módulo de acesso.
+        Nesta versão do back-end, sem esse módulo, a rota fechada responde 403 no
+        formato padrão do DRF.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErroPadrao'
+    NaoEncontrado:
+      description: >-
+        O atendimento não existe, foi excluído ou o usuário não pode vê-lo. Os três
+        casos respondem igual.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErroPadrao'
+          example:
+            detail: Não encontrado.
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
