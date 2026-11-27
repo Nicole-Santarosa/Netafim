@@ -33,6 +33,18 @@ backend/db/testes/
 
 `013_trava_situacao_projeto.sql` redefine `fn_atendimento_antes` **incluindo** o bloco da `008`. Aplique a `008` e depois a `013`, ou só a `013`; **nunca a `008` depois da `013`**, porque ela apaga a trava da situação do projeto. No Supabase as duas entraram juntas em 14/11/2026. Os arquivos são cópias exatas das propostas do Rafael (mesmo SHA-256 do que foi aplicado); não edite o texto, crie uma migração nova.
 
+## 017, 018 e 021 (pendentes de aplicação)
+
+| Script | O que faz | Depende de | Teste |
+|---|---|---|---|
+| `017_notificacao_cadastro_aprovado.sql` | o gatilho de aprovação de cadastro cria a notificação | 015 | `backend/db/testes/testar_migrations_017_018.sql` |
+| `018_revoga_insert_notificacao.sql` | tira o `INSERT` do `app_django` em `notificacao` | 015 e 017 | o mesmo da 017 |
+| `021_atendimento_insert_origem_distribuidor.sql` | usuário de distribuidor só abre atendimento com a própria origem e cliente visível | não depende da 015, 017 nem 018 | `backend/db/testes/testar_migration_021.sql` |
+
+Ordem: 015, 017, 018; para desfazer: 018, 017, 015. A 014 e a 015 são do Douglas e não estão nesta pasta
+neste commit. Nenhuma das três está aplicada no Supabase. Os testes terminam em `rollback`, mas avançam
+sequências: rode só em ambiente isolado.
+
 ## Registro das migrações aplicadas
 
 A migração `006_registro_de_migracoes.sql` (em PR próprio, junto das propostas 002 e 003) cria a tabela `migracao_aplicada` e a função
