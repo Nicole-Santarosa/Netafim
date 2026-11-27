@@ -1,17 +1,23 @@
 """
-Ponto único de emissão dos eventos de segurança do módulo de acesso.
+Eventos de segurança do módulo de acesso.
 
-A tabela LOG_AUDITORIA (MER/DER, Anexo A.5, cadeia de hash gravada só pelo banco)
-não faz parte deste módulo. Aqui o evento é registrado em log e publicado no sinal
-``evento_auditoria``: quem implementar LOG_AUDITORIA só precisa conectar um receptor,
-sem alterar este módulo. Os nomes de ``acao`` seguem a lista do dicionário de dados.
+A trilha oficial é a tabela ``log_auditoria`` (cadeia de hash calculada pelo banco). Quase tudo é
+gravado pelo próprio banco, em gatilhos e funções (login e bloqueio em ``fn_registrar_login``;
+cadastro, situação, perfil, senha e MFA em ``fn_usuario_depois``; aparelhos e permissões). O que o
+banco não tem como perceber (logout, login recusado antes de ``fn_registrar_login``) a API grava
+com ``gravar``, que chama ``fn_audit``.
+
+``registrar`` só escreve no log e publica o sinal ``evento_auditoria``: é complementar.
+Os nomes de ``acao`` são os aceitos pela constraint ``ck_audit_acao``.
 """
 
 import ipaddress
+import json
 import logging
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from django.db import connection
 from django.dispatch import Signal
 
 logger = logging.getLogger("netafim.auditoria")
@@ -84,6 +90,36 @@ def registrar(
     logger.info("auditoria %s", asdict(evento))
     evento_auditoria.send(sender=EventoAuditoria, evento=evento)
     return evento
+
+
+def gravar(
+    acao: str,
+    resultado: str = Resultado.SUCESSO,
+    *,
+    id_usuario: int | None = None,
+    request=None,
+    **detalhes,
+) -> None:
+    """Grava na trilha do banco, na transação em curso. ``detalhes`` nunca leva e-mail nem segredo.
+
+    Se a gravação falhar, a exceção sobe e a operação é desfeita: não há ação sem rastro.
+    """
+    agente = (request.META.get("HTTP_USER_AGENT", "")[:255] or None) if request else None
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "select fn_audit(%s::text, %s::text, %s::text, %s::text, %s::jsonb, %s::integer, "
+            "null, %s::inet, %s::text)",
+            [
+                acao,
+                resultado,
+                "usuario" if id_usuario is not None else None,
+                str(id_usuario) if id_usuario is not None else None,
+                json.dumps(detalhes) if detalhes else None,
+                id_usuario,
+                ip_da_requisicao(request),
+                agente,
+            ],
+        )
 
 
 def ip_da_requisicao(request) -> str | None:

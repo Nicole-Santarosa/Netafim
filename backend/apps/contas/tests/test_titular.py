@@ -5,10 +5,16 @@ import json
 import psycopg
 import pytest
 from django.urls import reverse
+from psycopg.conninfo import make_conninfo
 
 from apps.contas.servicos import titular
 
-from .conftest import MIGRACAO_TITULAR
+from .conftest import (
+    MIGRACAO_ANONIMIZAR_AUTORIZA,
+    MIGRACAO_TITULAR,
+    SENHA_APP_DJANGO,
+    _conninfo,
+)
 from .test_autenticacao import logar
 
 MEUS = reverse("me-solicitacoes-lgpd")
@@ -422,3 +428,105 @@ def test_sem_a_migracao_010_a_exportacao_continua_funcionando(
     assert r.status_code == 200
     assert r.data["conta"]["email"] == cliente_usuario.email
     assert r.data["solicitacoes_lgpd"] == []
+
+
+# --------------------------------------------------------------------------- revisão #10 e #11
+
+
+def _chamar_anonimizar(banco, ator, alvo):
+    """Chama a função direto no banco, como app_django, sem passar pela API."""
+    dsn = make_conninfo(_conninfo(banco), user="app_django", password=SENHA_APP_DJANGO)
+    with psycopg.connect(dsn) as conn:
+        if ator is not None:
+            conn.execute("select set_config('app.current_user_id', %s, true)", [str(ator)])
+        conn.execute("select fn_anonimizar_usuario(%s)", [alvo])
+
+
+@pytest.mark.parametrize("quem", [None, "netafim_usuario", "distrib_admin", "proprio_admin"])
+def test_banco_recusa_anonimizacao_por_quem_nao_pode(
+    request, banco, banco_sql, netafim_admin, cliente_usuario, quem
+):
+    alvo = cliente_usuario.pk
+    if quem == "proprio_admin":
+        ator = alvo = netafim_admin.pk
+    else:
+        ator = request.getfixturevalue(quem).pk if quem else None
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        _chamar_anonimizar(banco, ator, alvo)
+    assert banco_sql.um("select deletado_em from usuario where id_usuario = %s", alvo) is None
+
+
+def test_banco_deixa_o_netafim_admin_anonimizar_outra_conta(
+    banco, banco_sql, netafim_admin, cliente_usuario
+):
+    _chamar_anonimizar(banco, netafim_admin.pk, cliente_usuario.pk)
+    assert banco_sql.um("select deletado_em from usuario where id_usuario = %s", cliente_usuario.pk)
+
+
+def test_migracao_023_e_idempotente(banco_sql):
+    banco_sql.executar(MIGRACAO_ANONIMIZAR_AUTORIZA.read_text(encoding="utf-8"))
+    banco_sql.executar(MIGRACAO_ANONIMIZAR_AUTORIZA.read_text(encoding="utf-8"))
+
+
+def test_admin_exporta_titular_ja_anonimizado(como, netafim_admin, cliente_usuario):
+    acesso = pedir(como, cliente_usuario, "acesso").data["id_solicitacao"]
+    apagar = pedir(como, cliente_usuario, "anonimizacao").data["id_solicitacao"]
+    admin = como(netafim_admin)
+    assert admin.post(f"/api/v1/solicitacoes-lgpd/{apagar}/atender").status_code == 200
+    r = admin.get(f"/api/v1/solicitacoes-lgpd/{acesso}/dados")
+    assert r.status_code == 200
+    assert r.data["conta"]["email"].endswith("@anonimizado.invalid")
+
+
+def test_admin_exporta_titular_inativo(como, banco_sql, netafim_admin, cliente_usuario):
+    acesso = pedir(como, cliente_usuario, "acesso").data["id_solicitacao"]
+    banco_sql.executar(
+        "update usuario set situacao = 'inativo' where id_usuario = %s", cliente_usuario.pk
+    )
+    r = como(netafim_admin).get(f"/api/v1/solicitacoes-lgpd/{acesso}/dados")
+    assert r.status_code == 200
+    assert r.data["conta"]["email"] == cliente_usuario.email
+
+
+def test_pedido_sem_usuario_nao_tem_exportacao(como, banco_sql, netafim_admin, cliente_usuario):
+    acesso = pedir(como, cliente_usuario, "acesso").data["id_solicitacao"]
+    banco_sql.executar(
+        "update solicitacao_titular set id_usuario = null, nome_titular = 'Sem Conta', "
+        "email_contato = 'sem.conta@exemplo.com' where id_solicitacao = %s",
+        acesso,
+    )
+    r = como(netafim_admin).get(f"/api/v1/solicitacoes-lgpd/{acesso}/dados")
+    assert r.status_code == 400
+    assert r.data["codigo"] == "titular_sem_conta"
+
+
+def _exportacoes(banco_sql):
+    return banco_sql.um("select count(*) from log_auditoria where acao = 'exportacao_dados'")
+
+
+def test_cada_exportacao_do_admin_gera_um_registro_inclusive_apos_atendido(
+    como, banco_sql, netafim_admin, cliente_usuario
+):
+    acesso = pedir(como, cliente_usuario, "acesso").data["id_solicitacao"]
+    admin = como(netafim_admin)
+    assert admin.get(f"/api/v1/solicitacoes-lgpd/{acesso}/dados").status_code == 200
+    assert _exportacoes(banco_sql) == 1
+    assert admin.post(f"/api/v1/solicitacoes-lgpd/{acesso}/atender").status_code == 200
+    assert admin.get(f"/api/v1/solicitacoes-lgpd/{acesso}/dados").status_code == 200
+    assert _exportacoes(banco_sql) == 2
+
+
+def test_se_a_auditoria_falha_a_exportacao_nao_e_entregue(
+    como, banco_sql, netafim_admin, cliente_usuario
+):
+    acesso = pedir(como, cliente_usuario, "acesso").data["id_solicitacao"]
+    banco_sql.executar(
+        "alter table log_auditoria add constraint tmp_sem_exportacao "
+        "check (acao <> 'exportacao_dados') not valid"
+    )
+    admin = como(netafim_admin)
+    admin.raise_request_exception = False
+    r = admin.get(f"/api/v1/solicitacoes-lgpd/{acesso}/dados")
+    assert r.status_code == 500
+    assert b"dispositivos" not in r.content
+    assert _exportacoes(banco_sql) == 0

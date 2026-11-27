@@ -339,7 +339,9 @@ def exportar_dados_do_titular(ator: Usuario, id_solicitacao: int, *, request=Non
     if pedido["status"] == "negada":
         raise ErroNegocio("O pedido foi negado: não há dados a exportar.", "pedido_negado")
     id_titular = pedido["id_usuario"]
-    titular_usuario = Usuario.objects.filter(pk=id_titular).first() if id_titular else None
+    # "todos": o manager padrão esconde excluídos, e o titular anonimizado tem deletado_em. O RLS
+    # continua valendo.
+    titular_usuario = Usuario.todos.filter(pk=id_titular).first() if id_titular else None
     if titular_usuario is None:
         raise ErroNegocio("O titular deste pedido não tem conta no sistema.", "titular_sem_conta")
     with connection.cursor() as cursor:

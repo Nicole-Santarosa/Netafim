@@ -8,7 +8,7 @@ import pytest
 from django.db import ProgrammingError, connection
 from django.urls import reverse
 
-from apps.contas.servicos import totp
+from apps.contas.servicos import mfa, totp
 
 from .conftest import SENHA
 
@@ -262,8 +262,9 @@ def test_desafio_adulterado_ou_expirado_e_recusado(api, ativar_mfa, netafim_usua
 
     from apps.contas.servicos import mfa
 
-    monkeypatch.setattr(mfa, "VALIDADE_DESAFIO", -1)
-    r = api.post(VERIFICAR, {"desafio": desafio, "codigo": "123456"}, format="json")
+    monkeypatch.setattr(mfa, "VALIDADE_DESAFIO", -1)  # o prazo é fixado na emissão
+    vencido = desafio_de(api, netafim_usuario)
+    r = api.post(VERIFICAR, {"desafio": vencido, "codigo": "123456"}, format="json")
     assert r.status_code == 401
     assert r.data["codigo"] == "desafio_mfa_invalido"
 
@@ -326,13 +327,15 @@ def test_desativar_sem_mfa_ativo_da_409(como, netafim_usuario):
 
 
 def test_netafim_admin_redefine_o_mfa_de_outro_usuario(
-    api, como, ativar_mfa, netafim_admin, cliente_usuario
+    api, como, ativar_mfa, netafim_admin, cliente_usuario, com_revogar_tokens
 ):
     ativar_mfa(cliente_usuario)
     r = como(netafim_admin).post(reverse("usuario-mfa-resetar", args=[cliente_usuario.pk]))
     assert r.status_code == 204, r.data
-    assert como(cliente_usuario).get(ESTADO).data["ativo"] is False
-    assert "access" in login(api, cliente_usuario).data
+    novo = login(api, cliente_usuario).data
+    assert "access" in novo  # só com a senha, sem segundo fator
+    api.credentials(HTTP_AUTHORIZATION=f"Bearer {novo['access']}")
+    assert api.get(ESTADO).data["ativo"] is False
 
 
 def test_so_netafim_admin_redefine_mfa(como, ativar_mfa, distrib_admin, cliente_usuario):
@@ -380,3 +383,122 @@ def test_migracao_007_e_idempotente(banco_sql):
 
     banco_sql.executar(MIGRACAO_MFA.read_text(encoding="utf-8"))
     banco_sql.executar(MIGRACAO_MFA.read_text(encoding="utf-8"))
+
+
+# --------------------------------------------------------------------------- desafio de uso único
+
+
+def _verificar(api, desafio, codigo):
+    return api.post(VERIFICAR, {"desafio": desafio, "codigo": codigo}, format="json")
+
+
+def test_desafio_e_opaco_e_nao_carrega_email(api, ativar_mfa, netafim_usuario):
+    ativar_mfa(netafim_usuario)
+    desafio = desafio_de(api, netafim_usuario)
+    assert len(desafio) >= 40
+    assert ":" not in desafio and netafim_usuario.email.split("@")[0] not in desafio
+
+
+def test_desafio_vale_uma_vez_so(api, ativar_mfa, netafim_usuario):
+    _, codigos = ativar_mfa(netafim_usuario)
+    desafio = desafio_de(api, netafim_usuario)
+    assert _verificar(api, desafio, codigos[0]).status_code == 200
+    r = _verificar(api, desafio, codigos[1])
+    assert r.status_code == 401
+    assert r.data["codigo"] == "desafio_mfa_invalido"
+
+
+def test_codigo_errado_nao_gasta_o_desafio(api, ativar_mfa, netafim_usuario):
+    _, codigos = ativar_mfa(netafim_usuario)
+    desafio = desafio_de(api, netafim_usuario)
+    assert _verificar(api, desafio, "000000").data["codigo"] == "codigo_mfa_invalido"
+    assert _verificar(api, desafio, codigos[0]).status_code == 200
+
+
+def test_bloqueio_derruba_o_desafio_mesmo_depois_de_desbloquear(
+    api, banco_sql, ativar_mfa, netafim_usuario
+):
+    _, codigos = ativar_mfa(netafim_usuario)
+    desafio = desafio_de(api, netafim_usuario)
+    for _ in range(5):
+        _verificar(api, desafio, "000000")
+    banco_sql.executar(
+        "update usuario set bloqueado_ate = null, falhas_login = 0 where id_usuario = %s",
+        netafim_usuario.pk,
+    )
+    r = _verificar(api, desafio, codigos[0])
+    assert r.status_code == 401
+    assert r.data["codigo"] == "desafio_mfa_invalido"
+
+
+def test_redefinir_o_mfa_derruba_desafio_e_access_ja_emitidos(
+    api, como, ativar_mfa, netafim_admin, netafim_usuario, com_revogar_tokens
+):
+    _, codigos = ativar_mfa(netafim_usuario)
+    r = _verificar(api, desafio_de(api, netafim_usuario), codigos[0])
+    access = r.data["access"]
+    pendente = desafio_de(api, netafim_usuario)
+    api.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+    assert api.get("/api/v1/me").status_code == 200
+    api.credentials()
+
+    r = como(netafim_admin).post(f"/api/v1/usuarios/{netafim_usuario.pk}/mfa/resetar")
+    assert r.status_code == 204
+
+    api.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+    assert api.get("/api/v1/me").status_code == 401
+    api.credentials()
+    assert _verificar(api, pendente, codigos[1]).data["codigo"] == "desafio_mfa_invalido"
+    novo = api.post(
+        "/api/v1/auth/login",
+        {
+            "email": netafim_usuario.email,
+            "senha": SENHA,
+            "dispositivo": {"id_dispositivo": str(uuid.uuid4())},
+        },
+        format="json",
+    )
+    assert novo.status_code == 200
+    api.credentials(HTTP_AUTHORIZATION=f"Bearer {novo.data['access']}")
+    assert api.get("/api/v1/me").status_code == 200
+
+
+def test_sem_a_funcao_de_revogar_o_mfa_nao_e_redefinido(
+    como, banco_sql, ativar_mfa, netafim_admin, netafim_usuario
+):
+    ativar_mfa(netafim_usuario)
+    banco_sql.executar("drop function if exists fn_revogar_tokens_usuario(integer, text)")
+    r = como(netafim_admin).post(f"/api/v1/usuarios/{netafim_usuario.pk}/mfa/resetar")
+    assert r.status_code == 503
+    assert r.data["codigo"] == "revogacao_indisponivel"
+    assert banco_sql.um("select mfa_ativo from usuario where id_usuario = %s", netafim_usuario.pk)
+    assert (
+        banco_sql.um("select count(*) from usuario_mfa where id_usuario = %s", netafim_usuario.pk)
+        == 1
+    )
+
+
+# --------------------------------------------------------------------------- concorrência
+
+
+def test_confirmar_sem_segredo_pendente_no_banco_responde_409(
+    como, relogio, banco_sql, netafim_usuario, monkeypatch
+):
+    """Corrida: o segredo some entre a leitura e a confirmação. Antes isto dava erro 500."""
+    cliente = como(netafim_usuario)
+    segredo = cliente.post("/api/v1/me/mfa/iniciar").data["segredo"]
+    original = mfa._executar
+
+    def com_corrida(comando, *args):
+        if "fn_mfa_confirmar" in comando:
+            banco_sql.executar("delete from usuario_mfa where id_usuario = %s", netafim_usuario.pk)
+        return original(comando, *args)
+
+    monkeypatch.setattr(mfa, "_executar", com_corrida)
+    r = cliente.post(
+        "/api/v1/me/mfa/confirmar",
+        {"codigo": totp.codigo_em(segredo, relogio.agora)},
+        format="json",
+    )
+    assert r.status_code == 409
+    assert r.data["codigo"] == "mfa_nao_iniciado"

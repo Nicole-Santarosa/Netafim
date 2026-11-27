@@ -966,8 +966,11 @@ paths:
   /api/v1/solicitacoes-lgpd/{id}/dados:
     get:
       operationId: v1_solicitacoes_lgpd_dados_retrieve
-      description: Cópia dos dados do titular do pedido (acesso ou portabilidade),
-        para o Netafim Admin.
+      description: |-
+        Cópia dos dados do titular do pedido (acesso ou portabilidade), para o Netafim Admin.
+
+        Só lê, sem mudar o pedido. Vale também para pedido já atendido (a cópia pode ser gerada de
+        novo) e para titular inativo ou anonimizado (sai o que restou). Cada leitura é auditada.
       parameters:
       - in: path
         name: id
@@ -986,6 +989,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/DadosPessoais'
           description: ''
+        '400':
+          description: '`tipo_sem_exportacao` (não é acesso nem portabilidade), `pedido_negado`
+            ou `titular_sem_conta`.'
+        '404':
+          description: '`solicitacao_nao_encontrada`.'
   /api/v1/solicitacoes-lgpd/{id}/negar:
     post:
       operationId: v1_solicitacoes_lgpd_negar_create
@@ -1209,9 +1217,7 @@ paths:
   /api/v1/usuarios/{id_usuario}/dispositivos:
     get:
       operationId: v1_usuarios_dispositivos_list
-      description: |-
-        Lista e gerencia usuários no escopo do ator: o Netafim Admin vê todos; admins de
-        distribuidor e de cliente veem só a própria organização.
+      description: Aparelhos do usuário. Gestão de aparelhos é só do Netafim Admin.
       parameters:
       - in: path
         name: id_usuario

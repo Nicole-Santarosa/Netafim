@@ -424,3 +424,57 @@ def test_esqueci_senha_de_conta_nao_ativa_nao_envia(api, criar_usuario, cliente)
     r = api.post(reverse("auth-senha-esqueci"), {"email": pendente.email}, format="json")
     assert r.status_code == 202
     assert len(mail.outbox) == 0
+
+
+@pytest.mark.parametrize("quem", ["distrib_admin", "netafim_usuario"])
+def test_so_netafim_admin_lista_aparelhos(request, api, como, distrib_usuario, quem):
+    logar(api, distrib_usuario)
+    r = como(request.getfixturevalue(quem)).get(
+        f"/api/v1/usuarios/{distrib_usuario.pk}/dispositivos"
+    )
+    assert r.status_code == 403
+
+
+# --------------------------------------------------------------------------- trilha do banco
+
+
+def _trilha(banco_sql, acao, resultado):
+    return banco_sql.um(
+        "select count(*) from log_auditoria where acao = %s and resultado = %s", acao, resultado
+    )
+
+
+def test_logout_fica_na_trilha_do_banco(api, banco_sql, netafim_usuario):
+    dados = logar(api, netafim_usuario).data
+    api.credentials(HTTP_AUTHORIZATION=f"Bearer {dados['access']}")
+    r = api.post("/api/v1/auth/logout", {"refresh": dados["refresh"]}, format="json")
+    assert r.status_code == 204
+    assert _trilha(banco_sql, "logout", "sucesso") == 1
+    assert (
+        banco_sql.um("select id_usuario from log_auditoria where acao = 'logout'")
+        == netafim_usuario.pk
+    )
+
+
+def test_login_de_email_inexistente_fica_na_trilha_sem_o_email(api, banco_sql):
+    r = api.post(
+        "/api/v1/auth/login",
+        {
+            "email": "ninguem@netafim.com",
+            "senha": "x",
+            "dispositivo": {"id_dispositivo": str(uuid.uuid4())},
+        },
+        format="json",
+    )
+    assert r.status_code == 401
+    assert _trilha(banco_sql, "login_falha", "falha") == 1
+    assert "ninguem" not in banco_sql.um(
+        "select detalhes::text from log_auditoria where acao = 'login_falha'"
+    )
+
+
+def test_login_de_conta_inativa_fica_na_trilha(api, banco_sql, criar_usuario):
+    pessoa = criar_usuario(situacao=SituacaoUsuario.INATIVO)
+    r = logar(api, pessoa)
+    assert r.status_code == 403
+    assert _trilha(banco_sql, "login_falha", "negado") == 1

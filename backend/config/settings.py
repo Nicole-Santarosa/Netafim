@@ -222,7 +222,14 @@ if _PASTA_CACHE:
         "default": {
             "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
             "LOCATION": _PASTA_CACHE,
-        }
+        },
+        # Estado de segurança (desafios do MFA e corte de access tokens) em pasta própria: o limite
+        # de tentativas não pode expulsar essas chaves quando o cache dele enche.
+        "seguranca": {
+            "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+            "LOCATION": str(Path(_PASTA_CACHE) / "seguranca"),
+            "OPTIONS": {"MAX_ENTRIES": 100_000},
+        },
     }
 else:
     # Nunca impedir a API de subir por causa do cache; o limite volta a valer por processo.
@@ -231,7 +238,15 @@ else:
         "Defina CACHE_DIR para uma pasta gravável.",
         stacklevel=1,
     )
-    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+    # Neste modo cada processo tem a própria memória: com mais de um worker, o segundo passo do
+    # login com MFA pode cair em outro processo e ser recusado. Defina CACHE_DIR.
+    CACHES = {
+        "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+        "seguranca": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "seguranca",
+        },
+    }
 
 REST_FRAMEWORK = {
     # Sem sessão do Django não existe AnonymousUser: o anônimo é None.
