@@ -26,7 +26,7 @@ from ..constantes import (
 from ..escopo import pode_gerenciar
 from ..excecoes import ErroNegocio, SemPermissao
 from ..models import Cliente, Distribuidor, DominioEmailCorporativo, Perfil, Usuario
-from . import auditoria, banco, credenciais, notificacoes, tokens
+from . import auditoria, banco, credenciais, mfa, notificacoes, tokens
 from .acesso import definir_senha_por_token, validar_senha
 from .auditoria import Acao, Resultado
 
@@ -410,6 +410,7 @@ def alterar_situacao(ator: Usuario, alvo: Usuario, nova: str, *, request=None) -
         alvo.bloqueado_ate = None
         campos += ["falhas_login", "bloqueado_ate"]
     banco.salvar(alvo, update_fields=campos)  # o banco revoga os tokens ao inativar ou bloquear
+    mfa.invalidar_desafios(alvo.pk)
     auditoria.registrar(
         Acao.SITUACAO_ALTERADA, usuario=ator, request=request, entidade=alvo, de=atual, para=nova
     )

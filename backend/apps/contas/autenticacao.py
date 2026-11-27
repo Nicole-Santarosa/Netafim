@@ -7,6 +7,7 @@ from rest_framework_simplejwt.settings import api_settings
 
 from . import contexto
 from .models import Dispositivo, Usuario
+from .servicos import tokens
 
 
 class AutenticacaoJWT(JWTAuthentication):
@@ -27,6 +28,9 @@ class AutenticacaoJWT(JWTAuthentication):
             id_usuario = int(id_usuario)
         except (TypeError, ValueError) as exc:
             raise InvalidToken("Token com identificação de usuário inválida.") from exc
+
+        if tokens.acesso_cortado(id_usuario, validated_token.get("emi")):
+            raise AuthenticationFailed("Sessão encerrada. Entre novamente.", code="session_ended")
 
         # Roda dentro da transação da requisição (ATOMIC_REQUESTS): o ator vale até o fim dela, para
         # as consultas seguintes da view. Fora de uma transação, contexto.definir_ator falha alto.

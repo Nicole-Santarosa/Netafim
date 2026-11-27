@@ -17,10 +17,12 @@ Regras que quem decide é o banco (e a API apenas respeita):
 import hashlib
 import logging
 import secrets
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+from django.core.cache import caches
 from django.db import DatabaseError, connection, transaction
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import AccessToken
@@ -76,8 +78,28 @@ class ParDeTokens:
     refresh_expira_em: str
 
 
+def _chave_corte(id_usuario) -> str:
+    return f"acesso-corte:{int(id_usuario)}"
+
+
+def invalidar_acessos(id_usuario: int) -> None:
+    """Recusa, a partir de agora, os access tokens já emitidos para o usuário.
+
+    O JWT não passa pelo banco, então o corte fica no cache compartilhado da API pelo tempo de vida
+    de um access token. Vale para os processos que usam o mesmo cache (um contêiner).
+    """
+    validade = int(AccessToken.lifetime.total_seconds()) + 60
+    caches["seguranca"].set(_chave_corte(id_usuario), time.time(), validade)
+
+
+def acesso_cortado(id_usuario: int, emitido_em) -> bool:
+    corte = caches["seguranca"].get(_chave_corte(id_usuario))
+    return corte is not None and float(emitido_em or 0) <= corte
+
+
 def montar_par(usuario: Usuario, refresh_claro: str, id_dispositivo) -> ParDeTokens:
     access = AccessToken.for_user(usuario)
+    access["emi"] = time.time()  # instante exato da emissão ("iat" só tem segundos)
     if id_dispositivo is not None:
         access["did"] = str(id_dispositivo)
     expira = datetime.fromtimestamp(access["exp"], tz=UTC)

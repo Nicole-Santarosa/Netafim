@@ -5,7 +5,12 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -13,7 +18,7 @@ from rest_framework.response import Response
 
 from ..constantes import Permissao as P
 from ..constantes import TipoOrganizacao
-from ..escopo import RequerPermissao, SomenteNetafimAdmin, pode_gerenciar, usuarios_visiveis
+from ..escopo import RequerPermissao, SomenteNetafimAdmin, usuarios_visiveis
 from ..excecoes import ErroNegocio, SemPermissao
 from ..models import (
     Cliente,
@@ -151,9 +156,11 @@ class UsuarioViewSet(
     @extend_schema(responses=s.DispositivoSerializer(many=True))
     @action(detail=True, methods=["get"], pagination_class=None)
     def dispositivos(self, request, id_usuario=None):
-        alvo = self.get_object()
-        if not (request.user.eh_netafim_admin or pode_gerenciar(request.user, alvo)):
+        """Aparelhos do usuário. Gestão de aparelhos é só do Netafim Admin."""
+        # antes do get_object: quem não é Netafim Admin não descobre se o usuário existe
+        if not request.user.eh_netafim_admin:
             raise SemPermissao()
+        alvo = self.get_object()
         return Response(s.DispositivoSerializer(alvo.dispositivos.all(), many=True).data)
 
 
@@ -388,10 +395,24 @@ class SolicitacaoTitularViewSet(viewsets.ViewSet):
     def atender(self, request, pk=None):
         return Response(titular.atender(request.user, int(pk), request=request))
 
-    @extend_schema(request=None, responses=s.DadosPessoaisSerializer)
+    @extend_schema(
+        request=None,
+        responses={
+            200: s.DadosPessoaisSerializer,
+            400: OpenApiResponse(
+                description="`tipo_sem_exportacao` (não é acesso nem portabilidade), "
+                "`pedido_negado` ou `titular_sem_conta`."
+            ),
+            404: OpenApiResponse(description="`solicitacao_nao_encontrada`."),
+        },
+    )
     @action(detail=True, methods=["get"], url_path="dados")
     def dados(self, request, pk=None):
-        """Cópia dos dados do titular do pedido (acesso ou portabilidade), para o Netafim Admin."""
+        """Cópia dos dados do titular do pedido (acesso ou portabilidade), para o Netafim Admin.
+
+        Só lê, sem mudar o pedido. Vale também para pedido já atendido (a cópia pode ser gerada de
+        novo) e para titular inativo ou anonimizado (sai o que restou). Cada leitura é auditada.
+        """
         return Response(titular.exportar_dados_do_titular(request.user, int(pk), request=request))
 
     @extend_schema(request=s.NegarSolicitacaoSerializer, responses=s.SolicitacaoAdminSerializer)

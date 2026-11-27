@@ -61,6 +61,9 @@ def autenticar(
 
         if usuario is None:
             make_password(senha)  # mesmo custo de tempo de um usuário existente
+            auditoria.gravar(
+                Acao.LOGIN_FALHA, Resultado.FALHA, request=request, motivo="email_inexistente"
+            )
             auditoria.registrar(
                 Acao.LOGIN_FALHA, Resultado.FALHA, request=request, motivo="email_inexistente"
             )
@@ -74,10 +77,20 @@ def autenticar(
             bloqueado = usuario.bloqueado_ate is not None and usuario.bloqueado_ate > timezone.now()
             if bloqueado or not senha_ok:
                 # Bloqueado: o banco audita a tentativa e não anda o contador. Senha errada: conta.
-                _registrar_login(usuario.pk, False, ip, agente)
+                _, _, bloqueado_ate = _registrar_login(usuario.pk, False, ip, agente)
+                if bloqueado_ate is not None and bloqueado_ate > timezone.now():
+                    mfa.invalidar_desafios(usuario.pk)
                 erro = CredenciaisInvalidas()
             elif usuario.situacao != SituacaoUsuario.ATIVO:
                 codigo, mensagem = MENSAGENS_SITUACAO[usuario.situacao]
+                # o banco só audita o login por fn_registrar_login, que não é chamada aqui
+                auditoria.gravar(
+                    Acao.LOGIN_FALHA,
+                    Resultado.NEGADO,
+                    id_usuario=usuario.pk,
+                    request=request,
+                    motivo=codigo,
+                )
                 auditoria.registrar(
                     Acao.LOGIN_FALHA,
                     Resultado.NEGADO,
@@ -96,6 +109,7 @@ def autenticar(
                     )
                 else:
                     desafio = mfa.emitir_desafio(
+                        usuario.pk,
                         email,
                         {
                             "id": str(dispositivo.id_dispositivo),
@@ -152,19 +166,28 @@ def concluir_login_mfa(desafio: str, codigo: str, *, request=None):
         contexto.limpar()
         contexto.definir_email_login(email)
         usuario = Usuario.objects.select_related("perfil").filter(email__iexact=email).first()
-        if usuario is None or usuario.situacao != SituacaoUsuario.ATIVO or not usuario.mfa_ativo:
+        if (
+            usuario is None
+            or usuario.pk != dados["u"]
+            or usuario.situacao != SituacaoUsuario.ATIVO
+            or not usuario.mfa_ativo
+        ):
             erro = ErroNegocio("Desafio inválido.", "desafio_mfa_invalido", status_code=401)
         elif usuario.bloqueado_ate is not None and usuario.bloqueado_ate > timezone.now():
             _registrar_login(usuario.pk, False, ip, agente)  # o banco audita e não anda o contador
+            mfa.invalidar_desafios(usuario.pk)
             erro = CredenciaisInvalidas()
         else:
             metodo = mfa.verificar_segundo_fator(usuario.pk, codigo)
             if metodo is None:
-                _registrar_login(usuario.pk, False, ip, agente)
+                _, _, bloqueado_ate = _registrar_login(usuario.pk, False, ip, agente)
+                if bloqueado_ate is not None and bloqueado_ate > timezone.now():
+                    mfa.invalidar_desafios(usuario.pk)
                 erro = ErroNegocio(
                     "Código incorreto ou expirado.", "codigo_mfa_invalido", status_code=401
                 )
             else:
+                mfa.consumir_desafio(desafio)  # uso único: levanta se outra requisição já gastou
                 _registrar_login(usuario.pk, True, ip, agente)
                 try:
                     with transaction.atomic():
@@ -259,6 +282,7 @@ def renovar_sessao(refresh: str, *, request=None):
 
 def encerrar_sessao(usuario: Usuario, refresh: str, *, request=None) -> None:
     tokens.revogar(refresh)
+    auditoria.gravar(Acao.LOGOUT, id_usuario=usuario.pk, request=request)
     auditoria.registrar(Acao.LOGOUT, usuario=usuario, request=request)
 
 
@@ -276,6 +300,7 @@ def alterar_senha(usuario: Usuario, senha_atual: str, nova_senha: str, *, reques
     )
     # Encerra as sessões (o app pede login com a nova senha), se o banco já tiver a função.
     tokens.revogar_todos(usuario.pk, tipo=TipoToken.REFRESH)
+    mfa.invalidar_desafios(usuario.pk)
     auditoria.registrar(Acao.SENHA_ALTERADA, usuario=usuario, request=request)
 
 
@@ -319,5 +344,6 @@ def definir_senha_por_token(token: str, nova_senha: str, tipo: str, *, request=N
         # Ainda com o dono do token como ator: a função do banco só aceita o titular ou o Netafim
         # Admin.
         tokens.revogar_todos(usuario.pk, tipo=TipoToken.REFRESH)
+        mfa.invalidar_desafios(usuario.pk)
     auditoria.registrar(Acao.SENHA_ALTERADA, usuario=usuario, request=request, via=tipo)
     return usuario

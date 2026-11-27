@@ -22,7 +22,7 @@ from pathlib import Path
 import psycopg
 import pytest
 from django.contrib.auth.hashers import make_password
-from django.core.cache import cache
+from django.core.cache import cache, caches
 from django.db import connections
 from psycopg import sql
 from psycopg.conninfo import conninfo_to_dict, make_conninfo
@@ -39,6 +39,8 @@ PROPOSTA_LOGIN_SEM_HASH = MIGRACOES / "004_login_sem_leitura_de_hash.sql"
 PROPOSTA_REVOGA_LEITURA = MIGRACOES / "005_revoga_leitura_de_hash_e_auditoria.sql"
 MIGRACAO_MFA = MIGRACOES / "007_mfa_totp.sql"
 MIGRACAO_TITULAR = MIGRACOES / "010_titular_solicitacoes.sql"
+MIGRACAO_ANONIMIZAR_CONTATO = MIGRACOES / "011_anonimizar_contato_solicitante.sql"
+MIGRACAO_ANONIMIZAR_AUTORIZA = MIGRACOES / "023_anonimizacao_exige_netafim_admin.sql"
 SENHA_APP_DJANGO = os.environ.get("TEST_APP_DJANGO_PASSWORD", "app_django_teste")
 SENHA_APP_AUTH = os.environ.get("TEST_APP_AUTH_PASSWORD", "app_auth_teste")
 _seq = itertools.count(1)
@@ -73,6 +75,9 @@ def _modelo():
         conn.execute(MIGRACAO_MFA.read_text(encoding="utf-8"))
         # Direitos do titular (010): o titular registra e acompanha os próprios pedidos.
         conn.execute(MIGRACAO_TITULAR.read_text(encoding="utf-8"))
+        # Anonimização: 011 (limpa o contato do solicitante) e 023 (o banco autoriza quem chama).
+        conn.execute(MIGRACAO_ANONIMIZAR_CONTATO.read_text(encoding="utf-8"))
+        conn.execute(MIGRACAO_ANONIMIZAR_AUTORIZA.read_text(encoding="utf-8"))
     yield nome
     with psycopg.connect(_conninfo("postgres"), autocommit=True) as adm:
         adm.execute(sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(nome)))
@@ -82,8 +87,10 @@ def _modelo():
 def _cache_limpo():
     """O limite de tentativas usa um cache em arquivo, que sobrevive entre testes e execuções."""
     cache.clear()
+    caches["seguranca"].clear()
     yield
     cache.clear()
+    caches["seguranca"].clear()
 
 
 @pytest.fixture(autouse=True)
